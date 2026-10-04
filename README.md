@@ -8,26 +8,26 @@ Built in **Godot 4.7**.
 
 | Folder | What it is |
 |---|---|
-| `game/` | The game itself (Godot project). Phase 1 is built; see `docs/phase1.md`. |
-| `docs/Farming_Horror_Game_Concept.md` | The full design doc: core loop, creature, voice mimicry, traps, economy, season numbers, build plan and open issues. |
-| `voice_chat_prototype/` | Working Godot voice chat project: proximity voice, push-to-talk, static for dead players, and consent-based clips the creature can mimic. See its own README. |
+| `game/` | The game itself (Godot project). Phase 2 is built; see `docs/phase2.md`. |
+| `docs/` | The design doc, each phase's notes and playtest results, and gotchas; start at `docs/README.md`. |
+| `voice_chat_prototype/` | The voice chat project the game's `addons/voice_chat` was copied from: proximity voice, push-to-talk, static for dead players, and consent-based clips the creature can mimic. See its own README. |
 
 ## Status
 
-Design is settled for now. **Phase 1** passed its playtests, and **Phase 2** (the lobby and recorded voices, the pegboard, two days, death and the bill) is built and waiting for its playtest ([Phase 2](docs/phase2.md)). Phase 1 was:
+**Phase 1** ([notes](docs/phase1.md)) passed its playtests: one small field, one day and night, the creature hunting by sound, traps, the generator, and generic voices from the corn.
 
-- One small field and the tool shed
-- One day and one night
-- 2 players
-- The creature wandering and chasing by sound
-- Bear traps and small pits in scripted spots
-- The generator
-- Generic pre-recorded voice lines from the corn
+**Phase 2** ([notes](docs/phase2.md)) is built and has had solo playtests; it still needs one with 2–4 people on their own machines. It adds:
 
-**Done when:** the day feels safe, the night feels tense, and a generic voice from the corn makes a playtester walk toward it at least once.
+- A lobby where players agree to let the creature copy their voice and can record lines
+- The creature calling with what players said over proximity chat, or their lobby lines
+- Proximity voice chat, and a list (C) to play back or delete what is kept of your voice
+- Two days and two nights, death with respawn at dawn, and the medical bill
+- The pegboard: the creature steals bear traps from the shed and hides them
+- Corn that reaches into the farm in ragged strips, and a planted corn patch worth cutting
+- Up to 4 players
 
-The voice chat prototype isn't needed until Phase 2. It doesn't record lobby voice lines yet, which Phase 2 needs.
+**Done when:** hearing a friend's voice from the corn fools someone, and trap sweeps feel worth doing. What is left before Phase 3 is the checklist in [Phase 2](docs/phase2.md#checklist).
 
 ## Testing multiplayer on one PC
 
-In Godot, use **Debug > Customize Run Instances** to run 2–4 copies of the game at once, or run it twice from the command line with `-- --host` and `-- --join=127.0.0.1`.
+In Godot, use **Debug > Customize Run Instances** to run 2–4 copies of the game at once, or run it twice from the command line with `-- --host` and `-- --join=127.0.0.1` (add `--dev` to both for the F2 developer panel).
