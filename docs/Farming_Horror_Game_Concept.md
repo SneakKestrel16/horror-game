@@ -258,10 +258,21 @@ Still open: both the Hunter and the Tracker are candidates for the fourth role, 
 
 Only move on once the current phase is fun to play. Each phase has a test for “fun.”
 
+A review sits between each phase and the next. It starts once the phase passes its test:
+
+1. Read the phase’s playtest logs and notes.
+2. Add every new problem they show to Open Issues.
+3. Settle the open issues the next phase depends on (listed in each review below), and any others that are now answerable. Move each settled one to Resolved Issues and update the sections it touches.
+4. Start the next phase only when nothing it depends on is still open.
+
 - **Phase 1 (prototype):** One small field and the shed, one day and one night, 2 players, the creature wandering and chasing by sound, bear traps and small pits in scripted spots, the generator, and the creature playing generic pre-recorded voice lines. Done when: the day feels safe, the night feels tense, and a generic voice from the corn makes a playtester walk toward it at least once. Built in `game/` and through its first playtest, which led to reworked lures and fuel runs; it uses a 6-minute day because it has only one small field (see [Phase 1 prototype](phase1.md)).
+- **Review 1:** Before Phase 2 adds recorded voices, the pegboard and the medical bill, settle: mimicry as a supporting hook rather than the pitch (issue 9), recording quality and safety (10), voice tells that can be learned (6), bear trap hoarding (5) and how much death costs (4).
 - **Phase 2:** Lobby voice-line recording, the creature stealing bear traps from the shed and the pegboard, death with respawn at dawn and the medical bill, and up to 4 players. Done when: hearing a friend’s recorded voice from the corn fools someone, and trap sweeps feel worth doing.
+- **Review 2:** Before Phase 3 adds live clips, ghosts and jumpscares, settle: what ghosts can see (issue 3), how often and how clearly the creature is seen (11), and the filter and opt-out for live clips (10).
 - **Phase 3:** Live clips from proximity chat, the creature favoring dead players’ voices, the Director and jumpscares, and dead players’ ghost abilities including the lantern flicker. Done when: dead players stay engaged, and the living argue over whether to trust a static voice.
+- **Review 3:** Before Phase 4 builds the season, settle: the plot and labor limits (issue 2), stakes before the Harvest Moon and its final objective (7), season length and saving (8), a reason to play again (12) and the fourth role (14).
 - **Phase 4:** The full 7-day season with crops, the economy, upgrades, roles, payments and the corn quota. Done when: teams sometimes win and sometimes lose, and the logs show the numbers are close.
+- **Review 4:** Tune the numbers from the Phase 4 logs (issue 13) and settle whatever is still open before calling the game feature-complete.
 - **Fake it first:** Scripted trap spots and simple timers can stand in for smart AI until the core loop is proven.
 
 ## Engine: Godot

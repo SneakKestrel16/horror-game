@@ -100,7 +100,7 @@ corn makes a playtester walk toward it at least once.**
 4. Ask each player whether the day felt safe and the night felt tense, and note anything that
    felt unfair: a trap they could not have seen, a death they could not have escaped.
 
-Only move to Phase 2 once this passes and the session was fun.
+Once this passes and the session was fun, run Review 1 in the [Build Plan](Farming_Horror_Game_Concept.md#build-plan-four-phases) before starting Phase 2.
 
 ## Not in Phase 1
 
