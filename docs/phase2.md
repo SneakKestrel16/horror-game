@@ -10,6 +10,8 @@ decisions settled in Review 1, on top of the [Phase 1 prototype](phase1.md).
 - [What is new](#what-is-new)
 - [Numbers](#numbers)
 - [Playtesting](#playtesting)
+- [Playtest results](#playtest-results)
+- [Checklist](#checklist)
 - [Not in Phase 2](#not-in-phase-2)
 
 ## Running it
@@ -95,6 +97,93 @@ sweeps feel worth doing.**
 5. Ask whether trap sweeps felt worth the time, and whether anyone was fooled.
 
 Then run Review 2 in the Build Plan, including its check that players could place a teammate.
+
+## Playtest results
+
+### 2026-10-04, solo session (one person, both windows, `--dev`)
+
+From the host's log (`2026-10-04T15-02-56.log`) and the player's report. With one person and the
+second window idle, it could not test the Phase 2 goal: every call was forced from the dev panel
+and nobody walked toward one.
+
+- **Both nights ended in a wipe.** The idle window's player was caught by the barn door each
+  night; the other was caught after the generator went out (dev panel). The bill took coins down
+  to the floor of 4 both mornings, as designed.
+- **The dawn screen named both dead players as survivors.** The last dawn revived everyone before
+  it was written. Fixed; the smoke test checks it.
+- **The creature was stuck in the barn on day 2.** It killed inside the dark barn, and by day it
+  routes through the corn only, so its first step from the barn led through the back wall. It
+  now walks out to the corn first. Fixed; the smoke test checks it.
+- **It stood and stared before chasing after the lights went out on night 2.** The log shows it
+  fetching a bear trap and digging a pit at (-10, -6) for those 10 s, about 10 m from the player,
+  which is its sight range in the open; it did not react to the lights at all. The generator
+  dying now makes a noise the whole farm hears, and the creature drops its errand to go and look.
+  Inference: digging has no animation, so it reads as staring; a digging pose would show it.
+- **Voice chat errored when the host left** (`get_unique_id` after the peer was gone). Fixed.
+
+## Checklist
+
+What is still to build or check, from the
+[Build Plan](Farming_Horror_Game_Concept.md#build-plan-four-phases), this phase's playtests, and
+the art and sound the prototype fakes.
+
+### Phase 2 (to pass)
+
+- [x] Dawn screen names the night's dead
+- [x] Creature walks out of the barn by day
+- [x] Creature reacts to the barn going dark
+- [ ] A playtest with 2-4 real people, each on their own machine
+- [ ] Recording and proximity chat checked with real microphones
+- [ ] A friend's recorded voice fools someone (`LURE WORKED` in the log)
+- [ ] Trap sweeps and rehanging traps on the pegboard feel worth doing
+- [ ] Digging and trap-setting animations, so an errand doesn't look like staring
+- [ ] Review 2: placing teammates, lantern flicker (issue 5), one tracked state (6), day-death
+  rules (7), whether ghosts will have enough to do
+
+### Phase 3
+
+- [ ] Live clips from proximity chat for the creature to use
+- [ ] The creature favours dead players' voices
+- [ ] The Director (pacing)
+- [ ] Jumpscares (disarm lunge, shed, whisper, own voice, crow fake-outs)
+- [ ] Wounds after a day scare (less sprint, louder steps, a night trail)
+- [ ] Ghost abilities, including the lantern flicker
+
+### Phase 4
+
+- [ ] The 7-day season, saving between days, the corn quota and payments
+- [ ] Crops and moonflowers, the economy and upgrades
+- [ ] Roles
+- [ ] The sabotage pool and the unattended farm (wrecked crops and fences)
+- [ ] The farmhouse, animals, fences and scarecrows
+- [ ] The creature testing the barn doors from day 6
+
+### Sounds
+
+Every sound is synthesised in `scripts/sfx.gd`, and the generic calls are Windows text-to-speech
+(`assets/voices/`, David and Zira).
+
+- [ ] Recorded generic voice lines from real people, to replace the text-to-speech ones
+- [ ] The creature: footsteps, breathing, the chase screech, digging, setting a trap
+- [ ] Footsteps on dirt, grass and in the corn; corn rustle
+- [ ] Traps: bear trap snap, prying open, falling into a pit
+- [ ] Tools and chores: watering, pump, harvest, selling, the pegboard
+- [ ] Generator: running, sputtering when low, dying, refuelling
+- [ ] Barn and shed doors
+- [ ] Ambience: day birds and insects, animals going quiet at dusk, night crickets and wind
+- [ ] Crows for fake-outs, stingers for jumpscares, heartbeat when hunted
+
+### Textures
+
+There are none yet: every surface is a flat colour.
+
+- [ ] Ground: grass, dirt paths, tilled soil in the field
+- [ ] Corn stalks and leaves
+- [ ] Barn and shed: weathered wood, roof, doors
+- [ ] Metal: bear traps, generator, fuel drum, pegboard tools
+- [ ] Crops at each growth stage
+- [ ] The creature's skin, and player models
+- [ ] Night sky and moon
 
 ## Not in Phase 2
 
