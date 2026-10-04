@@ -8,7 +8,14 @@ Traps hit while building the game, with what fixed them.
   nothing calls `quit()`. `tools/check.sh` runs Godot under `timeout` and prints the log only at
   the end, so on a timeout run the scene by hand with `--quit-after` to see the error.
 - **`godot -s script.gd --check-only` reports autoloads as missing** ("Identifier not found:
-  Net"). That is the `-s` mode, not the code; run the smoke test instead.
+  Net"). That is the `-s` mode, not the code; run the smoke test instead. It does find a parse
+  error in a class with no autoloads, such as `farm.gd`.
+- **One parse error shows up as dozens of "Could not resolve class".** Every script using the
+  broken class reports it, and the real error is not among them. A static var and a function
+  with the same name (`_corn`) did it; `--check-only -s` on the broken script names the cause.
+- **The corn map is static,** shared by everything that asks `Farm.in_corn`. Each new `Farm`
+  regrows it, and cutting planted corn changes it, so a test that cuts corn changes the map for
+  the rest of the run.
 - **Quitting while sounds play leaks their playbacks**, and `check.sh` fails on the `WARNING`.
   The smoke test stops every sound player, frees the game and waits 10 frames before quitting;
   waiting 3 frames without stopping them still leaked now and then.

@@ -1,17 +1,42 @@
 class_name Farm
 extends RefCounted
-## The Phase 1 farm: one small field, the barn, the tool shed, the generator
-## and the wild corn ring around it all. The layout is fixed, so every peer
-## builds the same farm without being told anything. Also answers questions
-## about it for the creature: where the corn is, how much corn lies between two
-## points, and a walking grid around the buildings.
+## The farm: one small field of turnips, a planted corn patch, the barn, the
+## tool shed, the generator, and the wild corn ring around it all with ragged
+## strips reaching in. The layout is fixed, so every peer builds the same farm
+## without being told anything; only harvesting the planted corn changes it.
+## Also answers questions about it for the creature: where the corn is, how
+## much corn lies between two points, and a walking grid around the buildings.
+##
+## The corn is a map of one-metre cells. A plain ring left nothing in the corn
+## worth going in for, and planted corn in the field would have been an island
+## the creature could not reach by day (2026-10-04 playtest), so the strips
+## join the ring to the planted patch and bring cover near the barn, the
+## generator and the field.
 
 ## The farm is spread out so every errand is a walk in the open: the second
 ## Phase 1 playtest found everything so close together that the night was easy.
 const HALF := 52.0  ## Invisible walls stand here; dark trees beyond.
-const CORN_IN := 30.0  ## The wild corn starts this far out (square ring, by max(|x|, |z|)).
+const CORN_IN := 30.0  ## The wild corn ring starts about this far out (by max(|x|, |z|)).
 const CORN_OUT := 50.0
 const CORN_HEIGHT := 2.5
+## Strips of wild corn reaching in from the ring (x, z, width, depth), clear of
+## the buildings, the barn door and the paths' ends.
+const CORN_STRIPS: Array[Rect2] = [
+	Rect2(11, 10, 19, 6),  # East of the field, through the planted corn.
+	Rect2(13, -19, 17, 5),  # Toward the generator.
+	Rect2(-16, -30, 6, 6),  # Behind the barn's west corner.
+	Rect2(-30, 10, 14, 5),  # West of the field and the pump.
+	Rect2(-3, 21, 6, 9),  # Behind the field.
+]
+const CORN_RAGGED := 2.5  ## Metres noise moves the strips' and the ring's edges in or out.
+## The planted corn: four ripe plots east of the field, joined to the ring by
+## the east strip. Corn takes 3 days to grow (design doc, Crops), longer than
+## Phase 2's two days, so it starts ripe and does not come back once cut.
+const CORN_PLOTS: Array[Vector3] = [
+	Vector3(9.5, 0, 11.5), Vector3(12.5, 0, 11.5), Vector3(9.5, 0, 14.5), Vector3(12.5, 0, 14.5)
+]
+const CORN_PLOT_SIZE := 3.0
+const EDGE_DEPTHS := 6  ## Corn cells this many steps in or fewer count as near the edge.
 
 const BARN := Rect2(-6.0, -22.0, 12.0, 10.0)  ## x, z, width, depth; door on the +z side.
 const BARN_DOOR := 3.2
@@ -62,14 +87,23 @@ const GRID := Rect2i(-54, -54, 108, 108)  ## The walking grid, one cell per metr
 const CLEARANCE := 0.3
 
 static var _trap_spots := {}
+# The corn map, shared by every user of the static helpers below. One farm
+# exists at a time; each new one grows it afresh.
+static var _corn_cells := PackedByteArray()  ## Per grid cell: 1 where corn grows.
+static var _depth := PackedInt32Array()  ## Per corn cell: steps in from open farm ground.
+static var _edge: Array[Vector2i] = []  ## Corn cells at most EDGE_DEPTHS steps in.
+static var _deep: Array[Vector2i] = []  ## Corn cells at least 2 steps in.
 
 var grid := AStarGrid2D.new()
-var corn_grid := AStarGrid2D.new()  ## Only the corn ring: how it moves by day.
+var corn_grid := AStarGrid2D.new()  ## Only the corn: how it moves by day.
 var barn_lights: Array[OmniLight3D] = []
+var corn_patches: Array[Node3D] = []  ## Each planted corn plot's stalks.
 var _barn_lit := false
 
 
 func _init() -> void:
+	_grow_corn()
+	trap_spots()  # Cached from the corn as it starts, before any is cut.
 	grid.region = GRID
 	grid.cell_size = Vector2.ONE
 	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
@@ -167,6 +201,16 @@ func build(parent: Node3D) -> void:
 		wall.position = Vector3(0, 3, HALF + 0.5).rotated(Vector3.UP, side * PI / 2.0)
 		root.add_child(wall)
 	root.add_child(_corn())
+	for i in CORN_PLOTS.size():
+		var rect := corn_plot_rect(i)
+		_add_box(
+			root,
+			Vector3(rect.get_center().x, -0.03, rect.get_center().y),
+			Vector3(rect.size.x, 0.1, rect.size.y),
+			Color(0.22, 0.15, 0.09)
+		)
+		corn_patches.append(_corn_patch(i))
+		root.add_child(corn_patches[i])
 	root.add_child(_trees())
 
 
@@ -199,8 +243,106 @@ static func in_barn(point: Vector3) -> bool:
 
 
 static func in_corn(point: Vector3) -> bool:
-	var ring := maxf(absf(point.x), absf(point.z))
-	return ring >= CORN_IN and ring <= CORN_OUT
+	var cell := Vector2i(floori(point.x), floori(point.z))
+	if not GRID.has_point(cell):
+		return false
+	if _corn_cells.is_empty():
+		_grow_corn()
+	return _corn_cells[_index(cell)] == 1
+
+
+## Host and peers: a planted corn plot was cut; it is open ground from now on.
+func cut_corn(index: int) -> void:
+	var rect := corn_plot_rect(index)
+	for x in range(floori(rect.position.x), ceili(rect.end.x)):
+		for z in range(floori(rect.position.y), ceili(rect.end.y)):
+			var cell := Vector2i(x, z)
+			if rect.has_point(Vector2(x + 0.5, z + 0.5)):
+				_corn_cells[_index(cell)] = 0
+				corn_grid.set_point_solid(cell)
+	_measure_corn()
+	if index < corn_patches.size():
+		corn_patches[index].visible = false
+
+
+## A planted corn plot's ground (x, z).
+static func corn_plot_rect(index: int) -> Rect2:
+	var at := CORN_PLOTS[index]
+	var half := CORN_PLOT_SIZE / 2.0
+	return Rect2(at.x - half, at.z - half, CORN_PLOT_SIZE, CORN_PLOT_SIZE)
+
+
+static func _index(cell: Vector2i) -> int:
+	return (cell.x - GRID.position.x) + (cell.y - GRID.position.y) * GRID.size.x
+
+
+## Fills the corn map: the ring and the strips, their edges roughened by
+## noise, and the planted plots.
+static func _grow_corn() -> void:
+	var noise := FastNoiseLite.new()
+	noise.seed = 3  # Fixed, so every peer grows the same corn.
+	noise.frequency = 0.12
+	_corn_cells.resize(GRID.size.x * GRID.size.y)
+	for x in range(GRID.position.x, GRID.end.x):
+		for z in range(GRID.position.y, GRID.end.y):
+			var at := Vector2(x + 0.5, z + 0.5)
+			var rough := noise.get_noise_2d(at.x, at.y) * CORN_RAGGED
+			var ring := maxf(absf(at.x), absf(at.y))
+			var corn := ring >= CORN_IN + rough and ring <= CORN_OUT
+			for strip in CORN_STRIPS:
+				corn = corn or _signed_distance(strip, at) <= rough
+			for i in CORN_PLOTS.size():
+				corn = corn or corn_plot_rect(i).has_point(at)
+			_corn_cells[_index(Vector2i(x, z))] = 1 if corn else 0
+	_measure_corn()
+
+
+## How far point lies outside rect; negative inside.
+static func _signed_distance(rect: Rect2, point: Vector2) -> float:
+	var out := Vector2(
+		maxf(rect.position.x - point.x, point.x - rect.end.x),
+		maxf(rect.position.y - point.y, point.y - rect.end.y)
+	)
+	return out.max(Vector2.ZERO).length() + minf(maxf(out.x, out.y), 0.0)
+
+
+## How many steps each corn cell lies in from the farm's open ground, and the
+## lists of edge and deep cells built from that.
+static func _measure_corn() -> void:
+	_depth.resize(_corn_cells.size())
+	_depth.fill(0)
+	var queue: Array[Vector2i] = []
+	for x in range(GRID.position.x, GRID.end.x):
+		for z in range(GRID.position.y, GRID.end.y):
+			var cell := Vector2i(x, z)
+			# Open ground on the farm side; the strip past the ring's outside isn't.
+			if _corn_cells[_index(cell)] == 0 and maxi(absi(x), absi(z)) < CORN_OUT:
+				queue.append(cell)
+	var head := 0
+	while head < queue.size():
+		var cell := queue[head]
+		head += 1
+		var next_depth := _depth[_index(cell)] + 1
+		for step: Vector2i in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
+			var next := cell + step
+			if not GRID.has_point(next):
+				continue
+			var i := _index(next)
+			if _corn_cells[i] == 1 and _depth[i] == 0:
+				_depth[i] = next_depth
+				queue.append(next)
+	_edge.clear()
+	_deep.clear()
+	for x in range(GRID.position.x, GRID.end.x):
+		for z in range(GRID.position.y, GRID.end.y):
+			var cell := Vector2i(x, z)
+			var depth := _depth[_index(cell)]
+			if _corn_cells[_index(cell)] == 0:
+				continue
+			if depth >= 1 and depth <= EDGE_DEPTHS:
+				_edge.append(cell)
+			if depth == 0 or depth >= 2:
+				_deep.append(cell)
 
 
 ## Metres of corn the straight line from a to b passes through.
@@ -216,15 +358,22 @@ static func corn_between(a: Vector3, b: Vector3) -> float:
 
 ## The point just inside the corn nearest to point (point itself if it is in
 ## the corn already), depth metres in from the edge.
+## The strips are only a few cells across, so a depth deeper than they go
+## finds the strip's middle when it is much nearer than the ring.
 static func corn_edge_near(point: Vector3, depth := 1.5) -> Vector3:
 	if in_corn(point):
 		return point
-	var flat := Vector3(point.x, 0, point.z)
-	var ring := maxf(absf(flat.x), absf(flat.z))
-	if ring < 0.5:
-		flat = Vector3(0, 0, 1)
-		ring = 1.0
-	return flat * ((CORN_IN + depth) / ring)
+	var want := roundi(depth + 0.5)  # A cell n steps in has its centre about n - 0.5 m in.
+	var flat := Vector2(point.x, point.z)
+	var best := Vector2i.MAX
+	var best_score := INF
+	for cell in _edge:
+		var miss := absi(_depth[_index(cell)] - want)
+		var score := flat.distance_to(Vector2(cell) + Vector2(0.5, 0.5)) + miss * 2.0
+		if score < best_score:
+			best_score = score
+			best = cell
+	return Vector3(best.x + 0.5, 0, best.y + 0.5)
 
 
 ## Candidate trap spots, built once: {"corn": just inside the wild corn on the
@@ -236,13 +385,10 @@ static func trap_spots() -> Dictionary:
 	var door := Vector3(0, 0, BARN.end.y + 1.5)
 	var field := Vector3(0, 0, 13)
 	var corn: Array[Vector3] = []
-	var along := -CORN_IN
-	while along <= CORN_IN:
-		for depth: float in [1.5, 3.5]:
-			for side in 4:
-				var at := Vector3(along, 0, CORN_IN + depth).rotated(Vector3.UP, side * PI / 2.0)
-				corn.append(at.round())
-		along += 3.0
+	for cell in _edge:
+		# One or two steps in, about one cell in three.
+		if _depth[_index(cell)] <= 2 and posmod(cell.x + cell.y * 2, 3) == 0:
+			corn.append(Vector3(cell.x + 0.5, 0, cell.y + 0.5))
 	var path: Array[Vector3] = []
 	for way: Array in [
 		[door, SHED_DOOR_OUT],
@@ -267,18 +413,10 @@ static func trap_spots() -> Dictionary:
 	return _trap_spots
 
 
-## A random walkable point in the corn ring.
+## A random walkable point in the corn, at least two steps in.
 static func random_corn_point(rng: RandomNumberGenerator) -> Vector3:
-	var ring := rng.randf_range(CORN_IN + 1.0, CORN_OUT - 1.0)
-	var along := rng.randf_range(-ring, ring)
-	match rng.randi() % 4:
-		0:
-			return Vector3(along, 0, ring)
-		1:
-			return Vector3(along, 0, -ring)
-		2:
-			return Vector3(ring, 0, along)
-	return Vector3(-ring, 0, along)
+	var cell := _deep[rng.randi() % _deep.size()]
+	return Vector3(cell.x + 0.5, 0, cell.y + 0.5)
 
 
 ## Waypoints from one point to another round the buildings, empty if there
@@ -354,8 +492,9 @@ static func _rect_center(rect: Rect2, y: float) -> Vector3:
 	return Vector3(center.x, y, center.y)
 
 
-## Rows of corn filling the ring, as one MultiMesh. It has no collider: players
-## and the creature walk through it, and it hides whoever is inside.
+## Rows of wild corn filling the ring and the strips, as one MultiMesh. Corn
+## has no collider: players and the creature walk through it, and it hides
+## whoever is inside.
 func _corn() -> MultiMeshInstance3D:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1  # Fixed, so every peer grows the same corn.
@@ -366,7 +505,7 @@ func _corn() -> MultiMeshInstance3D:
 		var x := -CORN_OUT
 		while x <= CORN_OUT:
 			var at := Vector3(x + rng.randf_range(-0.15, 0.15), 0, z + rng.randf_range(-0.1, 0.1))
-			if in_corn(at):
+			if in_corn(at) and _corn_plot_at(at) < 0:
 				var scale := rng.randf_range(0.85, 1.15)
 				var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(1, scale, 1))
 				basis = basis.rotated(Vector3.RIGHT, rng.randf_range(-0.06, 0.06))
@@ -375,6 +514,36 @@ func _corn() -> MultiMeshInstance3D:
 				colours.append(Color(0.3, 0.42, 0.14).lerp(Color(0.55, 0.5, 0.25), dry * 0.6))
 			x += 0.55
 		z += 0.9  # Rows run along x.
+	var instance := _stalks(spots, colours)
+	instance.name = "Corn"
+	return instance
+
+
+## One planted plot's corn: straight, even rows, greener than the wild corn.
+func _corn_patch(index: int) -> MultiMeshInstance3D:
+	var rect := corn_plot_rect(index).grow(-0.2)
+	var spots: Array[Transform3D] = []
+	var colours: Array[Color] = []
+	var z := rect.position.y
+	while z <= rect.end.y:
+		var x := rect.position.x
+		while x <= rect.end.x:
+			spots.append(Transform3D(Basis(Vector3.UP, (x + z) * 2.0), Vector3(x, 0, z)))
+			colours.append(Color(0.28, 0.48, 0.14))
+			x += 0.5
+		z += 0.75
+	return _stalks(spots, colours)
+
+
+## Which planted corn plot point is in, or -1.
+static func _corn_plot_at(point: Vector3) -> int:
+	for i in CORN_PLOTS.size():
+		if corn_plot_rect(i).has_point(Vector2(point.x, point.z)):
+			return i
+	return -1
+
+
+func _stalks(spots: Array[Transform3D], colours: Array[Color]) -> MultiMeshInstance3D:
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.use_colors = true
@@ -384,7 +553,6 @@ func _corn() -> MultiMeshInstance3D:
 		multimesh.set_instance_transform(i, spots[i])
 		multimesh.set_instance_color(i, colours[i])
 	var instance := MultiMeshInstance3D.new()
-	instance.name = "Corn"
 	instance.multimesh = multimesh
 	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return instance

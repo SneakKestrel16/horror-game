@@ -51,6 +51,7 @@ const NOISE := {
 	"sell": 6.0,
 	"hang": 6.0,
 	"take": 4.0,
+	"cut": 8.0,  # Cutting corn: stalks crack and fall. Guess.
 	"lights_out": 80.0,  # The generator dying at night: the whole farm hears it.
 }
 const LURE_CHECK := 12.0  ## Seconds after a lure to see who walked toward it.

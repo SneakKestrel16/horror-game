@@ -58,9 +58,14 @@ func _ready() -> void:
 func _physics_process(_delta: float) -> void:
 	if _game and _game.creature and _game.phase() == "day":
 		var at := _game.creature.global_position
-		# The corn-only grid's cell centres sit up to half a cell inside the edge.
+		# Turning a corner it may cut a few centimetres across a cell's corner.
 		var hunting := _game.creature.state == Creature.State.CHASE
-		if maxf(absf(at.x), absf(at.z)) < Farm.CORN_IN - 1.0 and not hunting:
+		var near_corn := false
+		for step: Vector3 in [
+			Vector3.ZERO, Vector3.LEFT, Vector3.RIGHT, Vector3.FORWARD, Vector3.BACK
+		]:
+			near_corn = near_corn or Farm.in_corn(at + step * 0.5)
+		if not near_corn and not hunting:
 			_left_corn += 1
 
 
@@ -121,6 +126,21 @@ func _check_routes() -> void:
 	var around := farm.route(Vector3(0, 0, 40), Vector3(40, 0, 0), true)
 	var in_corn := around.all(func(point: Vector3) -> bool: return Farm.in_corn(point))
 	_check(not around.is_empty() and in_corn, "a corn-only route goes round the ring")
+	# By day the creature can reach the planted corn and the generator unseen.
+	for goal: Vector3 in [Farm.CORN_PLOTS[0], Vector3(14, 0, -16)]:
+		var covered := farm.route(Vector3(40, 0, 0), goal, true)
+		var ends_there := not covered.is_empty() and covered[-1].distance_to(goal) < 1.5
+		_check(
+			ends_there and covered.all(func(point: Vector3) -> bool: return Farm.in_corn(point)),
+			"a corn-only route reaches %s from the ring" % goal
+		)
+	_check(not Farm.in_corn(Farm.GENERATOR), "the generator stands in the open")
+	for building: Rect2 in [Farm.BARN, Farm.SHED]:
+		var clear := true
+		for x in range(floori(building.position.x), ceili(building.end.x)):
+			for z in range(floori(building.position.y), ceili(building.end.y)):
+				clear = clear and not Farm.in_corn(Vector3(x + 0.5, 0, z + 0.5))
+		_check(clear, "no corn grows in the %s" % ("barn" if building == Farm.BARN else "shed"))
 	var barn := Vector3(0, 0, -17)
 	_check(not farm.route(Vector3(0, 0, 10), barn).is_empty(), "the dark barn can be walked into")
 	farm.set_barn_lit(true)
@@ -186,7 +206,21 @@ func _check_chores() -> void:
 	await _ask("harvest", 0)
 	_check(_held() == "turnip", "pulled turnips")
 	await _ask("sell", -1)
-	_check(_game.coins == Chores.TURNIP_PRICE and _held() == "", "sold them for %d" % _game.coins)
+	_check(
+		_game.coins == Chores.PRICES["turnip"] and _held() == "", "sold them for %d" % _game.coins
+	)
+	# The planted corn: cut a plot, carry it out, sell it. Cut corn is open ground.
+	var plot := Farm.CORN_PLOTS[0]
+	_check(Farm.in_corn(plot), "the planted corn is corn")
+	_put(_player, plot + Vector3(0, 0, 1))
+	await _ask("cut", 0)
+	_check(_held() == "corn", "cut the corn")
+	_check(not Farm.in_corn(plot), "cut corn is open ground")
+	await _ask("sell", -1)
+	_check(
+		_game.coins == Chores.PRICES["turnip"] + Chores.PRICES["corn"],
+		"sold the corn for %d" % Chores.PRICES["corn"]
+	)
 
 
 func _check_traps() -> void:
@@ -322,6 +356,7 @@ func _check_night() -> void:
 	_dev.set_fuel(1.0)
 	# In the open with a lantern: it should come.
 	_armed_before_wipe = traps.armed_positions().size()
+	_game.coins = 10  # Less than the bill, so the morning tests the floor.
 	_put(_player, Vector3(0, 0, 20))
 	_player.lantern = true
 	_game.creature.global_position = Vector3(0, 0, 27)

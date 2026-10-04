@@ -216,7 +216,7 @@ Prices are in coins per plot. All values are starting numbers to tune from playt
 | Moonflowers | 1 night | 25 | 70 | Night harvest only, and they glow. Unlocks on day 3. |
 
 - **Plots and labor:** The farm starts with 16 plots, and upgrades add up to 24. Planting, watering and harvesting are each a hold of a few seconds, so one player tends about 6 plots a day and nobody can work the whole farm alone. Moonflowers only grow in a 4-plot moonflower bed. Plots are the bottleneck, which makes corn the best crop per plot.
-- **The wild corn ring:** It’s always there and can’t be cleared, so growing no corn never removes the creature’s home. Planted corn just brings its cover closer to the house.
+- **The wild corn ring:** It’s always there and can’t be cleared, so growing no corn never removes the creature’s home. Ragged strips of it reach in toward the buildings and the fields, so planted corn joins it and brings its cover closer to the house; planted corn cut off from every strip would be an island the creature can’t reach by day (Phase 2 playtest).
 - **The festival quota:** The harvest festival buys corn, and delivering 8 plots of corn by the end of the season is part of winning.
 - **Harvesting opens the field:** Cutting a corn patch removes that cover, so when to harvest is a choice too.
 

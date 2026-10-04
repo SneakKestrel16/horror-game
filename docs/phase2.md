@@ -63,6 +63,13 @@ check that recording and proximity chat work before anything else.
   `scripts/chores.gd`; the developer panel's helpers moved to `scripts/dev.gd`, which also gains
   "Start the day", "Creature takes and sets tonight's traps now", "Call me with a recorded
   voice" and "Skip to the next morning".
+- **Corn that reaches in, and corn worth cutting** (`scripts/farm.gd`, added after the solo
+  playtest): the wild corn is a map of one-metre cells, not a square ring. Ragged strips reach
+  in from the ring toward the generator, behind the barn, west of the field and behind it, and
+  east of the field into a patch of four planted corn plots. The planted corn starts ripe (it
+  takes 3 days to grow, longer than Phase 2 lasts), is cut with a 3 s hold that the creature
+  can hear, and sells for 45 against a turnip plot's 10. Bear traps hide in it like any corn.
+  Cut corn is open ground for good: no cover, and no way through for the creature by day.
 
 ## Numbers
 
@@ -81,6 +88,9 @@ Phase 1's numbers still hold ([Numbers](phase1.md#numbers)); new ones:
 | Own voice weight | 5% of a teammate's | Guess |
 | Off-board trap vanishes | no living player within 15 m | Guess |
 | Trap on a path instead of its usual place | bear trap 15%, pit 40% | Guess; bear traps were 40% until the solo playtest |
+| Planted corn | 4 plots of 3 × 3 m, ripe at the start, 45 coins each | Price: doc, Crops; the rest a guess |
+| Cutting corn | 3 s hold, heard 8 m away | Guess (doc: harvesting is "a hold of a few seconds") |
+| Corn strips | 5 strips, 5-6 m wide; edges moved up to 2.5 m by noise | Guess |
 
 ## Playtesting
 
@@ -131,6 +141,12 @@ and nobody walked toward one.
   like a duplicate, and said "1 bear traps". It now says why, and counts in the singular.
 - **Untested:** no bear trap was sprung or hung back on the pegboard, and one call in nine used
   the listener's own voice (expected with only one person recording).
+- **Nothing drew anyone into the corn.** With bear traps moved into it, they only mattered if a
+  voice lured someone in. Planted corn in the field would not have helped alone: the wild corn
+  was a plain ring, so the creature could not have reached it by day without crossing open
+  ground. The corn now reaches into the farm in ragged strips, one joining a planted corn patch
+  worth 45 a plot (see [What is new](#what-is-new)). The next session should check that the
+  corn is worth the risk and the strips make the day feel less safe.
 
 ### 2026-10-04, earlier solo run (recording voice lines)
 
