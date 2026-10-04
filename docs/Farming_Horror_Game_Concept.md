@@ -155,7 +155,7 @@ Death should matter without leaving anyone bored for long.
 
 ### Dead Players Stay Involved
 
-- **Ghost spectating:** Dead players can follow their teammates and see the creature and any armed traps.
+- **Ghost spectating:** Dead players can follow their teammates and see the creature, but not traps: a ghost who saw every trap could read out the whole morning sweep. This may need reworking once Phase 3 shows how engaged ghosts stay; options then include ghosts pointing at a trap with the lantern flicker, or seeing only traps set after they died.
 - **The lantern flicker:** A dead player can make a lantern near a living teammate flicker. It’s the one signal the creature can never fake. It has a short cooldown so it stays meaningful.
 - **Rustling the corn:** Dead players can also rustle stalks to point at something, but the creature can fake that.
 - **Static voices:** Living players can still hear dead teammates in proximity chat, but only through heavy static.
@@ -270,11 +270,11 @@ A review sits between each phase and the next. It starts once the phase passes i
 - **Phase 1 (prototype):** One small field and the shed, one day and one night, 2 players, the creature wandering and chasing by sound, bear traps and small pits in scripted spots, the generator, and the creature playing generic pre-recorded voice lines. Done when: the day feels safe, the night feels tense, and a generic voice from the corn makes a playtester walk toward it at least once. Built in `game/` and through its first playtest, which led to reworked lures and fuel runs; it uses a 6-minute day because it has only one small field (see [Phase 1 prototype](phase1.md)).
 - **Review 1 (done):** Before Phase 2 adds recorded voices, the pegboard and the medical bill, it settled mimicry as a supporting hook, lobby recording, voice tells, bear trap hoarding and the cost of death (see Resolved Issues).
 - **Phase 2:** Lobby voice-line recording, the creature stealing bear traps from the shed and the pegboard, death with respawn at dawn and the medical bill, and up to 4 players. Done when: hearing a friend’s recorded voice from the corn fools someone, and trap sweeps feel worth doing.
-- **Review 2:** Before Phase 3 adds live clips, ghosts and jumpscares, settle: what ghosts can see (issue 3), how often and how clearly the creature is seen (7), and the filter and opt-out for live clips (6).
+- **Review 2:** Before Phase 3 adds live clips, ghosts and jumpscares, settle: how often and how clearly the creature is seen (issue 6) and the filter and opt-out for live clips (5), and check whether ghosts without trap sight still have enough to do.
 - **Phase 3:** Live clips from proximity chat, the creature favoring dead players’ voices, the Director and jumpscares, and dead players’ ghost abilities including the lantern flicker. Done when: dead players stay engaged, and the living argue over whether to trust a static voice.
-- **Review 3:** Before Phase 4 builds the season, settle: the plot and labor limits (issue 2), stakes before the Harvest Moon and its final objective (4), season length and saving (5), a reason to play again (8) and the fourth role (10).
+- **Review 3:** Before Phase 4 builds the season, settle: the plot and labor limits (issue 2), stakes before the Harvest Moon and its final objective (3), season length and saving (4), a reason to play again (7) and the fourth role (9).
 - **Phase 4:** The full 7-day season with crops, the economy, upgrades, roles, payments and the corn quota. Done when: teams sometimes win and sometimes lose, and the logs show the numbers are close.
-- **Review 4:** Tune the numbers from the Phase 4 logs (issue 9) and settle whatever is still open before calling the game feature-complete.
+- **Review 4:** Tune the numbers from the Phase 4 logs (issue 8) and settle whatever is still open before calling the game feature-complete.
 - **Fake it first:** Scripted trap spots and simple timers can stand in for smart AI until the core loop is proven.
 
 ## Engine: Godot
@@ -313,6 +313,7 @@ How the earlier open issues were settled, and where to find each answer.
 - **Voice tells could be learned** (Review 1): random, subtle tells, some fakes with none, and radios that jam near the creature. See How Players Fight Back.
 - **Mimicry was not a unique hook** (Review 1): MIMESIS (ReLU Games, published by KRAFTON) already sells AI voice copying, so the farm under siege is the pitch and mimicry supports it. See the opening.
 - **Lobby recordings sounded calm and could carry anything** (Review 1): a fixed list of lines, each recorded a few times with an urgent prompt, and a block on replaying your voice. See Build Notes. Live clips are still open.
+- **Dead players saw every trap:** ghosts no longer see traps, for now; it may need reworking after Phase 3. See Ghost spectating.
 - **Lures repeated from one spot** (Phase 1 playtest): calls now move with the target, avoid recent spots and lead on whoever approaches. See [Phase 1 prototype](phase1.md).
 - **The lit barn was a sure refuge** (Phase 1 playtest): fuel lasts too little to hide all night, and the creature waits along the fuel run. See Nights and [Phase 1 prototype](phase1.md).
 
@@ -328,36 +329,32 @@ Voice recording and playback, a trap-setting AI that lures players, the Director
 
 The doc never says how many plots the farm has or how many one player can tend in a day, so the economy can’t be balanced. With unlimited plots, turnips compound (60 coins becomes about 150 by day 2 and 375 by day 3), and per coin they beat corn: 2.5× in one day against 3× over three days. Corn is only the best crop if plots are the bottleneck. Moonflowers earn 45 profit per plot per night, about 4.5× corn per plot-day, so the obvious plan is to fill the farm with them and send one player out. A plot cap and a time cost per chore are the real balance levers, and they are what make splitting up necessary rather than just suggested. Needs settling before Phase 4.
 
-### 3. Dead players see every trap
-
-Ghosts see the creature and every armed trap, can still talk through static, and a death costs as little as 10 coins. One player dying early in the night can scout every trap for the morning, which turns the sweep into reading out a list. Possible fixes: ghosts can’t see traps, can only point at them with the lantern flicker, or only see traps the creature sets after they died.
-
-### 4. Little is at stake until the Harvest Moon
+### 3. Little is at stake until the Harvest Moon
 
 Nights 1 to 6 can’t end the season and deaths are cheap, so the horror has little bite for most of the game. Publishing “it can’t kill by day” also tells players the day is safe, so daytime jumpscares may annoy more than scare. The Harvest Moon is the climax but only adds “hunts all night”; it needs a distinct final objective, such as loading the festival cart under attack or defending the corn.
 
-### 5. A season is long with no save
+### 4. A season is long with no save
 
 A season is about 1 hour 45 minutes for four friends, and missing the first payment ends about 45 minutes of play. Needs mid-season saves, a shorter season option, or both.
 
-### 6. Live clips can carry what shouldn’t be replayed
+### 5. Live clips can carry what shouldn’t be replayed
 
 Lobby lines are settled (fixed, prompted, blockable; see Build Notes). Live clips from proximity chat, in Phase 3, can capture slurs or private remarks and replay them to other players. Needs a filter or a rule for what gets kept before Phase 3. Splicing clips usually sounds worse rather than more natural, so it stays a stretch goal for a solo build.
-### 7. The creature is seen a lot for something “never seen clearly”
+### 6. The creature is seen a lot for something “never seen clearly”
 
 Disarm lunges, the trap stare, shed ambushes and hallucinations across seven days mean players will see it often. Decide what is visible in each scare and keep it to silhouettes, motion and partial glimpses.
 
-### 8. No reason to play a second season
+### 7. No reason to play a second season
 
 One creature on one farm, with crops that live a day or a week, gives little long-term attachment. Persistent farm upgrades between seasons, map variants or creature variants would give the cozy side real investment.
 
-### 9. The numbers are untested
+### 8. The numbers are untested
 
 Every price, payment and trap count is a first guess. They should be tuned from the logs once Phase 4 is playable.
 
-### 10. The fourth role
+### 9. The fourth role
 
-Hunter or Tracker. To be decided after playtesting, once the team can try both. If ghosts keep seeing traps (see issue 3), the Tracker is much weaker, since dead players already do its job.
+Hunter or Tracker. To be decided after playtesting, once the team can try both. If ghosts are ever given sight of traps again (see Ghost spectating), the Tracker gets much weaker, since dead players would do its job.
 
 ## Dependencies
 
