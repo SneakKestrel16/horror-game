@@ -103,3 +103,22 @@ Left for later phases, as the Build Plan orders them: voice chat and lobby voice
 creature stealing traps from the pegboard, respawning at dawn and the medical bill, 3-4 players,
 the Director, jumpscares, ghost abilities, crops other than turnips, the economy and the
 season. A dead player in Phase 1 is a ghost that drifts until dawn.
+
+## Playtest results
+
+### 2026-10-04, first session (two players, normal length)
+
+From the host's log and the players' report:
+
+- **A lure worked:** Farmer 2 walked from 32 m to 24 m toward "where are you?" 2:31 into the day.
+  That meets the voice part of the Phase 1 test.
+- **Both died at night.** Farmer 2 was caught in the open at the field 25 s into the night.
+  Farmer 1 was taken inside the barn 14 s after the generator ran dry (1:42 into the night),
+  which is the intended failure.
+- **Voices were heard by both players,** but the mimicry feels basic, as expected from generic
+  placeholder lines.
+- **Lures repeat from one spot:** 5 of 9 calls came from (-23, -3), beside bear trap 3, which
+  nobody cleared. Aiming at the nearest armed trap keeps choosing it. Inference: some variety in
+  spots would make the calls harder to learn; worth watching in the next session.
+- **Rejoining works:** Farmer 2 left with Esc and rejoined mid-day with the farm as it stood.
+- Still to answer: whether the day felt safe and the night tense.
