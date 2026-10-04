@@ -33,7 +33,7 @@ func _ready() -> void:
 	_game.clock = clock
 	var player := _game.local_player()
 	player.set_physics_process(false)
-	player.global_position = Vector3(from.x, 0, from.z)
+	player.global_position = Vector3(from.x, from.y - Player.EYE_HEIGHT, from.z)
 	player.look_at(Vector3(look.x, 0, look.z))
 	player.pitch = atan2(look.y - from.y, Vector2(look.x - from.x, look.z - from.z).length())
 	player.lantern = clock > 360.0

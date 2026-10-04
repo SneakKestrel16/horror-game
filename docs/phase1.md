@@ -38,7 +38,9 @@ the mouse and a second Esc leaves.
 
 - **The farm** (`scripts/farm.gd`): one field of 12 turnip plots, the barn (the lit building),
   the tool shed with the crowbar and shovel, the generator, the fuel drum, the pump and the
-  shipping crate, all ringed by wild corn players walk through and cannot clear.
+  shipping crate, all ringed by wild corn players walk through and cannot clear. The clearing
+  is 60 m across: the barn is to the north, the shed and fuel drum about 25 m away to the west,
+  the field to the south and the crate to the east, so errands and fuel runs cross open ground.
 - **Day chores:** water the dry plots (the can holds 4 waterings; refill at the pump), pull ripe
   turnips and sell them at the crate. One tool or crop is carried at a time.
 - **Day, dusk, night, dawn** (`scripts/game.gd`): one of each. Dawn shows who survived, the coins,
@@ -136,3 +138,16 @@ From the host's log and the players' report:
   whoever approaches, and the generator needs at least two fuel runs a night, which the creature
   waits along. The next session should check whether the calls feel like a hunt and whether
   the fuel runs are tense rather than tedious.
+
+### 2026-10-04, second session (reworked lures and generator)
+
+- **Calls moved around:** 10 calls came from all round the farm. Leading on worked twice in a
+  row: Farmer 1 followed one call from 23 m to 1 m, then a second from 17 m to 6 m.
+- **The fuel run mattered:** the generator ran dry a minute into the night, Farmer 1 refuelled
+  it, and was taken just outside the barn 30 s later. Farmer 2 (idle) was caught in the field
+  3 s after dark.
+- **Players' verdict:** it works for this stage, which **passes Phase 1**, but with everything
+  so close to the barn it was easy.
+- **Changed after it:** the farm is spread out. The corn starts 30 m out instead of 20, the
+  shed and fuel drum moved about 25 m west of the barn, and a pit now waits on the fuel run at
+  dusk.

@@ -135,7 +135,7 @@ func _ready() -> void:
 	if multiplayer.is_server():
 		_open_log()
 		log_event("host started (short: %s)" % Net.short)
-		_creatures.spawn({"position": Vector3(0, 0, 30)})
+		_creatures.spawn({"position": Vector3(0, 0, Farm.CORN_IN + 10.0)})
 		_players.spawn(_player_data(1))
 		if Net.dev:
 			var dev := Dev.new()

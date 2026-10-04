@@ -52,12 +52,12 @@ func _physics_process(_delta: float) -> void:
 
 func _check_routes() -> void:
 	var farm := _game.farm
-	var across := farm.route(Vector3(0, 0, 30), Vector3(0, 0, 8))
+	var across := farm.route(Vector3(0, 0, 40), Vector3(0, 0, 13))
 	_check(not across.is_empty(), "a route leads from the corn to the field")
-	var around := farm.route(Vector3(0, 0, 30), Vector3(30, 0, 0), true)
+	var around := farm.route(Vector3(0, 0, 40), Vector3(40, 0, 0), true)
 	var in_corn := around.all(func(point: Vector3) -> bool: return Farm.in_corn(point))
 	_check(not around.is_empty() and in_corn, "a corn-only route goes round the ring")
-	var barn := Vector3(0, 0, -11)
+	var barn := Vector3(0, 0, -17)
 	_check(not farm.route(Vector3(0, 0, 10), barn).is_empty(), "the dark barn can be walked into")
 	farm.set_barn_lit(true)
 	var lit := farm.route(Vector3(0, 0, 10), barn)
@@ -69,8 +69,8 @@ func _check_routes() -> void:
 ## Stands the player alone near the north corn, makes the creature due a lure,
 ## and walks the player toward the voice once it calls.
 func _check_lure() -> void:
-	_put(_player, Vector3(0, 0, 14))
-	_game.creature.global_position = Vector3(-6, 0, 30)
+	_put(_player, Vector3(0, 0, 20))
+	_game.creature.global_position = Vector3(-6, 0, 40)
 	_game.creature.set("_lure_left", 0.0)
 	var heard := false
 	for i in 60 * 30:
@@ -164,17 +164,17 @@ func _check_night() -> void:
 	await _frames(3)
 	_check(_game.phase() == "night", "night came")
 	# In the lit barn, with the creature at the door: it must not get in.
-	_put(_player, Vector3(0, 0, -13))
-	_game.creature.global_position = Vector3(0, 0, -2)
+	_put(_player, Vector3(0, 0, -19))
+	_game.creature.global_position = Vector3(0, 0, -8)
 	await _game_seconds(8.0)
 	_check(not _player.dead, "the lit barn kept the creature out")
 	_check(
 		not Farm.in_barn(_game.creature.global_position), "the creature stayed outside the lit barn"
 	)
 	# In the open with a lantern: it should come.
-	_put(_player, Vector3(0, 0, 14))
+	_put(_player, Vector3(0, 0, 20))
 	_player.lantern = true
-	_game.creature.global_position = Vector3(0, 0, 21)
+	_game.creature.global_position = Vector3(0, 0, 27)
 	_game.creature.call("_lurk")
 	for i in 60 * 15:
 		await get_tree().physics_frame

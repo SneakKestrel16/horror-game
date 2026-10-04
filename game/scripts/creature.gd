@@ -260,7 +260,8 @@ func _lurk() -> void:
 		var along := Farm.FUEL_DRUM.lerp(Farm.GENERATOR, _rng.randf())
 		goal = along + Vector3(_rng.randf_range(-6, 6), 0, _rng.randf_range(2, 8))
 	elif night and _rng.randf() < 0.35:
-		goal = Vector3(_rng.randf_range(-18, 18), 0, _rng.randf_range(-18, 18))
+		var open := Farm.CORN_IN - 2.0
+		goal = Vector3(_rng.randf_range(-open, open), 0, _rng.randf_range(-open, open))
 	_route = _path(goal)
 
 

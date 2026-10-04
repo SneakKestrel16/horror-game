@@ -6,63 +6,66 @@ extends RefCounted
 ## about it for the creature: where the corn is, how much corn lies between two
 ## points, and a walking grid around the buildings.
 
-const HALF := 42.0  ## Invisible walls stand here; dark trees beyond.
-const CORN_IN := 20.0  ## The wild corn starts this far out (square ring, by max(|x|, |z|)).
-const CORN_OUT := 40.0
+## The farm is spread out so every errand is a walk in the open: the second
+## Phase 1 playtest found everything so close together that the night was easy.
+const HALF := 52.0  ## Invisible walls stand here; dark trees beyond.
+const CORN_IN := 30.0  ## The wild corn starts this far out (square ring, by max(|x|, |z|)).
+const CORN_OUT := 50.0
 const CORN_HEIGHT := 2.5
 
-const BARN := Rect2(-6.0, -16.0, 12.0, 10.0)  ## x, z, width, depth; door on the +z side.
+const BARN := Rect2(-6.0, -22.0, 12.0, 10.0)  ## x, z, width, depth; door on the +z side.
 const BARN_DOOR := 3.2
 const BARN_HEIGHT := 5.0
-const SHED := Rect2(-13.0, -13.5, 4.0, 3.0)  ## Door on the +z side.
+## Door on the +z side. Far west, with the fuel drum, so fuel runs cross open ground.
+const SHED := Rect2(-25.0, -4.0, 4.0, 3.0)
 const SHED_DOOR := 1.4
 const SHED_HEIGHT := 2.6
 const WALL := 0.25
 const BARN_LIGHT := 1.6  ## Energy of each barn lamp.
 
-const SPAWN := Vector3(0, 0, -3)
-const GENERATOR := Vector3(7.4, 0, -7.4)
-const FUEL_DRUM := Vector3(-8.2, 0, -11.0)
-const PUMP := Vector3(-4.0, 0, -2.5)
-const CRATE := Vector3(9.0, 0, 3.0)
+const SPAWN := Vector3(0, 0, -9)
+const GENERATOR := Vector3(7.4, 0, -13.4)
+const FUEL_DRUM := Vector3(-19.8, 0, -2.6)
+const PUMP := Vector3(-6.0, 0, 7.0)
+const CRATE := Vector3(18.0, 0, 6.0)
 const PLOT_SIZE := 2.2
 ## The small field: four columns by three rows of turnip plots.
 const PLOTS: Array[Vector3] = [
-	Vector3(-4.5, 0, 5),
-	Vector3(-1.5, 0, 5),
-	Vector3(1.5, 0, 5),
-	Vector3(4.5, 0, 5),
-	Vector3(-4.5, 0, 8),
-	Vector3(-1.5, 0, 8),
-	Vector3(1.5, 0, 8),
-	Vector3(4.5, 0, 8),
-	Vector3(-4.5, 0, 11),
-	Vector3(-1.5, 0, 11),
-	Vector3(1.5, 0, 11),
-	Vector3(4.5, 0, 11),
+	Vector3(-4.5, 0, 10),
+	Vector3(-1.5, 0, 10),
+	Vector3(1.5, 0, 10),
+	Vector3(4.5, 0, 10),
+	Vector3(-4.5, 0, 13),
+	Vector3(-1.5, 0, 13),
+	Vector3(1.5, 0, 13),
+	Vector3(4.5, 0, 13),
+	Vector3(-4.5, 0, 16),
+	Vector3(-1.5, 0, 16),
+	Vector3(1.5, 0, 16),
+	Vector3(4.5, 0, 16),
 ]
 ## Where the tools start. Kinds are game.gd's item kinds.
 const ITEMS: Array[Dictionary] = [
-	{"kind": "watering_can", "position": Vector3(-3.0, 0, -2.0)},
-	{"kind": "shovel", "position": Vector3(-12.2, 0, -12.6)},
-	{"kind": "crowbar", "position": Vector3(-10.0, 0, -12.8)},
-	{"kind": "fuel_can", "position": Vector3(-8.4, 0, -9.8)},
+	{"kind": "watering_can", "position": Vector3(-5.0, 0, 8.0)},
+	{"kind": "shovel", "position": Vector3(-24.2, 0, -3.1)},
+	{"kind": "crowbar", "position": Vector3(-22.0, 0, -3.3)},
+	{"kind": "fuel_can", "position": Vector3(-20.0, 0, -1.2)},
 ]
 ## Scripted trap spots (Phase 1 fakes the creature setting them). "start" traps
 ## are armed when the day begins, as if set the night before; "dusk" ones are
 ## armed when the light fades.
 const TRAPS: Array[Dictionary] = [
-	{"kind": "bear", "position": Vector3(5.5, 0, 22.5), "armed": "start"},
-	{"kind": "bear", "position": Vector3(-17.0, 0, 20.8), "armed": "start"},
-	{"kind": "pit", "position": Vector3(0.0, 0, 9.5), "armed": "start"},
-	{"kind": "bear", "position": Vector3(-21.5, 0, -4.0), "armed": "start"},
-	{"kind": "pit", "position": Vector3(10.5, 0, 0.6), "armed": "start"},
-	{"kind": "bear", "position": Vector3(2.0, 0, 16.0), "armed": "dusk"},
-	{"kind": "bear", "position": Vector3(22.5, 0, -9.0), "armed": "dusk"},
-	{"kind": "pit", "position": Vector3(-7.4, 0, -4.6), "armed": "dusk"},
+	{"kind": "bear", "position": Vector3(5.5, 0, 31.5), "armed": "start"},
+	{"kind": "bear", "position": Vector3(-27.0, 0, 30.8), "armed": "start"},
+	{"kind": "pit", "position": Vector3(0.0, 0, 14.5), "armed": "start"},
+	{"kind": "bear", "position": Vector3(-31.5, 0, -4.0), "armed": "start"},
+	{"kind": "pit", "position": Vector3(12.0, 0, 4.0), "armed": "start"},
+	{"kind": "bear", "position": Vector3(2.0, 0, 24.0), "armed": "dusk"},
+	{"kind": "bear", "position": Vector3(32.5, 0, -9.0), "armed": "dusk"},
+	{"kind": "pit", "position": Vector3(-10.0, 0, -7.3), "armed": "dusk"},  # On the fuel run.
 ]
 
-const GRID := Rect2i(-44, -44, 88, 88)  ## The walking grid, one cell per metre.
+const GRID := Rect2i(-54, -54, 108, 108)  ## The walking grid, one cell per metre.
 ## Grid cells this close to a wall count as blocked. More would close the 3.2 m barn
 ## doorway on a one-metre grid.
 const CLEARANCE := 0.3
@@ -103,9 +106,9 @@ func build(parent: Node3D) -> void:
 	plane.shape = WorldBoundaryShape3D.new()
 	ground.add_child(plane)
 	root.add_child(ground)
-	_add_box(root, Vector3(0, -0.05, 0), Vector3(120, 0.1, 120), Color(0.28, 0.33, 0.16), false)
+	_add_box(root, Vector3(0, -0.05, 0), Vector3(140, 0.1, 140), Color(0.28, 0.33, 0.16), false)
 	# A worn dirt yard between the barn, shed and field.
-	_add_box(root, Vector3(-2, -0.04, -2), Vector3(26, 0.1, 14), Color(0.36, 0.3, 0.2), false)
+	_add_box(root, Vector3(-4, -0.04, -4), Vector3(44, 0.1, 18), Color(0.36, 0.3, 0.2), false)
 	for plot in PLOTS:
 		_add_box(root, plot + Vector3(0, -0.02, 0), Vector3(2.4, 0.1, 2.4), Color(0.22, 0.15, 0.09))
 
@@ -123,10 +126,14 @@ func build(parent: Node3D) -> void:
 		root, _rect_center(SHED, SHED_HEIGHT + 0.1), Vector3(4.6, 0.2, 3.6), Color(0.25, 0.22, 0.2)
 	)
 	# Hay inside the barn, and a door frame lamp outside it.
-	_add_box(root, Vector3(-4.2, 0.5, -14.6), Vector3(2.4, 1.0, 1.2), Color(0.75, 0.62, 0.3), true)
-	_add_box(root, Vector3(4.2, 0.5, -14.6), Vector3(2.4, 1.0, 1.2), Color(0.75, 0.62, 0.3), true)
+	var middle := _rect_center(BARN, 0.0)
+	for side: float in [-4.2, 4.2]:
+		var hay := middle + Vector3(side, 0.5, -3.6)
+		_add_box(root, hay, Vector3(2.4, 1.0, 1.2), Color(0.75, 0.62, 0.3), true)
 	for spot: Vector3 in [
-		Vector3(-2.5, 4.2, -11.5), Vector3(2.5, 4.2, -11.5), Vector3(0, 3.6, -5.4)
+		middle + Vector3(-2.5, 4.2, -0.5),
+		middle + Vector3(2.5, 4.2, -0.5),
+		Vector3(0, 3.6, BARN.end.y + 0.6),
 	]:
 		var light := OmniLight3D.new()
 		light.position = spot
