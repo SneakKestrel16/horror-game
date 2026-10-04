@@ -68,6 +68,7 @@ const CONTROLS := {
 	"interact": KEY_E,
 	"drop": KEY_G,
 	"lantern": KEY_F,
+	"my_clips": KEY_C,
 }
 
 var farm := Farm.new()
@@ -123,6 +124,7 @@ func _ready() -> void:
 	chores.name = "Chores"
 	chores.game = self
 	add_child(chores)
+	add_child(ClipList.new(self))
 	_daylight = Looks.Daylight.new(self)
 	_ambience = Sfx.Ambience.new(self)
 	add_child(hud)

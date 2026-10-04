@@ -156,6 +156,15 @@ func get_peers_with_clips() -> Array:
 	return result
 
 
+## Server only: delete one of a player's saved clips, or all of them (index -1).
+func delete_clip(peer_id: int, index: int) -> void:
+	var list: Array = _clips.get(peer_id, [])
+	if index < 0:
+		_clips.erase(peer_id)
+	elif index < list.size():
+		list.remove_at(index)
+
+
 ## Delete every saved clip. Call this when a match ends.
 func clear_clips() -> void:
 	_clips.clear()

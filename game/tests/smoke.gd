@@ -128,6 +128,25 @@ func _check_lobby() -> void:
 	for i in 40:
 		live += 1 if voices.pick(1)["key"] == VoiceBank.LIVE else 0
 	_check(live > 3, "it calls with what a friend said over chat (%d of 40)" % live)
+	# The C panel's list: the host sends this player's phrases, and deletes on request.
+	var listed := []
+	var on_list := func(clips: Array) -> void: listed.assign(clips)
+	voices.clips_arrived.connect(on_list)
+	VoiceChat.call("_store_clip_samples", 1, tone)
+	await _frames(40)
+	voices.ask_my_clips()
+	await _frames(3)
+	_check(listed.size() == 2, "you can list your kept chat phrases (%d)" % listed.size())
+	voices.delete_my_clip(0)
+	await _frames(3)
+	_check(
+		listed.size() == 1 and VoiceChat.get_clips(1).size() == 1,
+		"you can delete one of your kept phrases"
+	)
+	voices.delete_my_clip(-1)
+	await _frames(3)
+	_check(listed.is_empty() and VoiceChat.get_clips(1).is_empty(), "and all of them")
+	voices.clips_arrived.disconnect(on_list)
 	VoiceChat.set_recording_consent(false)
 	_check(VoiceChat.get_clips(1).is_empty(), "withdrawing consent deletes chat phrases")
 	VoiceChat.clear_clips()

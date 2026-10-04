@@ -30,7 +30,7 @@ func _ready() -> void:
 	var hint := _centred(Control.PRESET_CENTER_BOTTOM, 16)
 	hint.text = (
 		"E use (hold for traps) · G drop · F lantern · V talk · Shift sprint · Ctrl crouch"
-		+ " · Esc mouse / leave"
+		+ " · C your voice · Esc mouse / leave"
 	)
 	hint.position.y -= 40
 	hint.modulate = Color(1, 1, 1, 0.5)

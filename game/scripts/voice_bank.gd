@@ -14,6 +14,8 @@ extends Node
 ## the lobby. Same path ("Voices") on every peer, for its RPCs.
 
 signal changed  ## Names, counts or blocks changed.
+## This player's chat phrases the host keeps, each VoiceCodec-encoded, oldest first.
+signal clips_arrived(clips: Array)
 
 const LINES: Array[Dictionary] = [
 	{
@@ -95,6 +97,43 @@ static func normalized(samples: PackedFloat32Array) -> PackedFloat32Array:
 ## Sends one recorded take to the host.
 func upload(key: String, samples: PackedFloat32Array) -> void:
 	_receive_take.rpc_id(1, key, VoiceCodec.encode(samples))
+
+
+## Asks the host for this player's kept chat phrases; clips_arrived answers.
+func ask_my_clips() -> void:
+	_send_my_clips.rpc_id(1)
+
+
+## Deletes one of this player's kept chat phrases on the host, or all (index
+## -1); clips_arrived then brings what is left.
+func delete_my_clip(index: int) -> void:
+	_delete_my_clip.rpc_id(1, index)
+
+
+@rpc("any_peer", "call_local", "reliable")
+func _send_my_clips() -> void:
+	if multiplayer.is_server():
+		_reply_clips(multiplayer.get_remote_sender_id())
+
+
+@rpc("any_peer", "call_local", "reliable")
+func _delete_my_clip(index: int) -> void:
+	if multiplayer.is_server():
+		var peer := multiplayer.get_remote_sender_id()
+		VoiceChat.delete_clip(peer, index)
+		_reply_clips(peer)
+
+
+func _reply_clips(peer: int) -> void:
+	var encoded := []
+	for clip: PackedFloat32Array in VoiceChat.get_clips(peer):
+		encoded.append(VoiceCodec.encode(clip))
+	_receive_my_clips.rpc_id(peer, encoded)
+
+
+@rpc("authority", "call_local", "reliable")
+func _receive_my_clips(clips: Array) -> void:
+	clips_arrived.emit(clips)
 
 
 ## Deletes this player's takes on the host (consent withdrawn).

@@ -42,8 +42,9 @@ check that recording and proximity chat work before anything else.
   lets the host keep what the player says over proximity chat, push to talk only, up to 3 s a
   phrase and their last 8, for this match only. The creature calls with a chat phrase 70% of the
   time when it has one (unless it calls the listener's name), so lobby lines are now optional.
-  The voice block applies; withdrawing consent deletes them. Not built yet: the design doc's
-  review-and-delete list of your kept clips.
+  The voice block applies; withdrawing consent deletes them. **C** in game opens a list of your
+  kept phrases (`scripts/clip_list.gd`), asked from the host, to play back or delete one by one
+  or all at once (design doc, Build Notes).
 - **Proximity voice chat** (`addons/voice_chat`, copied from `voice_chat_prototype/`): push to
   talk on V, heard from where the speaker stands, through static from the dead.
 - **Two days and two nights.** The second morning matters: whatever the creature set at night
@@ -205,7 +206,7 @@ the art and sound the prototype fakes.
 - [x] Recorded takes raised to full level
 - [ ] Check the new take level in a playtest
 - [x] Neutral-tone takes: the creature now mostly uses live chat clips
-- [ ] A way to review and delete your kept chat clips (design doc, Build Notes)
+- [x] A way to review and delete your kept chat clips (C in game)
 - [ ] Check in a playtest that chat clips sound right from the corn
 - [ ] A friend's recorded voice fools someone (`LURE WORKED` in the log)
 - [ ] Trap sweeps and rehanging traps on the pegboard feel worth doing

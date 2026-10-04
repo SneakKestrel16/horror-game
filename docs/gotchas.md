@@ -9,7 +9,12 @@ Traps hit while building the game, with what fixed them.
   the end, so on a timeout run the scene by hand with `--quit-after` to see the error.
 - **`godot -s script.gd --check-only` reports autoloads as missing** ("Identifier not found:
   Net"). That is the `-s` mode, not the code; run the smoke test instead. It does find a parse
-  error in a class with no autoloads, such as `farm.gd`.
+  error in a class with no autoloads, such as `farm.gd`. For a throwaway script that needs the
+  game (a screenshot, say), make a temporary `.tscn` whose root node runs it, as the smoke test
+  does; under `-s` even `game.gd` fails to compile.
+- **Wait by time, not frames, in a windowed run.** A windowed game runs far faster than the smoke
+  test's physics frames, so 40 frames was under VoiceChat's 0.4 s phrase gap and no phrase was
+  ever finished. Use `get_tree().create_timer(...)`.
 - **One parse error shows up as dozens of "Could not resolve class".** Every script using the
   broken class reports it, and the real error is not among them. A static var and a function
   with the same name (`_corn`) did it; `--check-only -s` on the broken script names the cause.
