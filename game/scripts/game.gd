@@ -101,6 +101,12 @@ var _daylight: Looks.Daylight
 var _ambience: Sfx.Ambience
 
 
+## Recordings live for this match only.
+func _exit_tree() -> void:
+	VoiceChat.keep_live_clips = false
+	VoiceChat.clear_clips()
+
+
 func _ready() -> void:
 	for action: String in CONTROLS:
 		if not InputMap.has_action(action):
@@ -143,6 +149,8 @@ func _ready() -> void:
 		var host := _player_data(1, Net.player_name)
 		_players.spawn(host)
 		voices.register(1, host["name"])
+		# What consenting players say over proximity chat, for the creature to call with.
+		VoiceChat.keep_live_clips = true
 		if Net.dev:
 			var dev := Dev.new()
 			dev.game = self

@@ -114,6 +114,23 @@ func _check_lobby() -> void:
 		named += 1 if pick["key"] == "name_1" else 0
 	_check(friend > 30, "a friend's voice is picked far more than your own (%d of 40)" % friend)
 	_check(named > 5, "it sometimes calls you by name in a friend's voice (%d of 40)" % named)
+	# What a consenting player says over voice chat is kept, and the creature uses it.
+	VoiceChat.call("_store_clip_samples", 1, tone)
+	await _frames(40)
+	_check(VoiceChat.get_clips(1).is_empty(), "nothing said over chat is kept without consent")
+	VoiceChat.set_recording_consent(true)
+	VoiceChat.call("_store_clip_samples", 1, tone)
+	await _frames(40)
+	_check(VoiceChat.get_clips(1).size() == 1, "with consent, a chat phrase is kept")
+	VoiceChat.get("_consent")[FRIEND] = true
+	VoiceChat.get("_clips")[FRIEND] = [tone]
+	var live := 0
+	for i in 40:
+		live += 1 if voices.pick(1)["key"] == VoiceBank.LIVE else 0
+	_check(live > 3, "it calls with what a friend said over chat (%d of 40)" % live)
+	VoiceChat.set_recording_consent(false)
+	_check(VoiceChat.get_clips(1).is_empty(), "withdrawing consent deletes chat phrases")
+	VoiceChat.clear_clips()
 	_game.start_day()
 	await _frames(3)
 	_check(_game.phase() == "day" and _game.day_number() == 1, "the host started day 1")

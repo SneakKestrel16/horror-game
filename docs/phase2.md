@@ -38,6 +38,12 @@ check that recording and proximity chat work before anything else.
   voice only rarely), half the time their own name in a friend's voice if a friend recorded it,
   or a generic line when nobody recorded anything. Each call gets at most one random tell, a
   faint echo or a voice slightly off pitch, and a third get none.
+- **Live clips** (brought forward from Phase 3 after the calm lobby takes): the consent tick also
+  lets the host keep what the player says over proximity chat, push to talk only, up to 3 s a
+  phrase and their last 8, for this match only. The creature calls with a chat phrase 70% of the
+  time when it has one (unless it calls the listener's name), so lobby lines are now optional.
+  The voice block applies; withdrawing consent deletes them. Not built yet: the design doc's
+  review-and-delete list of your kept clips.
 - **Proximity voice chat** (`addons/voice_chat`, copied from `voice_chat_prototype/`): push to
   talk on V, heard from where the speaker stands, through static from the dead.
 - **Two days and two nights.** The second morning matters: whatever the creature set at night
@@ -198,7 +204,9 @@ the art and sound the prototype fakes.
 - [ ] Proximity chat between two machines with real microphones
 - [x] Recorded takes raised to full level
 - [ ] Check the new take level in a playtest
-- [ ] Neutral-tone takes: make the farm busy enough that calm lines fit, or process them
+- [x] Neutral-tone takes: the creature now mostly uses live chat clips
+- [ ] A way to review and delete your kept chat clips (design doc, Build Notes)
+- [ ] Check in a playtest that chat clips sound right from the corn
 - [ ] A friend's recorded voice fools someone (`LURE WORKED` in the log)
 - [ ] Trap sweeps and rehanging traps on the pegboard feel worth doing
 - [ ] Digging and trap-setting animations, so an errand doesn't look like staring
@@ -207,7 +215,7 @@ the art and sound the prototype fakes.
 
 ### Phase 3
 
-- [ ] Live clips from proximity chat for the creature to use
+- [x] Live clips from proximity chat (brought into Phase 2)
 - [ ] The creature favours dead players' voices
 - [ ] The Director (pacing)
 - [ ] Jumpscares (disarm lunge, shed, whisper, own voice, crow fake-outs)
@@ -252,6 +260,6 @@ There are none yet: every surface is a flat colour.
 
 ## Not in Phase 2
 
-Live clips from proximity chat, the creature favouring dead players' voices, the Director,
+The creature favouring dead players' voices, the Director,
 jumpscares, ghost abilities (Phase 3); the season, economy, upgrades, roles and payments
 (Phase 4). Coins have no use yet beyond the medical bill.

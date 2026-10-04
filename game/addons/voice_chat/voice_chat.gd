@@ -18,7 +18,7 @@ const PACKET_SAMPLES := 320  # 20 ms at 16 kHz
 const SPEAKING_TIMEOUT := 0.3
 const CLIP_GAP := 0.4  # silence that ends a clip
 const CLIP_MIN := 0.5  # seconds
-const CLIP_MAX := 4.0  # seconds
+const CLIP_MAX := 3.0  # seconds; design doc, Build Notes: live clips
 const CLIPS_PER_PEER := 8
 
 ## Push-to-talk (hold V) or talk automatically when loud enough.

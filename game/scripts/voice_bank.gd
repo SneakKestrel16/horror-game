@@ -4,9 +4,11 @@ extends Node
 ## (Phase 2; design doc, Keeping Players on In-Game Voice and Build Notes).
 ## Before the day, a player who ticks consent records a short fixed list of
 ## lines, each a few times with a prompt to sound scared, plus each teammate's
-## name. Takes go to the host and live only for this match. A player can keep
+## name. Takes go to the host and live only for this match. Consent also lets
+## the host keep what they say over proximity chat (VoiceChat's live clips, a
+## Phase 3 item brought forward), which the creature prefers. A player can keep
 ## their voice from being replayed to chosen teammates; withdrawing consent
-## deletes their takes.
+## deletes their takes and clips.
 ##
 ## Every peer keeps the names and how many takes each player has recorded, for
 ## the lobby. Same path ("Voices") on every peer, for its RPCs.
@@ -35,6 +37,11 @@ const TAKE_GAIN_MAX := 16.0
 const NAME_CHANCE := 0.5  ## How often it calls the listener's own name when it has it.
 ## Your own voice is rarely used on you (design doc, How It Works).
 const OWN_WEIGHT := 0.05
+## How often a speaker with chat clips is played from them rather than their
+## lobby lines. Chat is said in the moment, scared or not, where lobby lines
+## came out calm (2026-10-04 playtest). Guess.
+const LIVE_CHANCE := 0.7
+const LIVE := "live"  ## The key for a chat clip.
 
 var names := {}  ## peer -> name.
 var counts := {}  ## peer -> takes recorded.
@@ -52,6 +59,8 @@ func _ready() -> void:
 func line_text(key: String) -> String:
 	if key.begins_with("name_"):
 		return "%s!" % names.get(key.trim_prefix("name_").to_int(), "?")
+	if key == LIVE:
+		return "words from voice chat"
 	for line in LINES:
 		if line["key"] == key:
 			return line["text"]
@@ -118,15 +127,23 @@ func forget(peer: int) -> void:
 	_set_name.rpc(peer, "")
 
 
-## Host only: which recorded take the creature plays to listener, as
+## Host only: which recording the creature plays to listener, as
 ## {source, key, data}, or {} for a generic line. Picks a speaker (rarely the
-## listener), then the listener's name half the time if that speaker said it.
+## listener), then the listener's name half the time if that speaker said it,
+## else mostly something the speaker said over voice chat (key LIVE), else one
+## of their lobby lines.
 func pick(listener: int) -> Dictionary:
 	var speakers: Array[int] = []
 	var weights: Array[float] = []
 	var total := 0.0
-	for peer: int in _takes:
-		if listener in _blocked.get(peer, []) or _usable_keys(peer, listener).is_empty():
+	var sources: Array = _takes.keys()
+	for peer: int in VoiceChat.get_peers_with_clips():
+		if peer not in sources:
+			sources.append(peer)
+	for peer: int in sources:
+		if listener in _blocked.get(peer, []):
+			continue
+		if _usable_keys(peer, listener).is_empty() and _live(peer).is_empty():
 			continue
 		var weight := OWN_WEIGHT if peer == listener else 1.0
 		speakers.append(peer)
@@ -142,12 +159,22 @@ func pick(listener: int) -> Dictionary:
 			source = speakers[i]
 			break
 	var keys := _usable_keys(source, listener)
+	var live := _live(source)
 	var name_key := "name_%d" % listener
-	var key: String = keys[_rng.randi() % keys.size()]
-	if name_key in keys and _rng.randf() < NAME_CHANCE:
-		key = name_key
+	var key := name_key
+	if name_key not in keys or _rng.randf() >= NAME_CHANCE:
+		if not live.is_empty() and (keys.is_empty() or _rng.randf() < LIVE_CHANCE):
+			var clip: PackedFloat32Array = live[_rng.randi() % live.size()]
+			return {"source": source, "key": LIVE, "data": VoiceCodec.encode(normalized(clip))}
+		key = keys[_rng.randi() % keys.size()]
 	var takes: Array = _takes[source][key]
 	return {"source": source, "key": key, "data": takes[_rng.randi() % takes.size()]}
+
+
+## What source said over proximity chat, if they consented: VoiceChat keeps
+## their last few phrases on the host.
+func _live(source: int) -> Array:
+	return VoiceChat.get_clips(source) if VoiceChat.has_consent(source) else []
 
 
 ## Generic lines source has recorded, plus listener's name if it said it.

@@ -3,9 +3,11 @@ extends CanvasLayer
 ## Before the first day: who is here, and recording the lines the creature may
 ## call with (design doc, Keeping Players on In-Game Voice). Recording is
 ## opt-in: nothing is recorded until the player ticks consent, and unticking it
-## deletes their takes. Each line can be recorded a few times, with a prompt to
-## say it scared, and played back. A player can keep their voice from being
-## played to chosen teammates. The host starts the day; the lobby then closes.
+## deletes their takes. Consent also lets the host keep what the player says
+## over proximity chat, so the lines are optional. Each line can be recorded a
+## few times, with a prompt to say it scared, and played back. A player can
+## keep their voice from being played to chosen teammates. The host starts the
+## day; the lobby then closes.
 
 var game: Game
 
@@ -54,15 +56,15 @@ func _ready() -> void:
 	var about := _label(
 		column,
 		(
-			"Something in the corn copies voices. If you agree, record the lines below: it may"
-			+ " call your friends with them. Recordings stay in this match only. Hold V in game"
-			+ " to talk to whoever is near you."
+			"Something in the corn copies voices. If you agree, it may call your friends with what"
+			+ " you say over voice chat, and with the lines below if you record them. Recordings stay"
+			+ " in this match only. Hold V in game to talk to whoever is near you."
 		),
 		14
 	)
 	about.autowrap_mode = TextServer.AUTOWRAP_WORD
 	_consent = CheckBox.new()
-	_consent.text = "Let the creature copy my voice (kept for this match only)"
+	_consent.text = "Let the creature copy my voice (in game and below; this match only)"
 	_consent.toggled.connect(_on_consent)
 	column.add_child(_consent)
 	_lines = VBoxContainer.new()
@@ -162,6 +164,7 @@ func _prompt(key: String) -> String:
 
 
 func _on_consent(on: bool) -> void:
+	VoiceChat.set_recording_consent(on)  # Also covers what they say in game.
 	if not on:
 		_takes.clear()
 		game.voices.withdraw()
