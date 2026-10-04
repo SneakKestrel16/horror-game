@@ -78,6 +78,15 @@ func _check_lobby() -> void:
 	tone.resize(VoiceCodec.RATE)  # One second.
 	for i in tone.size():
 		tone[i] = 0.3 * sin(TAU * 220.0 * i / VoiceCodec.RATE)
+	var loud := VoiceBank.normalized(tone)
+	var faint := tone.slice(0, 100)
+	for i in faint.size():
+		faint[i] *= 0.001  # Peak about 0.0003.
+	var hiss := VoiceBank.normalized(faint)
+	_check(
+		absf(_peak(loud) - VoiceBank.TAKE_PEAK) < 0.01 and _peak(hiss) < 0.01,
+		"quiet takes are raised to full level, near-silence only so far"
+	)
 	voices.rpc_id(1, "_receive_take", "help_me", VoiceCodec.encode(tone))
 	await _frames(2)
 	_check(voices.counts.get(1, 0) == 1, "a recorded take reached the host")
@@ -374,6 +383,13 @@ func _ask(action: String, index: int) -> void:
 
 func _held() -> String:
 	return _game.chores.held_item(1).get("kind", "")
+
+
+func _peak(samples: PackedFloat32Array) -> float:
+	var peak := 0.0
+	for sample in samples:
+		peak = maxf(peak, absf(sample))
+	return peak
 
 
 func _put(body: Node3D, at: Vector3) -> void:

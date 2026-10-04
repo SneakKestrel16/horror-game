@@ -187,6 +187,7 @@ func _stop() -> void:
 	elif VoiceCodec.rms(samples) < 0.005:
 		_status.text = "That take was silent. Check your microphone."
 	else:
+		samples = VoiceBank.normalized(samples)
 		var takes: Array = _takes.get_or_add(key, [])
 		takes.append(samples)
 		while takes.size() > VoiceBank.TAKES:

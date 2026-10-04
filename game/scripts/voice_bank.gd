@@ -27,6 +27,11 @@ const NAME_PROMPT := "Call their name like you need them, now."
 const TAKES := 3  ## Takes kept per line; a new one replaces the oldest.
 const TAKE_MAX := 3.0  ## Seconds.
 const TAKE_MIN := 0.4
+## Takes are raised to this peak, as loud as the stock lines; mics record quietly
+## (2026-10-04 playtest). The gain is capped so a near-silent take stays quiet
+## rather than turning into hiss.
+const TAKE_PEAK := 0.9
+const TAKE_GAIN_MAX := 16.0
 const NAME_CHANCE := 0.5  ## How often it calls the listener's own name when it has it.
 ## Your own voice is rarely used on you (design doc, How It Works).
 const OWN_WEIGHT := 0.05
@@ -62,6 +67,20 @@ func keys_for(peer: int) -> Array[String]:
 		if other != peer:
 			keys.append("name_%d" % other)
 	return keys
+
+
+## samples raised to TAKE_PEAK, by at most TAKE_GAIN_MAX.
+static func normalized(samples: PackedFloat32Array) -> PackedFloat32Array:
+	var peak := 0.0
+	for sample in samples:
+		peak = maxf(peak, absf(sample))
+	if peak <= 0.0:
+		return samples
+	var gain := minf(TAKE_PEAK / peak, TAKE_GAIN_MAX)
+	var out := samples.duplicate()
+	for i in out.size():
+		out[i] *= gain
+	return out
 
 
 ## Sends one recorded take to the host.

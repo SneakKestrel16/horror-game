@@ -131,10 +131,11 @@ From the player's report; no log was kept of it.
   bigger, more chaotic farm would make a calm "Come look at this." believable, so the lines can
   work as recorded if the game around them gives a reason to say them calmly. To be weighed in
   Review 2 against processing the takes to sound strained.
-- **Quality is poor.** Takes go through the chat codec (`addons/voice_chat/voice_codec.gd`):
-  16 kHz mono, 8-bit mu-law. Inference: that is telephone quality and may be most of it; what it
-  sounded like (hiss, muffled, quiet, clipped) would say whether the codec or the microphone level
-  is to blame.
+- **Takes were very quiet.** They were kept at the microphone's level, well below the stock
+  lines. Each take is now raised to a 0.9 peak when saved, at most 16 times louder so a
+  near-silent one doesn't become hiss (`VoiceBank.normalized`). The next session should check the
+  level; if takes then sound hissy, the cause is the chat codec they go through (16 kHz, 8-bit
+  mu-law, `addons/voice_chat/voice_codec.gd`).
 
 ## Checklist
 
@@ -150,7 +151,8 @@ the art and sound the prototype fakes.
 - [ ] A playtest with 2-4 real people, each on their own machine
 - [x] Recording with a real microphone
 - [ ] Proximity chat between two machines with real microphones
-- [ ] Better quality recorded takes
+- [x] Recorded takes raised to full level
+- [ ] Check the new take level in a playtest
 - [ ] Neutral-tone takes: make the farm busy enough that calm lines fit, or process them
 - [ ] A friend's recorded voice fools someone (`LURE WORKED` in the log)
 - [ ] Trap sweeps and rehanging traps on the pegboard feel worth doing
