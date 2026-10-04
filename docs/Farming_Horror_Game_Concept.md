@@ -35,9 +35,22 @@ You never see it clearly. It lives in the wild corn that rings the farm, a field
 - **Lurk:** Moves through the corn, sets traps at night, and gathers voice clips.
 - **Lure:** Plays a mimicked voice or sound from cover, usually near an armed trap or a player who is alone.
 - **Stalk:** Follows one player from cover, getting closer. Animals nearby go quiet.
-- **Chase (night only):** Breaks cover and runs a player down. It loses them if they reach a lit building or break its line of sight for a few seconds.
+- **Chase (night, or a day kill):** Breaks cover and runs a player down. It loses them if they reach a lit building or break its line of sight for a few seconds.
 - **Retreat:** After a jumpscare, a kill, or a hit from the Hunter’s flare, it pulls back into the corn for a while.
-- **By day:** It can only Lurk, Lure, Stalk and jumpscare. Chasing and killing are for the night.
+- **By day:** It Lurks, Lures, Stalks and jumpscares, and kills only in the rare cases below (see Day Deaths).
+
+### Day Deaths
+
+Deaths by day are rare, and always the player’s own mistake. The creature can kill by day only when one of these is true:
+
+- A player is **alone, marked and deep in the corn**: no teammate within earshot, carrying a mark they didn’t wash off, and well inside the rows rather than at the edge.
+- A player is **stuck in a bear trap with nobody nearby**: no teammate close enough to help pry them free.
+
+Almost nobody will die by day, but everyone will know it can happen, and that is enough. A day death counts like a night one: out until dawn and on the medical bill.
+
+### Wounds
+
+A day scare hurts the night. A player who is jumpscared is **wounded** until dawn: their sprint runs out sooner, their footsteps carry further, and at night they leave a trail the creature can follow. The scare isn’t fatal, but it can kill them hours later. Starting values: 40% less sprint, footsteps heard 50% further, and the trail lasts until dawn. A second scare while wounded changes nothing, so one bad day doesn’t pile up.
 
 ### The Director
 
@@ -113,7 +126,7 @@ During the day, the creature uses a teammate’s voice to call players toward ro
 
 ### Rules
 
-- **Non-lethal by day:** A trap sprung during the day holds, slows, marks, or costs you items, but never kills.
+- **Rarely lethal by day:** A trap sprung during the day holds, slows, marks, or costs you items. It only kills if the player is stuck in it with nobody nearby (see Day Deaths).
 - **Deadly at night:** Traps that are still armed when night falls become far more dangerous, since a trapped player is easy prey.
 - **Ramp up:** A few traps on night one, more and better-hidden ones as the season goes on (see Season and Numbers).
 
@@ -128,7 +141,7 @@ Hiding in the barn all night is never fully safe and never free. Nights are shor
 
 ## Jumpscares
 
-The creature can’t kill during the day, but it can still terrify. The game never tells players the day is safe; they learn it, and doubt it. A daytime jumpscare knocks the player down, makes them drop what they’re carrying, and leaves them shaken, then the creature vanishes back into the corn.
+The creature almost never kills during the day (see Day Deaths), but it can still terrify. The game never tells players the day is safe; they learn it, and doubt it. A daytime jumpscare knocks the player down, makes them drop what they’re carrying, and leaves them wounded until dawn (see Wounds), then the creature vanishes back into the corn.
 
 ### Scare Moments
 
@@ -144,7 +157,7 @@ The creature can’t kill during the day, but it can still terrify. The game nev
 
 - **Keep them rare:** Too many jumpscares and players get used to them. Long quiet stretches make each one hit harder.
 - **Build up first:** Silence, animals going quiet, or a voice calling from nearby before the scare works better than a scare out of nowhere.
-- **Make them cost something:** Dropping items means a scare matters for the game, not just for the moment, and dropped items leave a scent for the night.
+- **Make them cost something:** Dropping items and the wound until dawn mean a scare matters for the game, not just for the moment, and dropped items leave a scent for the night.
 - **Let the Director time them:** The tension meter decides when a scare is due and randomizes where, so players can’t learn the pattern.
 
 ## Death and Respawning
@@ -169,7 +182,7 @@ Once a player dies, the creature is more likely to mimic their voice. Combined w
 
 ## Daytime Threats
 
-The monster can’t kill during the day, but it can still do harm. Traps, voice lures and jumpscares already fill most of the day, so other daytime harm is kept to a small pool. The creature gets a daily disturbance budget, a fixed number of these it can spend each day, rising over the season.
+The monster rarely kills during the day (see Day Deaths), but it can still do harm. Traps, voice lures and jumpscares already fill most of the day, so other daytime harm is kept to a small pool. The creature gets a daily disturbance budget, a fixed number of these it can spend each day, rising over the season.
 
 ### Sabotage Pool
 
@@ -185,7 +198,7 @@ The monster can’t kill during the day, but it can still do harm. Traps, voice 
 
 ### Keeping It Fair
 
-- Daytime harm should be annoying or costly, never instantly fatal, so the day still feels like a break.
+- Daytime harm should be annoying or costly, and only fatal through the player’s own mistakes (see Day Deaths), so the day still feels like a break.
 - Every disturbance has a fix, like repairing, rounding up, or washing, so it feels like a task and not just bad luck.
 - Day 1 might have one broken fence; by day 6 the whole pool is in play.
 
@@ -328,7 +341,7 @@ How the earlier open issues were settled, and where to find each answer.
 - **Mimicry was not a unique hook** (Review 1): MIMESIS (ReLU Games, published by KRAFTON) already sells AI voice copying, so the farm under siege is the pitch and mimicry supports it. See the opening.
 - **Lobby recordings sounded calm and could carry anything** (Review 1): a fixed list of lines, each recorded a few times with an urgent prompt, and a block on replaying your voice. See Build Notes. Live clips are still open.
 - **There was no limit on plots or labor:** 16 plots growing to 24, chores that take time, and a 4-plot moonflower bed. See Crops.
-- **Little was at stake until the Harvest Moon:** a higher medical bill, a day the game never calls safe, and a final night spent running the festival cart out the gate. See Season and Numbers and Jumpscares.
+- **Little was at stake until the Harvest Moon:** a higher medical bill, a day the game never calls safe, rare day deaths from the player’s own mistakes, day scares that wound until dawn, and a final night spent running the festival cart out the gate. See Season and Numbers and Jumpscares.
 - **A season was long with no save:** dawn saves and a 3-day short season. See Length and Saving.
 - **Live clips could carry anything:** push-to-talk only, 3 seconds at most, reviewable and deletable, and blockable. See Build Notes.
 - **The creature was seen too often:** glimpse rules for every scare. See The Creature.
