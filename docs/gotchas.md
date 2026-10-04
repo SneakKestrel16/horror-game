@@ -41,6 +41,9 @@ Traps hit while building the game, with what fixed them.
 
 - **Non-ASCII text piped into Python through a Bash heredoc gets mangled.** A `·` in a pattern
   stopped matching. Write the editing script to a file with the Write tool and run that.
+- **Two local instances share one `godot.log`.** Host and joiner use the same user folder, so
+  `logs/godot.log` interleaves both, with lines cut mid-word. Read the host's own timestamped log
+  (`logs/<date>T<time>.log`, the `log_event` lines) instead.
 
 ## Pathfinding
 
