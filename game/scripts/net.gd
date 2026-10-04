@@ -3,7 +3,7 @@ extends Node
 ## that connects players, and a helper to replicate node properties.
 
 const DEFAULT_PORT := 7777
-const MAX_PLAYERS := 2  ## Phase 1 is a two-player prototype.
+const MAX_PLAYERS := 4
 const MENU := "res://scenes/main_menu.tscn"
 
 var port := DEFAULT_PORT  ## `-- --port=N` overrides it (the smoke test uses its own).
@@ -13,6 +13,7 @@ var message := ""  ## Shown by the main menu after a session ends.
 var args_used := false  ## Command-line --host/--join only apply once.
 ## `-- --short` runs the day and night at a sixth of their length, for testing.
 var short := false
+var player_name := ""  ## From the menu or `-- --name=X`; "" means "Farmer N".
 var dev := false  ## `-- --dev`: the host gets the developer panel (scripts/dev.gd, F2).
 
 
@@ -22,6 +23,8 @@ func _ready() -> void:
 			port = arg.trim_prefix("--port=").to_int()
 		elif arg == "--short":
 			short = true
+		elif arg.begins_with("--name="):
+			player_name = arg.trim_prefix("--name=")
 		elif arg == "--dev":
 			dev = true
 	# Connected once here: the multiplayer API outlives each game scene.

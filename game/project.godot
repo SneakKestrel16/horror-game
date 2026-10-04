@@ -15,9 +15,14 @@ config/description="Farm by day, survive the night. Phase 1 prototype."
 run/main_scene="res://scenes/main_menu.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
+[audio]
+
+driver/enable_input=true
+
 [autoload]
 
 Net="*res://scripts/net.gd"
+VoiceChat="*res://addons/voice_chat/voice_chat.gd"
 
 [debug]
 

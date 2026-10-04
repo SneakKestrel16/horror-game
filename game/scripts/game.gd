@@ -1,25 +1,33 @@
 class_name Game
 extends Node3D
-## One day and one night on the farm (Phase 1). Hosts or joins (Net). The
-## host owns everything but the players: the clock, the tools, the crops, the
-## traps, the generator and the creature. Players ask the host to do things
-## (pick up, water, disarm...) and the host tells every peer what changed.
-## Each peer owns only its own player. The design doc is
-## ../docs/Farming_Horror_Game_Concept.md; Phase 1 is in its Build Plan.
+## Two days and two nights on the farm (Phase 2), after a lobby where players
+## record their voices. Hosts or joins (Net). The host owns everything but the
+## players: the clock, the tools, the crops, the traps, the generator, the
+## recorded voices and the creature. Players ask the host to do things (pick
+## up, water, disarm...) and the host tells every peer what changed. Each peer
+## owns only its own player. The design doc is
+## ../docs/Farming_Horror_Game_Concept.md; the phases are in its Build Plan.
 
-enum Stage { DRY, GROWING, RIPE, EMPTY }  ## A plot's turnips.
-enum TrapState { HIDDEN, ARMED, SPRUNG, DISARMED }  ## HIDDEN: not set yet.
-
-## Phase lengths in seconds. The design doc's day is 8 to 10 minutes; Phase 1
-## has one small field, so its day is shorter. Net.short divides all by 6.
+## Phase lengths in seconds. The design doc's day is 8 to 10 minutes; the
+## prototype has one small field, so its day is shorter. Net.short divides all by 6.
 const DAY := 360.0
 const DUSK := 60.0
 const NIGHT := 300.0
 const SHORT := 1.0 / 6.0
-
-const GROW_TIME := 60.0  ## Seconds from watered to ripe (scaled like the phases).
-const CAN_WATER := 4  ## Plots one watering can full waters.
-const TURNIP_PRICE := 10  ## Design doc, Crops.
+const DAYS := 2  ## Phase 2: enough for one morning after a night of trap setting.
+## Payments, traps and disturbances scale with the team (design doc, Winning
+## and Losing). One player plays as two.
+const TEAM_SCALE := {1: 0.7, 2: 0.7, 3: 0.85, 4: 1.0}
+## Medical bill (design doc, Medical Bill): the first death a night is cheaper,
+## the night has a cap, and the bill never leaves less than a turnip seed pack.
+const BILL_FIRST := 25
+const BILL_EACH := 50
+const BILL_CAP := 120
+const BILL_FLOOR := 4
+## By day the creature kills only a player stuck in a bear trap with nobody
+## within ALONE_RANGE for ALONE_TIME seconds (design doc, Day Deaths).
+const ALONE_RANGE := 20.0
+const ALONE_TIME := 15.0
 const FUEL_START := 0.4
 ## A full tank lasts this share of the night (2 of its 5 minutes), and the lights
 ## burn from dusk, so even a tank filled at dusk runs dry early in the night:
@@ -28,13 +36,6 @@ const FUEL_START := 0.4
 const FUEL_LASTS := 0.4
 const FUEL_PER_CAN := 1.0  ## A can fills the tank.
 const FLICKER_BELOW := 0.15  ## The barn lights flicker under this much fuel.
-const BEAR_REACH := 0.55  ## How close a foot must come to spring a trap (m).
-const PIT_REACH := 0.65
-const USE_RANGE := 2.0
-const LOOK_ANGLE := 0.7  ## Radians (40°) either side of where a player faces.
-const TRAP_LOOK_ANGLE := 0.45  ## Traps are only found by looking right at them (26°).
-## Seconds to hold E. Prying is quicker with a friend (design doc, Night Traps).
-const HOLD := {"disarm": 4.0, "fill": 3.0, "pry": 3.0, "help": 1.5, "refuel": 3.0}
 ## How far each action carries to the creature's ears (m).
 const NOISE := {
 	"water": 9.0,
@@ -48,17 +49,12 @@ const NOISE := {
 	"snap": 30.0,
 	"pit": 10.0,
 	"sell": 6.0,
+	"hang": 6.0,
+	"take": 4.0,
 }
 const LURE_CHECK := 12.0  ## Seconds after a lure to see who walked toward it.
 const LURE_HEARD := 40.0  ## Players this close to a lure count as having heard it.
 const LURE_FOLLOWED := 4.0  ## Metres closer that count as walking toward it.
-const ITEM_NAMES := {
-	"watering_can": "watering can",
-	"shovel": "shovel",
-	"crowbar": "crowbar",
-	"fuel_can": "fuel can",
-	"turnip": "turnip",
-}
 const CONTROLS := {
 	"move_forward": KEY_W,
 	"move_back": KEY_S,
@@ -77,33 +73,29 @@ var clock := 0.0
 var fuel := FUEL_START
 var coins := 0
 var ended := false
+var in_lobby := true  ## Before the host starts the first day; the clock waits.
+var team_size := 1  ## Players when the day started.
 ## How fast the day runs: the clock, fuel and crops (dev panel; 1 in play).
 var clock_rate := 1.0
-## {kind, holder (peer id, 0 on the ground, -1 gone), position, charge}.
-var items: Array[Dictionary] = []
-var plots: Array[int] = []
-var traps: Array[Dictionary] = []  ## {kind, position, state, victim}.
+var traps := TrapField.new()
+var chores := Chores.new()
+var voices := VoiceBank.new()
 var creature: Creature  ## Host only.
+var hud := Hud.new()
+var alone_for := {}  ## Host: trapped peer -> seconds with nobody near.
+var fuel_warned := false  ## The low-fuel warning was given.
 
-var _grow_left: Array[float] = []  ## Host only.
-var _stats := {"deaths": 0, "bear": 0, "pit": 0, "lures": 0, "followed": 0}
+var _stats := {"deaths": 0, "bear": 0, "pit": 0, "lures": 0, "followed": 0, "friend": 0, "bill": 0}
+var _night_deaths := 0
 var _lure_checks: Array[Dictionary] = []
 var _log: FileAccess
 var _tick_left := 0.0
 var _last_phase := ""
-var _fuel_warned := false
-var _hold_key := ""
-var _hold_time := 0.0
 
 var _players: MultiplayerSpawner
 var _creatures: MultiplayerSpawner
-var _item_nodes: Array[Node3D] = []
-var _plot_nodes: Array[Node3D] = []
-var _trap_nodes: Array[Node3D] = []
 var _daylight: Looks.Daylight
 var _ambience: Sfx.Ambience
-
-var _hud := Hud.new()
 
 
 func _ready() -> void:
@@ -114,16 +106,25 @@ func _ready() -> void:
 			key.physical_keycode = CONTROLS[action]
 			InputMap.action_add_event(action, key)
 	farm.build(self)
-	_build_world_state()
+	traps.name = "Traps"
+	traps.game = self
+	add_child(traps)
+	voices.name = "Voices"
+	add_child(voices)
+	chores.name = "Chores"
+	chores.game = self
+	add_child(chores)
 	_daylight = Looks.Daylight.new(self)
 	_ambience = Sfx.Ambience.new(self)
-	add_child(_hud)
+	add_child(hud)
 	_players = _spawner("Players", _spawn_player)
 	_creatures = _spawner("Creatures", _spawn_creature)
 
 	multiplayer.peer_connected.connect(func(id: int) -> void: print("[net] peer %d joined" % id))
 	multiplayer.peer_disconnected.connect(_on_peer_disconnected)
-	multiplayer.connected_to_server.connect(func() -> void: _client_ready.rpc_id(1))
+	multiplayer.connected_to_server.connect(
+		func() -> void: _client_ready.rpc_id(1, Net.player_name)
+	)
 
 	var error := Net.start()
 	if error != OK:
@@ -136,12 +137,16 @@ func _ready() -> void:
 		_open_log()
 		log_event("host started (short: %s)" % Net.short)
 		_creatures.spawn({"position": Vector3(0, 0, Farm.CORN_IN + 10.0)})
-		_players.spawn(_player_data(1))
+		var host := _player_data(1, Net.player_name)
+		_players.spawn(host)
+		voices.register(1, host["name"])
 		if Net.dev:
 			var dev := Dev.new()
 			dev.game = self
 			add_child(dev)
-		flash("Day one. Water the turnips, sell what's ripe. Be back in the barn by dark.", 6.0)
+		add_child(Lobby.new(self))
+		if "--start" in OS.get_cmdline_user_args():  # Skip the lobby (testing).
+			start_day.call_deferred()
 	else:
 		flash("Connecting to %s:%d..." % [Net.address, Net.port], 10.0)
 
@@ -154,38 +159,37 @@ func _process(delta: float) -> void:
 		farm.set_barn_lit(lit)
 	farm.flicker(lit and fuel < FLICKER_BELOW)
 	var factor := short_factor()
-	var day := clampf(clock / (DAY * factor), 0.0, 1.0)
-	var dusk := clampf((clock - DAY * factor) / (DUSK * factor), 0.0, 1.0)
+	var into := _into_day()
+	var day := clampf(into / (DAY * factor), 0.0, 1.0)
+	var dusk := clampf((into - DAY * factor) / (DUSK * factor), 0.0, 1.0)
 	_daylight.apply(day, dusk, phase() == "night" or phase() == "dawn")
-	_place_items()
 	_update_sounds()
-	_hud.update(self)
-	var player := local_player()
-	if player and not ended:
-		_interact(player, delta)
+	hud.update(self)
 
 
 func _physics_process(delta: float) -> void:
 	if not multiplayer.is_server() or ended:
 		return
+	if in_lobby:
+		_tick_left -= delta
+		if _tick_left <= 0.0:
+			_tick_left = 0.5
+			sync_state()
+		return
 	clock += delta * clock_rate
-	var current := phase()
+	var current := "%s of day %d" % [phase(), day_number()]
 	if current != _last_phase:
-		_enter_phase(current)
+		_enter_phase(phase(), current)
 	if lights_on():
 		fuel = maxf(0.0, fuel - delta * clock_rate / (FUEL_LASTS * NIGHT * short_factor()))
-		if fuel < FLICKER_BELOW and not _fuel_warned:
-			_fuel_warned = true
+		if fuel < FLICKER_BELOW and not fuel_warned:
+			fuel_warned = true
 			_announce.rpc("The generator is sputtering. It needs fuel.")
 		if fuel <= 0.0:
 			_announce.rpc("The barn lights went out!")
 			log_event("generator ran dry")
-	for i in plots.size():
-		if plots[i] == Stage.GROWING:
-			_grow_left[i] -= delta * clock_rate
-			if _grow_left[i] <= 0.0:
-				_set_plot.rpc(i, Stage.RIPE)
-	_check_traps()
+	traps.check(living_players())
+	_watch_trapped(delta)
 	_check_lures()
 	_tick_left -= delta
 	if _tick_left <= 0.0:
@@ -200,19 +204,39 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			Net.stop("")
 	elif event.is_action_pressed("drop") and local_player():
-		_request.rpc_id(1, "drop", -1)
+		chores.request("drop", -1)
 
 
-## "day", "dusk", "night" or "dawn" (over).
+## "lobby", "day", "dusk", "night", or "dawn" once the last night is over.
 func phase() -> String:
+	if in_lobby:
+		return "lobby"
+	if clock >= DAYS * _cycle():
+		return "dawn"
+	var into := _into_day()
 	var factor := short_factor()
-	if clock < DAY * factor:
+	if into < DAY * factor:
 		return "day"
-	if clock < (DAY + DUSK) * factor:
+	if into < (DAY + DUSK) * factor:
 		return "dusk"
-	if clock < (DAY + DUSK + NIGHT) * factor:
-		return "night"
-	return "dawn"
+	return "night"
+
+
+## 1 for the first day and night, 2 for the second.
+func day_number() -> int:
+	return mini(floori(clock / _cycle()), DAYS - 1) + 1
+
+
+## Seconds in one day, dusk and night.
+func _cycle() -> float:
+	return (DAY + DUSK + NIGHT) * short_factor()
+
+
+## Seconds into the current day (the last day's dawn counts as its end).
+func _into_day() -> float:
+	if clock >= DAYS * _cycle():
+		return _cycle()
+	return fmod(clock, _cycle())
 
 
 ## 1, or SHORT when testing with short phases.
@@ -224,7 +248,31 @@ func short_factor() -> float:
 func phase_left() -> float:
 	var factor := short_factor()
 	var ends := {"day": DAY, "dusk": DAY + DUSK, "night": DAY + DUSK + NIGHT}
-	return maxf(0.0, ends.get(phase(), 0.0) * factor - clock)
+	return maxf(0.0, ends.get(phase(), 0.0) * factor - _into_day())
+
+
+## How much the team's size scales traps and payments.
+func team_scale() -> float:
+	return TEAM_SCALE.get(clampi(team_size, 1, 4), 1.0)
+
+
+## Host only: ends the lobby and starts the first day.
+func start_day() -> void:
+	if not in_lobby:
+		return
+	team_size = get_tree().get_nodes_in_group("players").size()
+	_begin.rpc()
+	clock = 0.0
+	_last_phase = ""
+	log_event("the day starts with %d players (scale %.2f)" % [team_size, team_scale()])
+	sync_state()
+
+
+@rpc("authority", "call_local", "reliable")
+func _begin() -> void:
+	in_lobby = false
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	flash("Day one. Water the turnips, sell what's ripe. Be back in the barn by dark.", 6.0)
 
 
 ## The barn is lit from dusk while the generator has fuel.
@@ -245,86 +293,46 @@ func living_players() -> Array[Player]:
 	return living
 
 
-## Where the armed traps are (the creature lures players toward them).
-func armed_traps() -> Array[Vector3]:
-	var armed: Array[Vector3] = []
-	for trap in traps:
-		if trap["state"] == TrapState.ARMED:
-			armed.append(trap["position"])
-	return armed
+## Host only: a player stuck in a bear trap with nobody near for a while, the
+## one player the creature may kill by day (design doc, Day Deaths), or null.
+func day_prey() -> Player:
+	for player in living_players():
+		if alone_for.get(player.get_multiplayer_authority(), 0.0) >= ALONE_TIME:
+			return player
+	return null
 
 
-## Host only: the creature reached player. Deadly at night; by day it never chases.
+## Host only: counts how long each trapped player has had nobody near.
+func _watch_trapped(delta: float) -> void:
+	for player in living_players():
+		var peer := player.get_multiplayer_authority()
+		var alone := player.pinned
+		for other in living_players():
+			if (
+				other != player
+				and other.global_position.distance_to(player.global_position) < ALONE_RANGE
+			):
+				alone = false
+		alone_for[peer] = alone_for.get(peer, 0.0) + delta if alone else 0.0
+
+
+## Host only: the creature reached player. Deadly at night; by day only to the
+## trapped and alone (day_prey).
 func creature_caught(player: Player) -> void:
-	if phase() != "night" or player.dead:
+	if player.dead or (phase() != "night" and player != day_prey()):
 		return
 	_stats["deaths"] += 1
+	_night_deaths += 1
+	VoiceChat.set_peer_dead(player.get_multiplayer_authority(), true)
 	log_event("creature killed %s at %s" % [player.label(), _where(player.global_position)])
-	_drop_held(player.get_multiplayer_authority(), player.global_position)
+	chores.drop_held(player.get_multiplayer_authority(), player.global_position)
 	player.killed.rpc_id(player.get_multiplayer_authority())
 	player.dead = true  # Now, not when the owner's next sync arrives.
 	_sound.rpc("thud", player.global_position)
 	_announce.rpc("Something took %s." % player.label())
 	if living_players().is_empty():
 		log_event("everyone died")
-		clock = (DAY + DUSK + NIGHT) * short_factor()
-
-
-## Host only (dev panel): jumps to the start of a phase ("day" restarts the day).
-func jump_to(target: String) -> void:
-	var factor := short_factor()
-	var starts := {"day": 0.0, "dusk": DAY, "night": DAY + DUSK, "dawn": DAY + DUSK + NIGHT}
-	clock = starts[target] * factor
-	_last_phase = ""  # Announce the phase again, even going back.
-	if ended and target != "dawn":
-		_resume.rpc()
-	sync_state()
-	log_event("dev: jumped to %s" % target)
-
-
-## Host only (dev panel): sets the generator's fuel (0 to 1).
-func set_fuel(amount: float) -> void:
-	fuel = amount
-	_fuel_warned = amount < FLICKER_BELOW
-	sync_state()
-	log_event("dev: fuel set to %d%%" % roundi(amount * 100))
-
-
-## Host only (dev panel): arms or clears every trap; sprung traps let go.
-func set_all_traps(armed: bool) -> void:
-	log_event("dev: %s every trap" % ("armed" if armed else "cleared"))
-	for i in traps.size():
-		var victim: int = traps[i]["victim"]
-		if victim != 0:
-			var player := get_node_or_null("Players/%d" % victim) as Player
-			if player:
-				player.released.rpc_id(victim)
-		_set_trap.rpc(i, TrapState.ARMED if armed else TrapState.DISARMED, 0)
-
-
-## Host only (dev panel): every plot ripe.
-func ripen_all() -> void:
-	log_event("dev: ripened every plot")
-	for i in plots.size():
-		_set_plot.rpc(i, Stage.RIPE)
-
-
-## Host only (dev panel): brings a dead player back where they are.
-func revive(player: Player) -> void:
-	if player.dead:
-		player.revived.rpc_id(player.get_multiplayer_authority())
-		player.dead = false
-		log_event("dev: revived %s" % player.label())
-
-
-## Host only (dev mode, smoke test): jumps to the start of the next phase.
-func skip_phase() -> void:
-	var factor := short_factor()
-	for start: float in [DAY, DAY + DUSK, DAY + DUSK + NIGHT]:
-		if clock < start * factor:
-			log_event("dev: skipped %.0f s ahead" % (start * factor - clock))
-			clock = start * factor
-			return
+		clock = day_number() * _cycle()  # On to the morning.
 
 
 ## Host only: something made a noise the creature may hear.
@@ -345,7 +353,7 @@ func log_event(text: String) -> void:
 
 ## Shows text in the middle of the screen for a few seconds.
 func flash(text: String, seconds := 4.0) -> void:
-	_hud.flash(text, seconds)
+	hud.flash(text, seconds)
 
 
 func _open_log() -> void:
@@ -356,19 +364,62 @@ func _open_log() -> void:
 		print("[log] writing %s" % ProjectSettings.globalize_path(_log.get_path()))
 
 
-func _enter_phase(current: String) -> void:
-	_last_phase = current
-	log_event("%s begins (fuel %d%%, coins %d)" % [current, roundi(fuel * 100), coins])
+func _enter_phase(current: String, key: String) -> void:
+	var was := _last_phase
+	_last_phase = key
+	log_event("%s begins (fuel %d%%, coins %d)" % [key, roundi(fuel * 100), coins])
 	match current:
+		"day":
+			if day_number() > 1 and was != "":
+				_morning()
 		"dusk":
-			for i in traps.size():
-				if Farm.TRAPS[i]["armed"] == "dusk":
-					_set_trap.rpc(i, TrapState.ARMED, 0)
 			_announce.rpc("The light is going. Top up the generator and get to the barn.")
 		"night":
+			_night_deaths = 0
+			traps.plan_night(day_number() - 1, team_scale())
 			_announce.rpc("Night. Stay in the light. Something is out there.")
 		"dawn":
+			_morning()
 			_finish()
+
+
+## Host only, at each dawn: the creature finishes its traps; the dead come back
+## at the barn and the medical bill is paid; after a full wipe it sets more.
+func _morning() -> void:
+	var wiped := _night_deaths > 0 and living_players().is_empty()
+	traps.finish_night()
+	if wiped:
+		traps.plan(TrapField.WIPE_EXTRA.x, TrapField.WIPE_EXTRA.y)
+		traps.finish_night()
+	var bill := 0
+	if _night_deaths > 0:
+		bill = mini(BILL_CAP, BILL_FIRST + (_night_deaths - 1) * BILL_EACH)
+		bill = mini(bill, maxi(0, coins - BILL_FLOOR))
+		coins -= bill
+		_stats["bill"] += bill
+	for node in get_tree().get_nodes_in_group("players"):
+		var player := node as Player
+		if player.dead:
+			var at := Farm.SPAWN + Vector3(player.number * 1.5 - 3.0, 0, 0)
+			player.revived.rpc_id(player.get_multiplayer_authority(), at)
+			player.dead = false
+			VoiceChat.set_peer_dead(player.get_multiplayer_authority(), false)
+	var missing := TrapField.SLOTS - traps.board
+	log_event(
+		(
+			"morning: %d died, bill %d, %d traps off the pegboard%s"
+			% [_night_deaths, bill, missing, ", full wipe" if wiped else ""]
+		)
+	)
+	if phase() != "dawn":
+		_announce.rpc(
+			(
+				"Morning, day %d. Medical bill: %d. The pegboard is missing %d bear traps."
+				% [day_number(), bill, missing]
+			)
+		)
+	_night_deaths = 0
+	sync_state()
 
 
 func _finish() -> void:
@@ -378,337 +429,31 @@ func _finish() -> void:
 		var player := node as Player
 		(died if player.dead else survived).append(player.label())
 	var summary := (
-		"DAWN\n\nSurvived: %s\nTaken in the night: %s\n\nCoins: %d\nBear traps sprung: %d · Pits: %d\n"
+		(
+			"DAWN\n\nSurvived the last night: %s\nTaken in it: %s\n\n"
+			+ "Coins: %d (medical bills %d)\nBear traps sprung: %d · Pits: %d\n"
+		)
 		% [
 			", ".join(survived) if survived else "nobody",
 			", ".join(died) if died else "nobody",
 			coins,
+			_stats["bill"],
 			_stats["bear"],
 			_stats["pit"],
 		]
 	)
 	summary += (
-		"Voices from the corn: %d · Walked toward one: %d\n\nEsc twice to leave."
-		% [_stats["lures"], _stats["followed"]]
+		"Voices from the corn: %d · Walked toward one: %d (a friend's voice: %d)\n\nEsc twice to leave."
+		% [_stats["lures"], _stats["followed"], _stats["friend"]]
 	)
 	log_event("dawn: %s" % summary.replace("\n", " "))
 	_end.rpc(summary)
 
 
-func _build_world_state() -> void:
-	for item in Farm.ITEMS:
-		var charge := CAN_WATER if item["kind"] == "watering_can" else 0
-		items.append(
-			{"kind": item["kind"], "holder": 0, "position": item["position"], "charge": charge}
-		)
-		_item_nodes.append(Looks.item(self, item["kind"]))
-	items[3]["charge"] = 1  # The fuel can starts full.
-	for i in Farm.PLOTS.size():
-		plots.append(Stage.RIPE if i < 4 else Stage.DRY)
-		_grow_left.append(0.0)
-		var node := Node3D.new()
-		node.position = Farm.PLOTS[i]
-		add_child(node)
-		_plot_nodes.append(node)
-		Looks.plot(node, plots[i])
-	for spot in Farm.TRAPS:
-		var state := TrapState.ARMED if spot["armed"] == "start" else TrapState.HIDDEN
-		traps.append(
-			{"kind": spot["kind"], "position": spot["position"], "state": state, "victim": 0}
-		)
-		var node := Node3D.new()
-		node.position = spot["position"]
-		add_child(node)
-		_trap_nodes.append(node)
-		Looks.trap(node, spot["kind"], state)
-
-
-## What E would do for player right now: {text, action, index, hold}, or an
-## empty text when nothing is in reach. First match wins, so a trapped player
-## sees the way out before anything else.
-func _find_action(player: Player) -> Dictionary:
-	var me := player.get_multiplayer_authority()
-	var held := _held_index(me)
-	var kind: String = items[held]["kind"] if held >= 0 else ""
-	var charge: int = items[held]["charge"] if held >= 0 else 0
-	for found: Dictionary in [
-		_pry_action(player, me),
-		_trap_action(player, kind),
-		_item_action(player),
-		_plot_action(player, kind, charge),
-		_place_action(player, kind, charge),
-	]:
-		if found["text"] != "":
-			return found
-	return _act("", "", -1, 0.0)
-
-
-## A bear trap holding this player, or a friend.
-func _pry_action(player: Player, me: int) -> Dictionary:
-	for i in traps.size():
-		var trap := traps[i]
-		if trap["state"] == TrapState.SPRUNG and trap["kind"] == "bear":
-			if trap["victim"] == me:
-				return _act("Hold E to pry the jaws open", "pry", i, HOLD["pry"])
-			if trap["victim"] != 0 and _near(player.global_position, trap["position"], USE_RANGE):
-				return _act("Hold E to help pry them free", "pry", i, HOLD["help"])
-	return _act("", "", -1, 0.0)
-
-
-func _trap_action(player: Player, kind: String) -> Dictionary:
-	for i in traps.size():
-		var trap := traps[i]
-		if trap["state"] != TrapState.ARMED or not _looking_at(player, trap["position"], true):
-			continue
-		var bear: bool = trap["kind"] == "bear"
-		if bear and kind == "crowbar":
-			return _act("Hold E to disarm the bear trap", "disarm", i, HOLD["disarm"])
-		if bear:
-			return _act("A bear trap. You need the crowbar from the shed.", "", i, 0.0)
-		if kind == "shovel":
-			return _act("Hold E to fill in the covered pit", "fill", i, HOLD["fill"])
-		return _act("Loose ground... a covered pit. Fill it with the shovel.", "", i, 0.0)
-	return _act("", "", -1, 0.0)
-
-
-func _item_action(player: Player) -> Dictionary:
-	for i in items.size():
-		if items[i]["holder"] == 0 and _looking_at(player, items[i]["position"]):
-			return _act("E: pick up the %s" % ITEM_NAMES[items[i]["kind"]], "pickup", i, 0.0)
-	return _act("", "", -1, 0.0)
-
-
-func _plot_action(player: Player, kind: String, charge: int) -> Dictionary:
-	for i in plots.size():
-		if not _looking_at(player, Farm.PLOTS[i]):
-			continue
-		var text := ""
-		var action := ""
-		match plots[i]:
-			Stage.DRY:
-				text = "Dry. Needs the watering can."
-				if kind == "watering_can":
-					text = (
-						"E: water the turnips"
-						if charge > 0
-						else "The can is empty. Fill it at the pump."
-					)
-					action = "water" if charge > 0 else ""
-			Stage.GROWING:
-				text = "Growing..."
-			Stage.RIPE:
-				text = "E: pull the turnips" if kind == "" else "Ripe. Hands full (G to drop)."
-				action = "harvest" if kind == "" else ""
-		if text != "":
-			return _act(text, action, i, 0.0)
-	return _act("", "", -1, 0.0)
-
-
-## The pump, the shipping crate, the fuel drum and the generator.
-func _place_action(player: Player, kind: String, charge: int) -> Dictionary:
-	var text := ""
-	var action := ""
-	var hold := 0.0
-	if _looking_at(player, Farm.PUMP) and kind == "watering_can":
-		text = "E: fill the watering can"
-		action = "pump"
-	elif _looking_at(player, Farm.CRATE):
-		text = "Shipping crate. Bring turnips here."
-		if kind == "turnip":
-			text = "E: sell the turnips (+%d)" % TURNIP_PRICE
-			action = "sell"
-	elif _looking_at(player, Farm.FUEL_DRUM) and kind == "fuel_can" and charge == 0:
-		text = "E: fill the fuel can"
-		action = "fuel"
-	elif _looking_at(player, Farm.GENERATOR):
-		text = "Generator: %d%% fuel" % roundi(fuel * 100)
-		if kind == "fuel_can" and charge > 0:
-			text = "Hold E to refuel the generator"
-			action = "refuel"
-			hold = HOLD["refuel"]
-	return _act(text, action, -1, hold)
-
-
-static func _act(text: String, action: String, index: int, hold: float) -> Dictionary:
-	return {"text": text, "action": action, "index": index, "hold": hold}
-
-
-## The local player's E key: instant actions on press, held ones once held long enough.
-func _interact(player: Player, delta: float) -> void:
-	if player.dead:
-		_hud.prompt("You are dead. Drift until dawn. (WASD, Space up, Ctrl down)")
-		return
-	var found := _find_action(player)
-	var key := "%s:%d" % [found["action"], found["index"]]
-	var hold: float = found["hold"]
-	var text: String = found["text"]
-	var holding: bool = Input.is_action_pressed("interact") and found["action"] != ""
-	if hold > 0.0 and holding and key == _hold_key:
-		_hold_time += delta
-	else:
-		_hold_time = 0.0
-	_hold_key = key
-	player.kneeling = hold > 0.0 and holding and found["action"] != "pry"
-	if hold > 0.0 and _hold_time > 0.0:
-		var bars := roundi(_hold_time / hold * 10.0)
-		text += "\n[%s%s]" % ["#".repeat(bars), "-".repeat(maxi(0, 10 - bars))]
-	_hud.prompt(text)
-	if found["action"] == "":
-		return
-	if hold > 0.0 and _hold_time >= hold:
-		_hold_time = 0.0
-		player.kneeling = false
-		_request.rpc_id(1, found["action"], found["index"])
-	elif hold == 0.0 and Input.is_action_just_pressed("interact"):
-		_request.rpc_id(1, found["action"], found["index"])
-
-
-func _near(a: Vector3, b: Vector3, reach: float) -> bool:
-	return Vector2(a.x - b.x, a.z - b.z).length() <= reach
-
-
-## Within reach and in front: within LOOK_ANGLE of where the body faces, or
-## for a trap, within TRAP_LOOK_ANGLE of where the eyes look.
-func _looking_at(player: Player, point: Vector3, closely := false) -> bool:
-	if not _near(player.global_position, point, USE_RANGE):
-		return false
-	if closely:
-		return player.look_direction().angle_to(point - player.eye_position()) < TRAP_LOOK_ANGLE
-	var facing := -player.global_basis.z
-	var to_point := point - player.global_position
-	to_point.y = 0.0
-	return to_point.length() < 0.6 or Vector3(facing.x, 0, facing.z).angle_to(to_point) < LOOK_ANGLE
-
-
-## The item peer carries ({kind, holder, position, charge}), or {}.
-func held_item(peer: int) -> Dictionary:
-	var held := _held_index(peer)
-	return items[held] if held >= 0 else {}
-
-
-func _held_index(peer: int) -> int:
-	for i in items.size():
-		if items[i]["holder"] == peer:
-			return i
-	return -1
-
-
-## A player asks the host to do something. The host checks it still makes
-## sense (another player may have got there first) and applies it.
-@rpc("any_peer", "call_local", "reliable")
-func _request(action: String, index: int) -> void:
-	if not multiplayer.is_server() or ended:
-		return
-	var peer := multiplayer.get_remote_sender_id()
-	var player := get_node_or_null("Players/%d" % peer) as Player
-	if player == null or player.dead:
-		return
-	var held := _held_index(peer)
-	var kind: String = items[held]["kind"] if held >= 0 else ""
-	var at := player.global_position
-	match action:
-		"drop":
-			_drop_held(peer, player.drop_point())
-		"pickup":
-			if index < 0 or index >= items.size() or items[index]["holder"] != 0:
-				return
-			_drop_held(peer, items[index]["position"])
-			_sync_item(index, peer, items[index]["position"], items[index]["charge"])
-		"water":
-			if kind == "watering_can" and items[held]["charge"] > 0 and plots[index] == Stage.DRY:
-				_sync_item(held, peer, at, items[held]["charge"] - 1)
-				_grow_left[index] = GROW_TIME * short_factor()
-				_set_plot.rpc(index, Stage.GROWING)
-				_make_noise("water", Farm.PLOTS[index], "splash")
-		"harvest":
-			if held < 0 and plots[index] == Stage.RIPE:
-				_set_plot.rpc(index, Stage.EMPTY)
-				_sync_item(items.size(), peer, at, 0, "turnip")
-				_make_noise("harvest", Farm.PLOTS[index], "step")
-		"pump":
-			if kind == "watering_can":
-				_sync_item(held, peer, at, CAN_WATER)
-				_make_noise("pump", Farm.PUMP, "splash")
-		"sell":
-			if kind == "turnip":
-				_sync_item(held, -1, at, 0)
-				coins += TURNIP_PRICE
-				sync_state()
-				_make_noise("sell", Farm.CRATE, "coin")
-				log_event("%s sold turnips (coins %d)" % [player.label(), coins])
-		"fuel":
-			if kind == "fuel_can":
-				_sync_item(held, peer, at, 1)
-				_make_noise("fuel", Farm.FUEL_DRUM, "splash")
-		"refuel":
-			if kind == "fuel_can" and items[held]["charge"] > 0:
-				_sync_item(held, peer, at, 0)
-				fuel = minf(1.0, fuel + FUEL_PER_CAN)
-				_fuel_warned = false
-				sync_state()
-				_make_noise("refuel", Farm.GENERATOR, "clank")
-				log_event(
-					"%s refuelled the generator (%d%%)" % [player.label(), roundi(fuel * 100)]
-				)
-		"disarm", "fill":
-			var tool := "crowbar" if action == "disarm" else "shovel"
-			if index >= 0 and index < traps.size() and traps[index]["state"] == TrapState.ARMED:
-				if kind == tool:
-					_set_trap.rpc(index, TrapState.DISARMED, 0)
-					_make_noise(
-						action, traps[index]["position"], "clank" if tool == "crowbar" else "thud"
-					)
-					log_event(
-						"%s cleared %s trap %d" % [player.label(), traps[index]["kind"], index]
-					)
-		"pry":
-			if index >= 0 and index < traps.size() and traps[index]["state"] == TrapState.SPRUNG:
-				var victim: int = traps[index]["victim"]
-				var trapped := get_node_or_null("Players/%d" % victim) as Player
-				_set_trap.rpc(index, TrapState.DISARMED, 0)
-				_make_noise("pry", traps[index]["position"], "clank")
-				if trapped and not trapped.dead:
-					trapped.released.rpc_id(victim)
-				log_event("%s pried %s free" % [player.label(), _who(victim)])
-
-
 ## Host only: makes a sound every peer hears and the creature may.
-func _make_noise(what: String, at: Vector3, sound: String) -> void:
+func make_noise(what: String, at: Vector3, sound: String) -> void:
 	_sound.rpc(sound, at)
 	noise(at, NOISE[what])
-
-
-func _drop_held(peer: int, at: Vector3) -> void:
-	var held := _held_index(peer)
-	if held >= 0:
-		_sync_item(held, 0, Vector3(at.x, 0, at.z), items[held]["charge"])
-
-
-func _sync_item(index: int, holder: int, at: Vector3, charge: int, kind := "") -> void:
-	if kind == "":
-		kind = items[index]["kind"]
-	_set_item.rpc(index, kind, holder, at, charge)
-
-
-@rpc("authority", "call_local", "reliable")
-func _set_item(index: int, kind: String, holder: int, at: Vector3, charge: int) -> void:
-	while items.size() <= index:
-		items.append({"kind": kind, "holder": -1, "position": at, "charge": 0})
-		_item_nodes.append(Looks.item(self, kind))
-	items[index] = {"kind": kind, "holder": holder, "position": at, "charge": charge}
-
-
-@rpc("authority", "call_local", "reliable")
-func _set_plot(index: int, stage: int) -> void:
-	plots[index] = stage
-	Looks.plot(_plot_nodes[index], stage)
-
-
-@rpc("authority", "call_local", "reliable")
-func _set_trap(index: int, state: int, victim: int) -> void:
-	traps[index]["state"] = state
-	traps[index]["victim"] = victim
-	Looks.trap(_trap_nodes[index], traps[index]["kind"], state)
 
 
 @rpc("authority", "call_local", "reliable")
@@ -723,72 +468,75 @@ func _announce(text: String) -> void:
 
 ## Host only: sends the clock, fuel, coins and clock rate to every client.
 func sync_state() -> void:
-	_tick.rpc(clock, fuel, coins, clock_rate)
+	_tick.rpc(clock, fuel, coins, clock_rate, team_size)
 
 
 @rpc("authority", "call_remote", "unreliable_ordered")
-func _tick(host_clock: float, host_fuel: float, host_coins: int, rate: float) -> void:
+func _tick(host_clock: float, host_fuel: float, host_coins: int, rate: float, team: int) -> void:
 	clock = host_clock
 	fuel = host_fuel
 	coins = host_coins
 	clock_rate = rate
+	team_size = team
 
 
 ## Dev panel: back from the dawn screen to play on.
 @rpc("authority", "call_local", "reliable")
 func _resume() -> void:
 	ended = false
-	_hud.summary("")
+	hud.summary("")
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 @rpc("authority", "call_local", "reliable")
 func _end(summary: String) -> void:
 	ended = true
-	_hud.summary(summary)
+	hud.summary(summary)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
-## Host only: springs any armed trap a living player steps on.
-func _check_traps() -> void:
-	for i in traps.size():
-		var trap := traps[i]
-		if trap["state"] != TrapState.ARMED:
-			continue
-		var reach := BEAR_REACH if trap["kind"] == "bear" else PIT_REACH
-		for player in living_players():
-			if not _near(player.global_position, trap["position"], reach) or player.pinned:
-				continue
-			var peer := player.get_multiplayer_authority()
-			var where := _where(trap["position"])
-			if trap["kind"] == "bear":
-				_stats["bear"] += 1
-				_set_trap.rpc(i, TrapState.SPRUNG, peer)
-				player.trapped.rpc_id(peer, trap["position"])
-				_make_noise("snap", trap["position"], "snap")
-				_announce.rpc("%s is caught in a bear trap!" % player.label())
-				log_event("%s stepped in bear trap %d at %s" % [player.label(), i, where])
-			else:
-				_stats["pit"] += 1
-				_set_trap.rpc(i, TrapState.SPRUNG, 0)
-				player.stumbled.rpc_id(peer)
-				_drop_held(peer, trap["position"])
-				_make_noise("pit", trap["position"], "thud")
-				log_event("%s fell in pit %d at %s" % [player.label(), i, where])
-			break
+## Host only: player stepped on armed trap index (TrapField.check). A bear
+## trap holds them; a pit trips them and takes what they carry.
+func trap_sprung(index: int, player: Player) -> void:
+	var trap := traps.traps[index]
+	var peer := player.get_multiplayer_authority()
+	var where := _where(trap["position"])
+	if trap["kind"] == "bear":
+		_stats["bear"] += 1
+		traps.set_state(index, TrapField.State.SPRUNG, peer)
+		player.trapped.rpc_id(peer, trap["position"])
+		player.pinned = true  # Now, for day_prey; the owner's own copy follows.
+		make_noise("snap", trap["position"], "snap")
+		_announce.rpc("%s is caught in a bear trap!" % player.label())
+		log_event("%s stepped in bear trap %d at %s" % [player.label(), index, where])
+	else:
+		_stats["pit"] += 1
+		traps.set_state(index, TrapField.State.SPRUNG)
+		player.stumbled.rpc_id(peer)
+		chores.drop_held(peer, trap["position"])
+		make_noise("pit", trap["position"], "thud")
+		log_event("%s fell in pit %d at %s" % [player.label(), index, where])
 
 
 ## Host only: the creature called out. Remember who could hear it and how far
 ## away they were, and check again in LURE_CHECK seconds.
-func _on_creature_spoke(at: Vector3, line: String) -> void:
+## heard: what each listener heard, peer -> description ("Ana's 'help_me'").
+func _on_creature_spoke(at: Vector3, heard: Dictionary) -> void:
 	_stats["lures"] += 1
 	var distances := {}
+	var lines: Array[String] = []
 	for player in living_players():
+		var peer := player.get_multiplayer_authority()
 		var distance := at.distance_to(player.global_position)
 		if distance <= LURE_HEARD:
-			distances[player.get_multiplayer_authority()] = distance
-	_lure_checks.append({"due": clock + LURE_CHECK, "at": at, "distances": distances})
-	log_event("creature called '%s' from %s, heard by %s" % [line, _where(at), distances.keys()])
+			distances[peer] = distance
+			lines.append("%s heard %s" % [player.label(), heard.get(peer, "?")])
+	_lure_checks.append(
+		{"due": clock + LURE_CHECK, "at": at, "distances": distances, "heard": heard}
+	)
+	log_event(
+		"creature called from %s: %s" % [_where(at), "; ".join(lines) if lines else "nobody near"]
+	)
 
 
 func _check_lures() -> void:
@@ -803,10 +551,13 @@ func _check_lures() -> void:
 			var after := at.distance_to(player.global_position)
 			if before - after >= LURE_FOLLOWED:
 				_stats["followed"] += 1
+				var heard: String = check["heard"].get(peer, "")
+				if heard.ends_with("'") and not heard.begins_with("a generic"):
+					_stats["friend"] += 1
 				log_event(
 					(
-						"LURE WORKED: %s walked toward the voice (%.0f m -> %.0f m)"
-						% [player.label(), before, after]
+						"LURE WORKED: %s walked toward %s (%.0f m -> %.0f m)"
+						% [player.label(), check["heard"].get(peer, "the voice"), before, after]
 					)
 				)
 
@@ -821,10 +572,13 @@ static func _where(at: Vector3) -> String:
 	return "(%.0f, %.0f)%s" % [at.x, at.z, " in the corn" if Farm.in_corn(at) else ""]
 
 
-func _player_data(id: int) -> Dictionary:
+func _player_data(id: int, player_name: String) -> Dictionary:
 	var row := _players.get_parent().get_child_count() - 1  # Minus the spawner.
-	var at := Farm.SPAWN + Vector3(row * 1.5 - 0.75, 0, 0)
-	return {"id": id, "position": at, "number": row + 1}
+	var at := Farm.SPAWN + Vector3(row * 1.5 - 2.25, 0, 0)
+	var number := row + 1
+	if player_name.strip_edges() == "":
+		player_name = "Farmer %d" % number
+	return {"id": id, "position": at, "number": number, "name": player_name.left(16)}
 
 
 func _spawner(container_name: String, spawn: Callable) -> MultiplayerSpawner:
@@ -846,6 +600,7 @@ func _spawn_player(data: Dictionary) -> Node:
 	player.name = str(id)
 	player.position = data["position"]
 	player.number = data["number"]
+	player.player_name = data["name"]
 	Net.replicate(
 		player,
 		["position", "rotation", "pitch", "crouching", "sprinting", "kneeling", "lantern", "dead"]
@@ -881,55 +636,44 @@ func _step(at: Vector3, radius: float) -> void:
 
 ## Joining, step 1: the client asks for its player and the farm as it stands.
 @rpc("any_peer", "reliable")
-func _client_ready() -> void:
+func _client_ready(player_name: String) -> void:
 	var id := multiplayer.get_remote_sender_id()
-	_snapshot.rpc_id(id, items, plots, traps, clock, fuel, coins)
-	_players.spawn(_player_data(id))
+	_snapshot.rpc_id(id, chores.snapshot(), traps.snapshot(), clock, fuel, coins, in_lobby)
+	var data := _player_data(id, player_name)
+	_players.spawn(data)
+	voices.welcome(id)
+	voices.register(id, data["name"])
 	log_event("%s joined (peer %d)" % [_who(id), id])
 
 
 ## Step 2: the client takes the host's farm.
 @rpc("authority", "reliable")
 func _snapshot(
-	host_items: Array,
-	host_plots: Array,
-	host_traps: Array,
+	host_chores: Dictionary,
+	host_traps: Dictionary,
 	host_clock: float,
 	host_fuel: float,
-	host_coins: int
+	host_coins: int,
+	lobby: bool
 ) -> void:
-	for i in host_items.size():
-		var item: Dictionary = host_items[i]
-		_set_item(i, item["kind"], item["holder"], item["position"], item["charge"])
-	for i in host_plots.size():
-		_set_plot(i, host_plots[i])
-	for i in host_traps.size():
-		_set_trap(i, host_traps[i]["state"], host_traps[i]["victim"])
-	_tick(host_clock, host_fuel, host_coins, 1.0)
-	flash("Joined. Water the turnips, sell what's ripe. Be back in the barn by dark.", 6.0)
+	chores.apply_snapshot(host_chores)
+	traps.apply_snapshot(host_traps)
+	_tick(host_clock, host_fuel, host_coins, 1.0, 1)
+	in_lobby = lobby
+	if lobby:
+		add_child(Lobby.new(self))
+	else:
+		flash("Joined mid-day. Water the turnips, sell what's ripe. Back in the barn by dark.", 6.0)
 
 
 func _on_peer_disconnected(id: int) -> void:
 	print("[net] peer %d left" % id)
 	var player := get_node_or_null("Players/%d" % id)
 	if multiplayer.is_server() and player:
-		_drop_held(id, (player as Player).global_position)
+		chores.drop_held(id, (player as Player).global_position)
+		voices.forget(id)
 		player.queue_free()
 		log_event("%s left" % (player as Player).label())
-
-
-func _place_items() -> void:
-	for i in items.size():
-		var node := _item_nodes[i]
-		var holder: int = items[i]["holder"]
-		node.visible = holder != -1
-		if holder > 0:
-			var player := get_node_or_null("Players/%d" % holder) as Player
-			if player and player.hand:
-				node.global_transform = player.hand.global_transform.scaled_local(Vector3.ONE * 0.6)
-				node.visible = not player.dead
-				continue
-		node.transform = Transform3D(Basis(), items[i]["position"])
 
 
 ## Feeds the ambience what the local player is close to.

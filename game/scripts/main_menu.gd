@@ -50,6 +50,13 @@ func _build() -> void:
 	blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
 	column.add_child(blurb)
 
+	var player_name := LineEdit.new()
+	player_name.text = Net.player_name
+	player_name.placeholder_text = "Your name (teammates record it)"
+	player_name.max_length = 16
+	player_name.text_changed.connect(func(text: String) -> void: Net.player_name = text)
+	column.add_child(player_name)
+
 	_address = LineEdit.new()
 	_address.text = Net.address
 	_address.placeholder_text = "Host address"
@@ -84,6 +91,7 @@ func _build() -> void:
 	var help := Label.new()
 	help.text = (
 		"WASD move · Shift sprint · Ctrl crouch · E use (hold for traps) · G drop · F lantern\n"
+		+ "Hold V to talk to whoever is near · 2 to 4 players\n"
 		+ "Esc frees the mouse · Esc again leaves · Port %d" % Net.port
 	)
 	help.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

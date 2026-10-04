@@ -1,18 +1,25 @@
 extends Node
 ## Headless smoke test, run by tools/check.sh. Hosts a session alone and plays
-## through Phase 1 by script: the creature lures from the corn and the lure is
-## logged as followed, chores work, traps spring and clear, dusk arms more
-## traps and lights the barn, the generator burns and takes fuel, the lit barn
-## keeps the creature out, and at night it kills a player in the open, which
-## (alone) brings dawn. By day the creature must never leave the corn.
-## Exits 0 on pass, 1 on fail.
+## through Phase 2 by script: the lobby holds the clock and the voice bank
+## takes, blocks and picks recordings; the creature lures from the corn in a
+## friend's recorded voice and following it is logged; chores work; traps
+## spring, clear and go back on the pegboard; a player stuck alone in a bear
+## trap can be killed by day; dusk lights the barn and the generator takes
+## fuel; at night the creature takes traps from the pegboard and sets them, and
+## an off-board trap vanishes; the lit barn keeps it out; it kills in the open,
+## and the wipe brings morning, the medical bill and extra traps; day 2's night
+## ends the run. By day the creature never leaves the corn unless it is coming
+## for a trapped player. Exits 0 on pass, 1 on fail.
 
 const SPEEDUP := 4.0
+const FRIEND := 2  ## A pretend second player whose recordings the creature uses.
 
 var _failed := false
 var _game: Game
 var _player: Player
-var _left_corn := 0  ## Physics frames the creature spent out of the corn by day.
+var _dev: Dev
+var _armed_before_wipe := 0  ## Armed traps just before the night's wipe.
+var _left_corn := 0  ## Physics frames the creature spent out of the corn by day, not hunting.
 
 
 func _ready() -> void:
@@ -29,6 +36,10 @@ func _ready() -> void:
 		_finish()
 		return
 	_player.set_physics_process(false)  # The test moves it.
+	_dev = Dev.new()
+	_dev.game = _game
+	_game.add_child(_dev)
+	await _check_lobby()
 	_check_routes()
 	Engine.time_scale = SPEEDUP
 	await _check_lure()
@@ -37,6 +48,8 @@ func _ready() -> void:
 	_check(_left_corn == 0, "the creature stayed in the corn by day (%d frames out)" % _left_corn)
 	await _check_dusk()
 	await _check_night()
+	await _check_morning()
+	await _check_day_prey()
 	await _check_dev()
 	Engine.time_scale = 1.0
 	_finish()
@@ -46,8 +59,50 @@ func _physics_process(_delta: float) -> void:
 	if _game and _game.creature and _game.phase() == "day":
 		var at := _game.creature.global_position
 		# The corn-only grid's cell centres sit up to half a cell inside the edge.
-		if maxf(absf(at.x), absf(at.z)) < Farm.CORN_IN - 1.0:
+		var hunting := _game.creature.state == Creature.State.CHASE
+		if maxf(absf(at.x), absf(at.z)) < Farm.CORN_IN - 1.0 and not hunting:
 			_left_corn += 1
+
+
+## The lobby holds the clock and the creature; the voice bank keeps takes,
+## honours blocks, and picks a friend's voice over your own.
+func _check_lobby() -> void:
+	_check(_game.phase() == "lobby", "the session opens in the lobby")
+	var held := _game.creature.global_position
+	await _frames(30)
+	_check(_game.clock == 0.0, "the clock waits in the lobby")
+	_check(_game.creature.global_position == held, "the creature waits in the lobby")
+	var voices := _game.voices
+	_check(voices.names.get(1, "") != "", "the host's name is known (%s)" % voices.names.get(1, ""))
+	var tone := PackedFloat32Array()
+	tone.resize(VoiceCodec.RATE)  # One second.
+	for i in tone.size():
+		tone[i] = 0.3 * sin(TAU * 220.0 * i / VoiceCodec.RATE)
+	voices.rpc_id(1, "_receive_take", "help_me", VoiceCodec.encode(tone))
+	await _frames(2)
+	_check(voices.counts.get(1, 0) == 1, "a recorded take reached the host")
+	_check(voices.pick(1).get("source", 0) == 1, "with only your voice, you may hear your own")
+	voices.rpc_id(1, "_receive_block", [1])
+	await _frames(2)
+	_check(voices.pick(1).is_empty(), "a blocked voice is never played to that player")
+	voices.rpc_id(1, "_receive_block", [])
+	# A friend who recorded "over here" and the host's name.
+	voices.call("_set_name", FRIEND, "Bea")
+	var friend_takes := {
+		"over_here": [VoiceCodec.encode(tone)], "name_1": [VoiceCodec.encode(tone)]
+	}
+	voices.get("_takes")[FRIEND] = friend_takes
+	var friend := 0
+	var named := 0
+	for i in 40:
+		var pick := voices.pick(1)
+		friend += 1 if pick["source"] == FRIEND else 0
+		named += 1 if pick["key"] == "name_1" else 0
+	_check(friend > 30, "a friend's voice is picked far more than your own (%d of 40)" % friend)
+	_check(named > 5, "it sometimes calls you by name in a friend's voice (%d of 40)" % named)
+	_game.start_day()
+	await _frames(3)
+	_check(_game.phase() == "day" and _game.day_number() == 1, "the host started day 1")
 
 
 func _check_routes() -> void:
@@ -64,6 +119,11 @@ func _check_routes() -> void:
 	var outside := lit.all(func(point: Vector3) -> bool: return not Farm.in_barn(point))
 	_check(outside, "no route enters the lit barn")
 	farm.set_barn_lit(false)
+	var spots := Farm.trap_spots()
+	_check(
+		spots["corn"].size() > 20 and spots["path"].size() > 10,
+		"trap spots in the corn and on the paths"
+	)
 
 
 ## Stands the player alone near the north corn, makes the creature due a lure,
@@ -84,6 +144,7 @@ func _check_lure() -> void:
 	_put(_player, _player.global_position.move_toward(voice, 7.0))
 	await _game_seconds(Game.LURE_CHECK + 1.0)
 	_check(_game.get("_stats")["followed"] > 0, "walking toward the voice was logged")
+	_check(_game.get("_stats")["friend"] > 0, "it was a friend's recorded voice")
 	var calls: int = _game.get("_stats")["lures"]
 	_check(calls >= 2, "it backed off and called again (%d calls)" % calls)
 	# Spots for calls in a row, all from the same player, should spread out.
@@ -98,55 +159,92 @@ func _check_lure() -> void:
 
 
 func _check_chores() -> void:
+	var chores := _game.chores
 	_put(_player, Farm.ITEMS[0]["position"] + Vector3(0, 0, 1))
 	await _ask("pickup", 0)
 	_check(_held() == "watering_can", "picked up the watering can")
 	_put(_player, Farm.PLOTS[4] + Vector3(0, 0, -1.5))
 	await _ask("water", 4)
-	_check(_game.plots[4] == Game.Stage.GROWING, "watered a plot")
-	_game.get("_grow_left")[4] = 0.05
+	_check(chores.plots[4] == Chores.Stage.GROWING, "watered a plot")
+	chores.get("_grow_left")[4] = 0.05
 	await _frames(5)
-	_check(_game.plots[4] == Game.Stage.RIPE, "the watered plot ripened")
+	_check(chores.plots[4] == Chores.Stage.RIPE, "the watered plot ripened")
 	await _ask("drop", -1)
 	await _ask("harvest", 0)
 	_check(_held() == "turnip", "pulled turnips")
 	await _ask("sell", -1)
-	_check(_game.coins == Game.TURNIP_PRICE and _held() == "", "sold them for %d" % _game.coins)
+	_check(_game.coins == Chores.TURNIP_PRICE and _held() == "", "sold them for %d" % _game.coins)
 
 
 func _check_traps() -> void:
-	_put(_player, Farm.TRAPS[0]["position"])
+	var traps := _game.traps
+	var bear := _arm("bear", Vector3(10, 0, 20))
+	_put(_player, Vector3(10, 0, 20))
 	await _frames(3)
-	_check(_game.traps[0]["state"] == Game.TrapState.SPRUNG, "stepping on a bear trap springs it")
+	_check(
+		traps.traps[bear]["state"] == TrapField.State.SPRUNG, "stepping on a bear trap springs it"
+	)
 	_check(_player.pinned, "the bear trap holds the player")
-	await _ask("pry", 0)
+	await _ask("pry", bear)
 	_check(not _player.pinned and _player.slowed_left > 0.0, "prying free leaves a limp")
-	_check(_game.traps[0]["state"] == Game.TrapState.DISARMED, "the sprung trap is spent")
+	_check(traps.traps[bear]["state"] == TrapField.State.DISARMED, "the sprung trap is spent")
+	await _ask("take_trap", bear)
+	_check(_held() == "bear_trap", "picked up the spent bear trap")
+	traps.set_board(TrapField.SLOTS - 1)  # As if the creature had taken one.
+	await _frames(2)
+	_put(_player, Vector3(Farm.PEGBOARD.x, 0, Farm.PEGBOARD.z + 1.0))
+	await _ask("hang", -1)
+	_check(traps.board == TrapField.SLOTS and _held() == "", "hung it back on the pegboard")
 
 	_put(_player, Farm.ITEMS[2]["position"] + Vector3(0, 0, 1))
 	await _ask("pickup", 2)
-	_put(_player, Farm.TRAPS[2]["position"])
+	var pit := _arm("pit", Vector3(-10, 0, 20))
+	_put(_player, Vector3(-10, 0, 20))
 	await _frames(3)
-	_check(_game.traps[2]["state"] == Game.TrapState.SPRUNG, "stepping on a covered pit opens it")
+	_check(
+		traps.traps[pit]["state"] == TrapField.State.SPRUNG, "stepping on a covered pit opens it"
+	)
 	_check(
 		_held() == "" and _player.stumble_left > 0.0,
 		"the pit tripped the player and took the crowbar"
 	)
 	await _ask("pickup", 2)
-	_put(_player, Farm.TRAPS[3]["position"] + Vector3(1.2, 0, 0))
-	await _ask("disarm", 3)
+	var second := _arm("bear", Vector3(-14, 0, 20))
+	_put(_player, Vector3(-12.8, 0, 20))
+	await _ask("disarm", second)
 	_check(
-		_game.traps[3]["state"] == Game.TrapState.DISARMED, "disarmed a bear trap with the crowbar"
+		traps.traps[second]["state"] == TrapField.State.DISARMED,
+		"disarmed a bear trap with the crowbar"
 	)
+	await _ask("drop", -1)
+
+
+## Day 2: stuck in a bear trap with nobody near, the creature comes and kills.
+func _check_day_prey() -> void:
+	var trap := _arm("bear", Vector3(0, 0, 24))
+	_put(_player, Vector3(0, 0, 24))
+	# Placed afresh: after the night's kill it would still be retreating.
+	_game.creature.place(Vector3(0, 0, 36))
+	var killed := false
+	for i in roundi((Game.ALONE_TIME + 20.0) * 60 / SPEEDUP):
+		await get_tree().physics_frame
+		if _player.dead:
+			killed = true
+			break
+	_check(
+		_game.traps.traps[trap]["state"] == TrapField.State.SPRUNG, "the day trap held the player"
+	)
+	_check(killed, "trapped and alone by day, the creature came and killed")
+	await _frames(5)
+	# Alone, that was a wipe on the last day: the run is over.
+	_check(_game.ended and _game.phase() == "dawn", "a wipe on the last day ends the run")
 
 
 func _check_dusk() -> void:
-	_game.skip_phase()
+	_dev.skip_phase()
 	await _frames(3)
 	_check(_game.phase() == "dusk", "dusk came")
-	_check(_game.traps[5]["state"] == Game.TrapState.ARMED, "dusk armed the next traps")
 	_check(_game.farm.barn_lit(), "the barn lights came on")
-	await _ask("drop", -1)
 	_put(_player, Farm.ITEMS[3]["position"] + Vector3(0, 0, 1))
 	await _ask("pickup", 3)
 	_put(_player, Farm.GENERATOR + Vector3(0, 0, 1.2))
@@ -157,21 +255,38 @@ func _check_dusk() -> void:
 	)
 	await _game_seconds(5.0)
 	_check(_game.fuel < 1.0, "the generator burns fuel")
+	await _ask("drop", -1)
 
 
 func _check_night() -> void:
-	_game.skip_phase()
+	var traps := _game.traps
+	# A spent bear trap left lying far from anyone: the creature's at nightfall.
+	var lying := _arm("bear", Vector3(25, 0, -20))
+	traps.set_state(lying, TrapField.State.DISARMED)
+	_put(_player, Vector3(0, 0, -19))  # In the lit barn.
+	var armed_before := traps.armed_positions().size()
+	_dev.skip_phase()
 	await _frames(3)
 	_check(_game.phase() == "night", "night came")
-	# In the lit barn, with the creature at the door: it must not get in.
-	_put(_player, Vector3(0, 0, -19))
-	_game.creature.global_position = Vector3(0, 0, -8)
-	await _game_seconds(8.0)
-	_check(not _player.dead, "the lit barn kept the creature out")
+	_check(not traps.orders.is_empty(), "the creature has traps to set tonight")
+	await _game_seconds(3.0)
+	_check(traps.traps[lying]["state"] == TrapField.State.HIDDEN, "an off-board trap vanished")
+	_check(traps.stock >= 1, "vanished traps become the creature's to set (%d)" % traps.stock)
+	traps.plan(3, 1)  # More bear traps than it holds, so it needs the pegboard.
+	_game.creature.global_position = Farm.SHED_DOOR_OUT + Vector3(0, 0, 6)
+	for i in roundi(200.0 * 60 / SPEEDUP):
+		await get_tree().physics_frame
+		if traps.orders.is_empty():
+			break
 	_check(
-		not Farm.in_barn(_game.creature.global_position), "the creature stayed outside the lit barn"
+		traps.board < TrapField.SLOTS,
+		"it took bear traps from the pegboard (%d left)" % traps.board
 	)
+	var placed := traps.armed_positions().size() - armed_before
+	_check(placed >= 2 and traps.orders.is_empty(), "it set tonight's traps (%d)" % placed)
+	_check(not _player.dead, "the lit barn kept the creature out")
 	# In the open with a lantern: it should come.
+	_armed_before_wipe = traps.armed_positions().size()
 	_put(_player, Vector3(0, 0, 20))
 	_player.lantern = true
 	_game.creature.global_position = Vector3(0, 0, 27)
@@ -181,50 +296,59 @@ func _check_night() -> void:
 		if _player.dead:
 			break
 	_check(_player.dead, "the creature killed a player in the open at night")
+
+
+## With everyone dead the night ends: morning of day 2, back at the barn, the
+## bill paid (never below a seed pack), and the wipe's extra traps set.
+func _check_morning() -> void:
+	var armed_before := _armed_before_wipe
 	await _frames(5)
-	_check(_game.ended, "with everyone dead, dawn came")
+	_check(_game.day_number() == 2 and _game.phase() == "day", "a wipe brings the morning of day 2")
+	_check(not _player.dead and _player.global_position.z < 0.0, "the dead came back at the barn")
+	_check(
+		_game.coins == Game.BILL_FLOOR,
+		"the medical bill left a seed pack's worth (%d)" % _game.coins
+	)
+	var extra := _game.traps.armed_positions().size() - armed_before
+	_check(extra >= 1, "after the wipe it set extra traps (%d)" % extra)
 
 
-## The developer panel builds and its controls reach the game.
+## The developer panel's controls reach the game.
 func _check_dev() -> void:
-	var dev := Dev.new()
-	dev.game = _game
-	_game.add_child(dev)
-	_game.jump_to("day")
+	_dev.jump_to("day")
 	await _frames(3)
 	_check(not _game.ended and _game.phase() == "day", "dev: back to day from the dawn screen")
-	_game.revive(_player)
-	await _frames(3)
-	_check(not _player.dead, "dev: came back to life")
 	var before := _game.clock
-	dev.call("_set_speed", 10.0)
+	_dev.call("_set_speed", 10.0)
 	await _game_seconds(1.0)
 	_check(_game.clock - before > 5.0, "dev: time x10 (%.1f s in 1 s)" % (_game.clock - before))
-	dev.call("_set_speed", 1.0)
+	_dev.call("_set_speed", 1.0)
 	var calls: int = _game.get("_stats")["lures"]
-	dev.call("_call_now")
+	_dev.call("_call_now")
 	_check(_game.get("_stats")["lures"] == calls + 1, "dev: the creature called on demand")
-	_game.set_all_traps(true)
-	var armed := _game.traps.all(
-		func(trap: Dictionary) -> bool: return trap["state"] == Game.TrapState.ARMED
+	_dev.set_all_traps(true)
+	var armed := _game.traps.traps.all(
+		func(trap: Dictionary) -> bool:
+			return trap["state"] in [TrapField.State.ARMED, TrapField.State.HIDDEN]
 	)
 	_check(armed, "dev: armed every trap")
-	_game.set_fuel(0.1)
+	_dev.set_fuel(0.1)
 	_check(is_equal_approx(_game.fuel, 0.1), "dev: set the fuel")
-	dev.queue_free()
+
+
+func _arm(kind: String, at: Vector3) -> int:
+	_game.traps.arm(kind, at)
+	return _game.traps.traps.size() - 1
 
 
 ## Sends a request to the host as the player would (the host is this process).
 func _ask(action: String, index: int) -> void:
-	_game.rpc_id(1, "_request", action, index)
+	_game.chores.request(action, index)
 	await _frames(2)
 
 
 func _held() -> String:
-	for item in _game.items:
-		if item["holder"] == 1:
-			return item["kind"]
-	return ""
+	return _game.chores.held_item(1).get("kind", "")
 
 
 func _put(body: Node3D, at: Vector3) -> void:
@@ -251,10 +375,11 @@ func _check(ok: bool, what: String) -> bool:
 ## sounds still playing leaks their playbacks, which check.sh fails on.
 func _finish() -> void:
 	print("SMOKE FAIL" if _failed else "SMOKE PASS")
+	# The whole tree: the VoiceChat autoload's microphone player counts too.
+	for kind: String in ["AudioStreamPlayer", "AudioStreamPlayer3D"]:
+		for sound in get_tree().root.find_children("*", kind, true, false):
+			sound.call("stop")
 	if _game:
-		for kind: String in ["AudioStreamPlayer", "AudioStreamPlayer3D"]:
-			for sound in _game.find_children("*", kind, true, false):
-				sound.call("stop")
 		_game.queue_free()
 	await _frames(10)
 	Sfx.clear_cache()

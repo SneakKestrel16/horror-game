@@ -37,6 +37,7 @@ var lantern := false
 var dead := false
 
 var number := 0  ## Farmer 1 hosts; set from the spawn data on every peer.
+var player_name := ""  ## From the main menu; also set from the spawn data.
 var stamina := STAMINA
 var pinned := false  ## Held by a bear trap.
 var slowed_left := 0.0
@@ -92,7 +93,13 @@ func _ready() -> void:
 		_camera.far = 300.0
 		_head.add_child(_camera)
 		_camera.make_current()
-		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+		if not get_tree().get_first_node_in_group("lobby"):
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	else:
+		# Their voice, from where they stand (proximity chat, addons/voice_chat).
+		var speaker := VoiceSpeaker.new()
+		speaker.peer_id = get_multiplayer_authority()
+		_head.add_child(speaker)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -193,9 +200,9 @@ func drop_point() -> Vector3:
 	return global_position - global_basis.z * 0.6
 
 
-## "Farmer N", for messages and logs.
+## The player's name ("Farmer N" without one), for messages and logs.
 func label() -> String:
-	return "Farmer %d" % number
+	return player_name if player_name != "" else "Farmer %d" % number
 
 
 ## Where the eyes are, in world space.
@@ -240,13 +247,15 @@ func killed() -> void:
 	collision_mask = 0
 
 
-## Sent by the host (dev panel): back from the dead where the ghost is.
+## Sent by the host: back from the dead at a point (dawn, or the dev panel).
 @rpc("any_peer", "call_local", "reliable")
-func revived() -> void:
+func revived(at: Vector3) -> void:
 	dead = false
+	pinned = false
+	slowed_left = 0.0
 	collision_layer = 1
 	collision_mask = 1
-	global_position.y = 0.05
+	global_position = Vector3(at.x, 0.05, at.z)
 
 
 func _part(mesh: PrimitiveMesh, at: Vector3, size: Vector3, colour: Color) -> void:

@@ -21,6 +21,11 @@ const ITEM_PARTS := {
 		["box", Vector3(0, 0.8, -0.05), Vector3(0.035, 0.035, 0.12), Color(0.55, 0.12, 0.1)],
 	],
 	"fuel_can": [["box", Vector3(0, 0.2, 0), Vector3(0.3, 0.4, 0.15), Color(0.75, 0.15, 0.1)]],
+	"bear_trap":
+	[
+		["torus", Vector3(0, 0.25, 0), Vector3(0.45, 0.5, 0.45), Color(0.32, 0.3, 0.28)],
+		["box", Vector3(0, 0.25, 0), Vector3(0.05, 0.4, 0.45), Color(0.32, 0.3, 0.28)],
+	],
 	"turnip":
 	[
 		["sphere", Vector3(0, 0.12, 0), Vector3(0.22, 0.2, 0.22), Color(0.88, 0.85, 0.9)],
@@ -39,32 +44,32 @@ static func item(parent: Node3D, kind: String) -> Node3D:
 	return node
 
 
-## Rebuilds a plot's soil and turnips for its Game.Stage.
+## Rebuilds a plot's soil and turnips for its Chores.Stage.
 static func plot(node: Node3D, stage: int) -> void:
 	_clear(node)
-	var soil := Color(0.16, 0.1, 0.06) if stage == Game.Stage.GROWING else Color(0.22, 0.15, 0.09)
+	var soil := Color(0.16, 0.1, 0.06) if stage == Chores.Stage.GROWING else Color(0.22, 0.15, 0.09)
 	mesh(node, "box", Vector3(0, 0.035, 0), Vector3(2.3, 0.02, 2.3), soil)
-	if stage == Game.Stage.EMPTY:
+	if stage == Chores.Stage.EMPTY:
 		return
-	var leaf := 0.35 if stage == Game.Stage.RIPE else 0.18
+	var leaf := 0.35 if stage == Chores.Stage.RIPE else 0.18
 	for x in 3:
 		for z in 3:
 			var at := Vector3((x - 1) * 0.65, leaf / 2.0, (z - 1) * 0.65)
 			mesh(node, "sphere", at, Vector3(leaf, leaf, leaf), Color(0.25, 0.55, 0.2))
-			if stage == Game.Stage.RIPE:
+			if stage == Chores.Stage.RIPE:
 				var top := at + Vector3(0.1, -leaf / 2.0 + 0.05, 0.1)
 				mesh(node, "sphere", top, Vector3(0.14, 0.1, 0.14), Color(0.8, 0.5, 0.8))
 
 
-## Rebuilds a trap for its Game.TrapState. An armed pit is husks over a hole,
+## Rebuilds a trap for its TrapField.State. An armed pit is husks over a hole,
 ## only a little paler than the dirt; an armed bear trap lies open and flat.
 static func trap(node: Node3D, kind: String, state: int) -> void:
 	_clear(node)
-	if state == Game.TrapState.HIDDEN:
+	if state == TrapField.State.HIDDEN:
 		return
 	if kind == "pit":
 		match state:
-			Game.TrapState.ARMED:
+			TrapField.State.ARMED:
 				mesh(
 					node,
 					"box",
@@ -72,7 +77,7 @@ static func trap(node: Node3D, kind: String, state: int) -> void:
 					Vector3(1.1, 0.03, 1.0),
 					Color(0.42, 0.36, 0.22)
 				)
-			Game.TrapState.SPRUNG:
+			TrapField.State.SPRUNG:
 				mesh(
 					node,
 					"cylinder",
@@ -80,11 +85,11 @@ static func trap(node: Node3D, kind: String, state: int) -> void:
 					Vector3(1, 0.01, 1),
 					Color(0.02, 0.02, 0.01)
 				)
-			Game.TrapState.DISARMED:
+			TrapField.State.DISARMED:
 				mesh(node, "sphere", Vector3.ZERO, Vector3(1.0, 0.18, 1.0), Color(0.3, 0.2, 0.12))
 		return
 	mesh(node, "torus", Vector3(0, 0.03, 0), Vector3(0.55, 0.3, 0.55), METAL)
-	if state == Game.TrapState.ARMED:
+	if state == TrapField.State.ARMED:
 		mesh(node, "box", Vector3(-0.22, 0.03, 0), Vector3(0.18, 0.02, 0.5), METAL)
 		mesh(node, "box", Vector3(0.22, 0.03, 0), Vector3(0.18, 0.02, 0.5), METAL)
 		mesh(
@@ -115,6 +120,31 @@ static func mesh(parent: Node3D, shape: String, at: Vector3, size: Vector3, colo
 	instance.position = at
 	instance.scale = size
 	parent.add_child(instance)
+
+
+## Rebuilds the pegboard: painted outlines for every slot, a trap hanging in
+## the first filled ones, so one glance shows how many are gone.
+static func pegboard(node: Node3D, filled: int, slots: int) -> void:
+	_clear(node)
+	mesh(node, "box", Vector3.ZERO, Vector3(2.6, 1.3, 0.05), Color(0.55, 0.45, 0.3))
+	for i in slots:
+		var at := Vector3(-0.96 + i * 0.64, 0.0, 0.035)
+		var paint := Color(0.92, 0.92, 0.88)
+		for edge: Vector3 in [Vector3(0, 0.28, 0), Vector3(0, -0.28, 0)]:
+			mesh(node, "box", at + edge, Vector3(0.5, 0.03, 0.01), paint)
+		for edge: Vector3 in [Vector3(-0.25, 0, 0), Vector3(0.25, 0, 0)]:
+			mesh(node, "box", at + edge, Vector3(0.03, 0.56, 0.01), paint)
+		if i < filled:
+			var hanging := MeshInstance3D.new()
+			var ring := TorusMesh.new()
+			var material := StandardMaterial3D.new()
+			material.albedo_color = METAL
+			ring.material = material
+			hanging.mesh = ring
+			hanging.position = at + Vector3(0, 0, 0.06)
+			hanging.rotation.x = PI / 2.0
+			hanging.scale = Vector3(0.21, 0.3, 0.21)
+			node.add_child(hanging)
 
 
 static func _clear(node: Node3D) -> void:

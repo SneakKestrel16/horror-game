@@ -18,6 +18,13 @@ static func get_sound(sound: String) -> AudioStreamWAV:
 	return _cache[sound]
 
 
+## A one-shot sound from raw samples (-1 to 1) at a sample rate.
+static func from_samples(samples: PackedFloat32Array, rate: int) -> AudioStreamWAV:
+	var wav := _wav(samples, false)
+	wav.mix_rate = rate
+	return wav
+
+
 ## Drops the built sounds (they are rebuilt when next asked for).
 static func clear_cache() -> void:
 	_cache.clear()

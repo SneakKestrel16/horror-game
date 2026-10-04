@@ -46,8 +46,8 @@ func _ready() -> void:
 	var phases := HBoxContainer.new()
 	column.add_child(phases)
 	for target: String in ["day", "dusk", "night", "dawn"]:
-		_button(phases, target.capitalize(), func() -> void: game.jump_to(target))
-	_button(column, "Skip to the next phase", func() -> void: game.skip_phase())
+		_button(phases, target.capitalize(), func() -> void: jump_to(target))
+	_button(column, "Skip to the next phase", func() -> void: skip_phase())
 
 	_heading(column, "Creature")
 	_button(column, "Call out now (a voice line from where it is)", _call_now)
@@ -62,8 +62,16 @@ func _ready() -> void:
 	_toggle(column, "Freeze it", func(on: bool) -> void: _creature().set_physics_process(not on))
 
 	_heading(column, "Events")
+	_button(column, "Start the day (leave the lobby)", func() -> void: game.start_day())
+	_button(column, "Creature takes and sets tonight's traps now", _set_traps_now)
+	_button(
+		column,
+		"Call me with a recorded voice (lure me)",
+		func() -> void: _creature().lure_now(_me())
+	)
+	_button(column, "Skip to the next morning", _next_morning)
 	var later := Label.new()
-	later.text = "Jumpscares, recorded voices and marks arrive in later phases."
+	later.text = "Jumpscares and marks arrive in Phase 3."
 	later.add_theme_font_size_override("font_size", 12)
 	later.modulate = Color(1, 1, 1, 0.6)
 	later.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -72,18 +80,18 @@ func _ready() -> void:
 	_heading(column, "Farm")
 	var fuel := HBoxContainer.new()
 	column.add_child(fuel)
-	_button(fuel, "Fuel full", func() -> void: game.set_fuel(1.0))
-	_button(fuel, "Fuel 10%", func() -> void: game.set_fuel(0.1))
-	_button(fuel, "Fuel empty", func() -> void: game.set_fuel(0.0))
+	_button(fuel, "Fuel full", func() -> void: set_fuel(1.0))
+	_button(fuel, "Fuel 10%", func() -> void: set_fuel(0.1))
+	_button(fuel, "Fuel empty", func() -> void: set_fuel(0.0))
 	var traps := HBoxContainer.new()
 	column.add_child(traps)
-	_button(traps, "Arm all traps", func() -> void: game.set_all_traps(true))
-	_button(traps, "Clear all traps", func() -> void: game.set_all_traps(false))
-	_button(column, "Ripen every plot", func() -> void: game.ripen_all())
+	_button(traps, "Arm all traps", func() -> void: set_all_traps(true))
+	_button(traps, "Clear all traps", func() -> void: set_all_traps(false))
+	_button(column, "Ripen every plot", func() -> void: game.chores.ripen_all())
 
 	_heading(column, "Me")
 	_button(column, "Die", _die)
-	_button(column, "Come back to life", func() -> void: game.revive(_me()))
+	_button(column, "Come back to life", func() -> void: revive(_me()))
 	_button(column, "Teleport to the barn", func() -> void: _teleport(Farm.SPAWN))
 
 
@@ -143,6 +151,18 @@ func _set_speed(speed: float) -> void:
 	game.log_event("dev: time x%d" % speed)
 
 
+## Plans tonight's traps if none are planned, and has them all set at once.
+func _set_traps_now() -> void:
+	if game.traps.orders.is_empty():
+		game.traps.plan_night(game.day_number() - 1, game.team_scale())
+	game.traps.finish_night()
+	game.log_event("dev: tonight's traps set at once")
+
+
+func _next_morning() -> void:
+	jump_to("dawn")
+
+
 func _call_now() -> void:
 	_creature().speak_now()
 
@@ -184,6 +204,72 @@ func _teleport(at: Vector3) -> void:
 	var me := _me()
 	me.global_position = Vector3(at.x, 0.05, at.z)
 	me.velocity = Vector3.ZERO
+
+
+# Host helpers for the panel and the smoke test. They reach into the game's
+# internals on purpose; nothing in play calls them.
+
+
+## Host only (dev panel): jumps to the start of a phase of today ("day"
+## restarts it; "dawn" is the next morning).
+func jump_to(target: String) -> void:
+	game.start_day()
+	var factor := game.short_factor()
+	var starts := {
+		"day": 0.0,
+		"dusk": Game.DAY,
+		"night": Game.DAY + Game.DUSK,
+		"dawn": Game.DAY + Game.DUSK + Game.NIGHT
+	}
+	game.clock = (game.day_number() - 1) * game._cycle() + starts[target] * factor
+	game._last_phase = ""  # Announce the phase again, even going back.
+	if game.ended and target != "dawn":
+		game._resume.rpc()
+	game.sync_state()
+	game.log_event("dev: jumped to %s" % target)
+
+
+## Host only (dev panel): sets the generator's fuel (0 to 1).
+func set_fuel(amount: float) -> void:
+	game.fuel = amount
+	game.fuel_warned = amount < Game.FLICKER_BELOW
+	game.sync_state()
+	game.log_event("dev: fuel set to %d%%" % roundi(amount * 100))
+
+
+## Host only (dev panel): arms or clears every trap; sprung game.traps let go.
+func set_all_traps(armed: bool) -> void:
+	game.log_event("dev: %s every trap" % ("armed" if armed else "cleared"))
+	for i in game.traps.traps.size():
+		var trap := game.traps.traps[i]
+		var victim: int = trap["victim"]
+		if victim != 0:
+			var player := game.get_node_or_null("Players/%d" % victim) as Player
+			if player:
+				player.released.rpc_id(victim)
+		if trap["state"] != TrapField.State.HIDDEN:
+			game.traps.set_state(i, TrapField.State.ARMED if armed else TrapField.State.DISARMED)
+
+
+## Host only (dev panel): brings a dead player back where they are.
+func revive(player: Player) -> void:
+	if player.dead:
+		player.revived.rpc_id(player.get_multiplayer_authority(), player.global_position)
+		player.dead = false
+		VoiceChat.set_peer_dead(player.get_multiplayer_authority(), false)
+		game.log_event("dev: revived %s" % player.label())
+
+
+## Host only (dev mode, smoke test): jumps to the start of the next phase.
+func skip_phase() -> void:
+	game.start_day()
+	var factor := game.short_factor()
+	var base := (game.day_number() - 1) * game._cycle()
+	for start: float in [Game.DAY, Game.DAY + Game.DUSK, Game.DAY + Game.DUSK + Game.NIGHT]:
+		if game.clock < base + start * factor:
+			game.log_event("dev: skipped %.0f s ahead" % (base + start * factor - game.clock))
+			game.clock = base + start * factor
+			return
 
 
 func _heading(parent: Control, text: String) -> void:

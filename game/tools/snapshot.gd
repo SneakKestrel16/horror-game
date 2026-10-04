@@ -2,7 +2,7 @@ extends Node
 ## Hosts a game, sets the clock, looks from a point and saves a PNG, so the
 ## farm can be checked without playing. Opens a window briefly:
 ##   godot --path game res://tools/snapshot.tscn -- --clock=430 --from=0,1.6,-3
-##       --look=0,1,20 --out=shot.png [--creature=0,0,8] [--dev --panel]
+##       --look=0,1,20 --out=shot.png [--creature=0,0,8] [--dev --panel] [--lobby] [--board=2]
 ## --clock is seconds into the day (day 0-360, dusk -420, night -720).
 
 var _game: Game
@@ -30,6 +30,11 @@ func _ready() -> void:
 	get_tree().root.add_child.call_deferred(_game)
 	for i in 10:
 		await get_tree().physics_frame
+	for arg in OS.get_cmdline_user_args():  # --board=N: that many traps on the pegboard.
+		if arg.begins_with("--board="):
+			_game.traps.set_board(arg.trim_prefix("--board=").to_int())
+	if "--lobby" not in OS.get_cmdline_user_args():  # --lobby: leave the lobby screen up.
+		_game.start_day()
 	_game.clock = clock
 	var player := _game.local_player()
 	player.set_physics_process(false)

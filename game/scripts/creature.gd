@@ -5,17 +5,22 @@ extends CharacterBody3D
 ## calls out in a generic voice from cover. Each call is placed around where its
 ## target is now, out of their view and past an armed trap when it can, and
 ## never near its last few calls; if they walk toward it, it backs off and calls
-## again from deeper in. By day that is all it does, and it never leaves the
-## corn. At night it walks the farm, waits by the fuel run while everyone hides
-## in the lit barn, chases any player it hears and then sees, and kills on
-## reaching them. It will not enter the barn while the lights are on.
+## again from deeper in. It calls in a friend's recorded voice when it has one
+## (VoiceBank), each listener hearing their own pick, with a random small tell.
+## By day that is all it does, and it never leaves the corn, unless a player is
+## stuck in a bear trap with nobody near (Game.day_prey). At night it takes bear
+## traps from the shed's pegboard and sets them, digs pits, walks the farm,
+## waits by the fuel run while everyone hides in the lit barn, chases any player
+## it hears and then sees, and kills on reaching them. It will not enter the
+## barn while the lights are on.
 ##
 ## The host runs it; clients see the replicated transform and state and only
 ## animate it and play its sounds.
 
-signal spoke(at: Vector3, line: String)  ## Host only: a lure was played here.
+## Host only: a lure was played here; heard is listener peer -> what they heard.
+signal spoke(at: Vector3, heard: Dictionary)
 
-enum State { LURK, INVESTIGATE, LURE, CHASE, RETREAT }
+enum State { LURK, INVESTIGATE, LURE, CHASE, RETREAT, ERRAND }  ## ERRAND: trap work.
 
 const LURK_SPEED := 1.6
 const INVESTIGATE_SPEED := {"day": 2.4, "night": 3.4}
@@ -43,6 +48,11 @@ const LEAD_ON := 2  ## Calls in a row leading someone deeper who keeps coming.
 const LEAD_CLOSER := 3.0  ## Metres closer that count as coming.
 ## Chance a night lurk goes to the fuel run while every living player is in the lit barn.
 const AMBUSH := 0.6
+const DIG_TIME := 3.0  ## Seconds to dig a pit.
+## Seconds an errand may take before it does the job where it stands (a spot
+## against a wall can be impossible to step onto exactly).
+const ERRAND_GIVE_UP := 40.0
+const PITCH_TELL := 0.06  ## How far off a pitched voice is.
 const VOICES := [
 	"over_here", "come_here", "found_something", "help_me", "where_are_you", "this_way"
 ]
@@ -69,6 +79,8 @@ var _replan_left := 0.0
 var _best_distance := INF
 var _stuck_for := 0.0
 var _rng := RandomNumberGenerator.new()
+var _errand := ""  ## "take" (from the pegboard) or "set", while in ERRAND.
+var _dig_left := 0.0
 var _voices: Array[AudioStream] = []
 var _voice: AudioStreamPlayer3D
 var _rustle: AudioStreamPlayer3D
@@ -129,7 +141,7 @@ func _physics_process(delta: float) -> void:
 	_state_time += delta
 	_lure_left -= delta
 	velocity.y = 0.0 if is_on_floor() else velocity.y - GRAVITY * delta
-	if phase == "dawn":
+	if phase == "dawn" or phase == "lobby":
 		velocity = Vector3.ZERO
 		return
 	var night := phase == "night"
@@ -139,16 +151,29 @@ func _physics_process(delta: float) -> void:
 		var seen := _visible_player()
 		if seen:
 			_chase(seen)
-	if not night and state == State.CHASE:
+	var prey := game.day_prey()
+	if not night and prey and state != State.CHASE and state != State.RETREAT:
+		game.log_event("creature comes for %s, trapped and alone" % prey.label())
+		_chase(prey)
+	if not night and state == State.CHASE and _target != prey:
 		_lurk()
+	if not night and state == State.ERRAND:
+		_lurk()  # Day came before it finished; the trap field sets the rest.
 
 	var speed := LURK_SPEED
 	match state:
 		State.LURK:
-			if _lure_left <= 0.0:
+			if night and _start_errand():
+				pass
+			elif _lure_left <= 0.0:
 				_plan_lure(night)
 			elif _route.is_empty():
 				_lurk()
+		State.ERRAND:
+			speed = LURE_SPEED["night"]
+			if _route.is_empty() or _state_time > ERRAND_GIVE_UP:
+				speed = 0.0
+				_do_errand(delta)
 		State.INVESTIGATE:
 			var key := "night" if night else "day"
 			speed = LURE_SPEED[key] if _lure_after else INVESTIGATE_SPEED[key]
@@ -204,6 +229,41 @@ func hear(at: Vector3, radius: float) -> void:
 			_plan_lure(false, _nearest_player(at))
 		else:
 			_go(Farm.corn_edge_near(at, 3.0), false)
+
+
+## Host only: heads off on the next trap job, if there is one: to the shed
+## door for more traps, or to the next spot to set.
+func _start_errand() -> bool:
+	var traps := game.traps
+	if traps.orders.is_empty():
+		return false
+	_set_state(State.ERRAND)
+	_dig_left = DIG_TIME
+	if traps.needs_board():
+		_errand = "take"
+		_route = _path(Farm.SHED_DOOR_OUT)
+	else:
+		var order := traps.next_order(global_position)
+		if order.is_empty():
+			traps.fulfil(global_position)  # Drops a bear trap it has none for.
+			return false
+		_errand = "set"
+		_route = _path(order["position"])
+	return true
+
+
+## Host only: it has arrived: takes traps, or sets (or digs) the next one.
+func _do_errand(delta: float) -> void:
+	var order := game.traps.next_order(global_position)
+	if _errand == "set" and not order.is_empty() and order["kind"] == "pit":
+		_dig_left -= delta
+		if _dig_left > 0.0:
+			return
+	if _errand == "take":
+		game.traps.take_from_board()
+	else:
+		game.traps.fulfil(global_position)
+	_lurk()
 
 
 ## Host only (dev panel): calls out from where it stands, now.
@@ -347,7 +407,7 @@ func pick_lure_spot(target: Player, night: bool) -> Vector3:
 	var from := target.global_position
 	var facing := target.look_direction()
 	facing.y = 0.0
-	var traps := game.armed_traps()
+	var traps := game.traps.armed_positions()
 	var best := Farm.corn_edge_near(from, 3.0)
 	var best_score := -INF
 	for i in LURE_TRIES:
@@ -424,25 +484,63 @@ func _nearest_player(at: Vector3) -> Player:
 	return nearest
 
 
-## Calls out with a generic voice line; every peer hears it from here.
+## Calls out; every listener hears it from here, each their own pick: a
+## friend's recorded line when the voice bank has one for them, a generic line
+## otherwise. Each gets at most one random tell: a faint echo, or a voice a
+## little off pitch; a third get none (design doc, How Players Fight Back).
 func _speak() -> void:
 	_set_state(State.LURE)
 	_lure_after = false
-	var index := _rng.randi() % _voices.size()
-	_say.rpc(index)
+	var generic := _rng.randi() % _voices.size()
+	var heard := {}
+	var listeners := Array(multiplayer.get_peers())
+	listeners.append(multiplayer.get_unique_id())
+	for listener: int in listeners:
+		var tell := _rng.randi() % 3
+		var echo := tell == 1
+		var pitch := 1.0
+		if tell == 2:
+			pitch += PITCH_TELL if _rng.randf() < 0.5 else -PITCH_TELL
+		var pick := game.voices.pick(listener)
+		if pick.is_empty():
+			_say_to(listener, &"_say", [generic, echo, pitch])
+			heard[listener] = "a generic '%s'" % _generic_name(generic)
+		else:
+			_say_to(listener, &"_say_clip", [pick["data"], echo, pitch])
+			var who: String = game.voices.names.get(pick["source"], "someone")
+			heard[listener] = "%s's '%s'" % [who, game.voices.line_text(pick["key"])]
 	if _lure_alive():
 		_spoke_distance = global_position.distance_to(_lure_target.global_position)
-	var line := (
-		"%s_%s" % [SPEAKERS[floori(index / float(VOICES.size()))], VOICES[index % VOICES.size()]]
-	)
-	spoke.emit(global_position, line)
+	spoke.emit(global_position, heard)
 
 
-@rpc("authority", "call_local", "reliable")
-func _say(index: int) -> void:
-	if index < 0 or index >= _voices.size():
-		return
-	_voice.stream = _voices[index]
+func _generic_name(index: int) -> String:
+	return "%s_%s" % [SPEAKERS[floori(index / float(VOICES.size()))], VOICES[index % VOICES.size()]]
+
+
+func _say_to(listener: int, method: StringName, args: Array) -> void:
+	if listener == multiplayer.get_unique_id():
+		callv(method, args)
+	else:
+		callv(&"rpc_id", [listener, method] + args)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _say(index: int, echo: bool, pitch: float) -> void:
+	if index >= 0 and index < _voices.size():
+		_play(_voices[index], echo, pitch)
+
+
+@rpc("authority", "call_remote", "reliable")
+func _say_clip(data: PackedByteArray, echo: bool, pitch: float) -> void:
+	if data.size() <= VoiceBank.TAKE_MAX * VoiceCodec.RATE * 1.2:
+		_play(Sfx.from_samples(VoiceCodec.decode(data), VoiceCodec.RATE), echo, pitch)
+
+
+func _play(stream: AudioStream, echo: bool, pitch: float) -> void:
+	_voice.stream = stream
+	_voice.bus = &"Lure" if echo else &"Master"
+	_voice.pitch_scale = clampf(pitch, 0.8, 1.2)
 	_voice.play()
 
 
@@ -454,9 +552,9 @@ func _set_state(new_state: State) -> void:
 
 
 ## Waypoints to point round the buildings; by day (and dusk) only through
-## the corn, which it never leaves in daylight.
+## the corn, which it never leaves in daylight unless it is coming for prey.
 func _path(point: Vector3) -> Array[Vector3]:
-	return farm.route(global_position, point, game.phase() != "night")
+	return farm.route(global_position, point, game.phase() != "night" and state != State.CHASE)
 
 
 ## Steps toward point; true once there. Re-plans if it stops getting closer.

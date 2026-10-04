@@ -29,7 +29,7 @@ func _ready() -> void:
 
 	var hint := _centred(Control.PRESET_CENTER_BOTTOM, 16)
 	hint.text = (
-		"E use (hold for traps) · G drop · F lantern · Shift sprint · Ctrl crouch"
+		"E use (hold for traps) · G drop · F lantern · V talk · Shift sprint · Ctrl crouch"
 		+ " · Esc mouse / leave"
 	)
 	hint.position.y -= 40
@@ -68,21 +68,28 @@ func summary(text: String) -> void:
 func update(game: Game) -> void:
 	var left := game.phase_left()
 	var phase := game.phase().to_upper()
-	_status.text = "%s · %d:%02d left" % [phase, floori(left / 60.0), floori(fmod(left, 60.0))]
+	_status.text = (
+		"DAY %d · %s · %d:%02d left"
+		% [game.day_number(), phase, floori(left / 60.0), floori(fmod(left, 60.0))]
+	)
+	if game.phase() == "lobby":
+		_status.text = "LOBBY"
+	if VoiceChat.is_local_speaking():
+		_status.text += "   (talking)"
 	var player := game.local_player()
 	var lines: Array[String] = ["Coins: %d" % game.coins]
 	if game.phase() != "day" or game.fuel < 0.3:
 		var out := "" if game.fuel > 0.0 else " (OUT)"
 		lines.append("Generator: %d%%%s" % [roundi(game.fuel * 100), out])
 	if player:
-		var held := game.held_item(player.get_multiplayer_authority())
+		var held := game.chores.held_item(player.get_multiplayer_authority())
 		if not held.is_empty():
 			var extra := ""
 			if held["kind"] == "watering_can":
-				extra = " (%d/%d)" % [held["charge"], Game.CAN_WATER]
+				extra = " (%d/%d)" % [held["charge"], Chores.CAN_WATER]
 			elif held["kind"] == "fuel_can":
 				extra = " (full)" if held["charge"] > 0 else " (empty)"
-			lines.append("Carrying: %s%s" % [Game.ITEM_NAMES[held["kind"]], extra])
+			lines.append("Carrying: %s%s" % [Chores.ITEM_NAMES[held["kind"]], extra])
 		if player.stamina < Player.STAMINA:
 			var bars := roundi(player.stamina / Player.STAMINA * 10.0)
 			lines.append("Stamina: %s" % "|".repeat(bars))

@@ -14,7 +14,7 @@ Built in **Godot 4.7**.
 
 ## Status
 
-Design is settled for now. **Phase 1**, the first playable prototype, is built and waiting for its group playtest ([how to run it](docs/phase1.md#playtesting)):
+Design is settled for now. **Phase 1** passed its playtests, and **Phase 2** (the lobby and recorded voices, the pegboard, two days, death and the bill) is built and waiting for its playtest ([Phase 2](docs/phase2.md)). Phase 1 was:
 
 - One small field and the tool shed
 - One day and one night

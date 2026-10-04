@@ -12,11 +12,35 @@ Traps hit while building the game, with what fixed them.
 - **Quitting while sounds play leaks their playbacks**, and `check.sh` fails on the `WARNING`.
   The smoke test stops every sound player, frees the game and waits 10 frames before quitting;
   waiting 3 frames without stopping them still leaked now and then.
+- **The VoiceChat autoload's microphone player leaks if it is playing at quit.** The smoke test
+  stops every sound player in the whole tree, not just the game scene, before quitting.
+- **gdlint allows 20 public methods a class.** `game.gd` passed it in Phase 2, so the farm work
+  moved to `chores.gd` and the dev-only helpers to `dev.gd`. Split by job when it trips, rather
+  than raising the limit.
 - **gdformat lengthens files.** Each call it cannot fit on one line becomes one argument per line,
   which pushed `game.gd` past gdlint's 1000-line limit. Data tables (`Looks.ITEM_PARTS`) keep
   repeated mesh calls short.
 - **gdformat writes CRLF on Windows.** Run `sed -i 's/\r$//'` on what it touched (also noted in
   the sibling Sneak project).
+
+## Gameplay
+
+- **A creature that just killed retreats for 25 s and ignores everything**, including a player
+  trapped and alone by day. A test that sets up a scene right after a kill must put the creature
+  back first (`Creature.place`), or it fails at random.
+- **Setting traps in planned order took longer than the night.** Spots spread round the whole
+  ring, so walking them in order (and back to the shed for each bear trap) left traps unset after
+  200 s. The creature now takes every bear trap it needs in one shed visit and sets the nearest
+  spot next. A spot jammed against a wall could never be reached exactly and stalled it for good,
+  so an errand gives up after 40 s and does the job where it stands (`ERRAND_GIVE_UP`).
+- **The last living player dying ends the night, or the day.** By day too: alone, a day death
+  skips to the next morning, and on the last day it ends the run. Tests that kill the only
+  player must expect that.
+
+## Tooling
+
+- **Non-ASCII text piped into Python through a Bash heredoc gets mangled.** A `·` in a pattern
+  stopped matching. Write the editing script to a file with the Write tool and run that.
 
 ## Pathfinding
 

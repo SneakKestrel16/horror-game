@@ -24,6 +24,10 @@ const WALL := 0.25
 const BARN_LIGHT := 1.6  ## Energy of each barn lamp.
 
 const SPAWN := Vector3(0, 0, -9)
+## Where the creature stands to take traps: outside the shed door (it never goes in).
+const SHED_DOOR_OUT := Vector3(-23.0, 0, 0.6)
+## The pegboard on the shed's back wall, facing the door.
+const PEGBOARD := Vector3(-23.0, 1.3, -3.66)
 const GENERATOR := Vector3(7.4, 0, -13.4)
 const FUEL_DRUM := Vector3(-19.8, 0, -2.6)
 const PUMP := Vector3(-6.0, 0, 7.0)
@@ -51,24 +55,13 @@ const ITEMS: Array[Dictionary] = [
 	{"kind": "crowbar", "position": Vector3(-22.0, 0, -3.3)},
 	{"kind": "fuel_can", "position": Vector3(-20.0, 0, -1.2)},
 ]
-## Scripted trap spots (Phase 1 fakes the creature setting them). "start" traps
-## are armed when the day begins, as if set the night before; "dusk" ones are
-## armed when the light fades.
-const TRAPS: Array[Dictionary] = [
-	{"kind": "bear", "position": Vector3(5.5, 0, 31.5), "armed": "start"},
-	{"kind": "bear", "position": Vector3(-27.0, 0, 30.8), "armed": "start"},
-	{"kind": "pit", "position": Vector3(0.0, 0, 14.5), "armed": "start"},
-	{"kind": "bear", "position": Vector3(-31.5, 0, -4.0), "armed": "start"},
-	{"kind": "pit", "position": Vector3(12.0, 0, 4.0), "armed": "start"},
-	{"kind": "bear", "position": Vector3(2.0, 0, 24.0), "armed": "dusk"},
-	{"kind": "bear", "position": Vector3(32.5, 0, -9.0), "armed": "dusk"},
-	{"kind": "pit", "position": Vector3(-10.0, 0, -7.3), "armed": "dusk"},  # On the fuel run.
-]
 
 const GRID := Rect2i(-54, -54, 108, 108)  ## The walking grid, one cell per metre.
 ## Grid cells this close to a wall count as blocked. More would close the 3.2 m barn
 ## doorway on a one-metre grid.
 const CLEARANCE := 0.3
+
+static var _trap_spots := {}
 
 var grid := AStarGrid2D.new()
 var corn_grid := AStarGrid2D.new()  ## Only the corn ring: how it moves by day.
@@ -196,6 +189,11 @@ func barn_lit() -> bool:
 	return _barn_lit
 
 
+## Whether a and b are within reach of each other, ignoring height.
+static func near(a: Vector3, b: Vector3, reach: float) -> bool:
+	return Vector2(a.x - b.x, a.z - b.z).length() <= reach
+
+
 static func in_barn(point: Vector3) -> bool:
 	return BARN.grow(-WALL).has_point(Vector2(point.x, point.z))
 
@@ -227,6 +225,46 @@ static func corn_edge_near(point: Vector3, depth := 1.5) -> Vector3:
 		flat = Vector3(0, 0, 1)
 		ring = 1.0
 	return flat * ((CORN_IN + depth) / ring)
+
+
+## Candidate trap spots, built once: {"corn": just inside the wild corn on the
+## farm side, "path": along the ways between the barn, shed, field, generator
+## and crate, "rows": between the field's plots}. None near a landmark.
+static func trap_spots() -> Dictionary:
+	if not _trap_spots.is_empty():
+		return _trap_spots
+	var door := Vector3(0, 0, BARN.end.y + 1.5)
+	var field := Vector3(0, 0, 13)
+	var corn: Array[Vector3] = []
+	var along := -CORN_IN
+	while along <= CORN_IN:
+		for depth: float in [1.5, 3.5]:
+			for side in 4:
+				var at := Vector3(along, 0, CORN_IN + depth).rotated(Vector3.UP, side * PI / 2.0)
+				corn.append(at.round())
+		along += 3.0
+	var path: Array[Vector3] = []
+	for way: Array in [
+		[door, SHED_DOOR_OUT],
+		[door, field],
+		[field, CRATE],
+		[door, GENERATOR],
+		[SHED_DOOR_OUT, PUMP]
+	]:
+		var from: Vector3 = way[0]
+		var to: Vector3 = way[1]
+		var steps := floori(from.distance_to(to) / 2.0)
+		for i in range(1, steps):
+			path.append(from.lerp(to, float(i) / steps))
+	var rows: Array[Vector3] = []
+	for x: float in [-3.0, 0.0, 3.0]:
+		for z: float in [10.0, 11.5, 13.0, 14.5, 16.0]:
+			rows.append(Vector3(x, 0, z))
+	var landmarks: Array[Vector3] = [door, SHED_DOOR_OUT, GENERATOR, FUEL_DRUM, PUMP, CRATE, SPAWN]
+	var clear := func(at: Vector3) -> bool:
+		return landmarks.all(func(mark: Vector3) -> bool: return mark.distance_to(at) > 3.0)
+	_trap_spots = {"corn": corn.filter(clear), "path": path.filter(clear), "rows": rows}
+	return _trap_spots
 
 
 ## A random walkable point in the corn ring.
@@ -271,9 +309,9 @@ static func _open_cell_near(walk: AStarGrid2D, cell: Vector2i) -> Vector2i:
 	for radius in range(1, 24):
 		for dx in range(-radius, radius + 1):
 			for dz in range(-radius, radius + 1):
-				var near := cell + Vector2i(dx, dz)
-				if walk.is_in_boundsv(near) and not walk.is_point_solid(near):
-					return near
+				var next := cell + Vector2i(dx, dz)
+				if walk.is_in_boundsv(next) and not walk.is_point_solid(next):
+					return next
 	return Vector2i.MAX
 
 
