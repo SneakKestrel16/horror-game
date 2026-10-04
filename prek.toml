@@ -1,0 +1,24 @@
+# Pre-commit hooks. Install with `prek install`; run by hand from Git Bash
+# (under PowerShell, `bash` resolves to WSL's and the Godot hook exits 127).
+# Tools come from tools/requirements.txt in .venv; Godot from winget (tools/check.sh).
+# Scoped to game/: voice_chat_prototype/ is a separate test project.
+#:schema https://www.schemastore.org/prek.json
+
+[[repos]]
+repo = "builtin"
+hooks = [
+    { id = "trailing-whitespace", files = '^(game|tools|docs)/' },
+    { id = "end-of-file-fixer", files = '^(game|tools|docs)/' },
+    { id = "mixed-line-ending", args = ["--fix=lf"], files = '^(game|tools|docs)/' },
+    { id = "check-merge-conflict" },
+    { id = "check-added-large-files" },
+]
+
+[[repos]]
+repo = "local"
+hooks = [
+    { id = "gdformat", name = "gdformat", entry = ".venv/Scripts/gdformat --check", language = "system", files = '^game/.*\.gd$' },
+    { id = "gdlint", name = "gdlint", entry = ".venv/Scripts/gdlint", language = "system", files = '^game/.*\.gd$' },
+    # Imports the game and runs game/tests/smoke.tscn. Any Godot ERROR or WARNING fails it.
+    { id = "godot-smoke", name = "godot smoke test", entry = "bash tools/check.sh", language = "system", pass_filenames = false, files = '^(game/|tools/check\.sh$|\.editorconfig$)' },
+]

@@ -8,12 +8,13 @@ Built in **Godot 4.7**.
 
 | Folder | What it is |
 |---|---|
+| `game/` | The game itself (Godot project). Phase 1 is built; see `docs/phase1.md`. |
 | `docs/Farming_Horror_Game_Concept.md` | The full design doc: core loop, creature, voice mimicry, traps, economy, season numbers, build plan and open issues. |
 | `voice_chat_prototype/` | Working Godot voice chat project: proximity voice, push-to-talk, static for dead players, and consent-based clips the creature can mimic. See its own README. |
 
 ## Status
 
-Design is settled for now. Next up is **Phase 1**, the first playable prototype:
+Design is settled for now. **Phase 1**, the first playable prototype, is built and waiting for its group playtest ([how to run it](docs/phase1.md#playtesting)):
 
 - One small field and the tool shed
 - One day and one night
@@ -29,4 +30,4 @@ The voice chat prototype isn't needed until Phase 2. It doesn't record lobby voi
 
 ## Testing multiplayer on one PC
 
-In Godot, use **Debug > Customize Run Instances** to run 2–4 copies of the game at once.
+In Godot, use **Debug > Customize Run Instances** to run 2–4 copies of the game at once, or run it twice from the command line with `-- --host` and `-- --join=127.0.0.1`.

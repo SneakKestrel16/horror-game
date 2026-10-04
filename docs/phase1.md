@@ -1,0 +1,105 @@
+# Phase 1 prototype
+
+The first playable build, in `game/`. It covers what the
+[Build Plan](Farming_Horror_Game_Concept.md#build-plan-four-phases) asks of Phase 1, and
+nothing from later phases. This page lists what was built, the numbers it uses, and how to run
+the playtest that decides whether Phase 1 is done.
+
+## Contents
+
+- [Running it](#running-it)
+- [What is in it](#what-is-in-it)
+- [Numbers](#numbers)
+- [Playtesting](#playtesting)
+- [Not in Phase 1](#not-in-phase-1)
+
+## Running it
+
+Godot 4.7.2 from winget. From the repo root:
+
+- Two players on one PC: run the game twice, once with `-- --host` and once with
+  `-- --join=127.0.0.1`. In the editor, Debug > Customize Run Instances does the same.
+- `--short` runs the day, dusk and night at a sixth of their length for quick checks;
+  `--dev` lets the host press F2 to skip to the next phase.
+- `bash tools/check.sh` imports the project headless and plays through the smoke test
+  (`game/tests/smoke.gd`).
+- `godot --path game res://tools/snapshot.tscn -- --clock=500 --from=0,1.6,8 --look=0,1.6,14
+  --creature=1,0,13 --out=shot.png` saves a screenshot at a time of day, with the creature
+  placed, without playing.
+
+Controls: WASD, Shift sprint, Ctrl crouch, E use (hold for traps), G drop, F lantern, Esc frees
+the mouse and a second Esc leaves.
+
+## What is in it
+
+- **The farm** (`scripts/farm.gd`): one field of 12 turnip plots, the barn (the lit building),
+  the tool shed with the crowbar and shovel, the generator, the fuel drum, the pump and the
+  shipping crate, all ringed by wild corn players walk through and cannot clear.
+- **Day chores:** water the dry plots (the can holds 4 waterings; refill at the pump), pull ripe
+  turnips and sell them at the crate. One tool or crop is carried at a time.
+- **Day, dusk, night, dawn** (`scripts/game.gd`): one of each. Dawn shows who survived, the coins,
+  the traps sprung and how many lures were followed.
+- **The creature** (`scripts/creature.gd`), faked with states and timers as the Build Plan
+  allows: it lurks in the corn, goes to look at noises, and calls out with a generic voice line.
+  By day it stays inside the corn and never chases. At night it walks the whole farm, chases a
+  player it sees (sight is short, longer for a lit lantern, shorter for crouching, blocked by
+  walls and corn), kills on contact, and backs off into the corn afterwards. It will not enter the
+  barn while the lights are on.
+- **Noise:** footsteps (crouch 2 m, walk 7 m, sprint 16 m, half again in the corn), chores, and
+  traps springing all reach the creature. Footsteps and chores are also played as sounds.
+- **Traps in scripted spots:** five set at the start, as if left overnight, and three more armed
+  at dusk. Bear traps hold a player until they hold E to pry free (a friend helps, faster), then
+  slow them 40% for 60 s. Pits trip the player and drop what they carry. Bear traps are disarmed
+  with the crowbar, pits filled with the shovel. Both are hard to see, and a trap's prompt shows
+  only when looking right at it.
+- **The generator:** the barn lights run from dusk while it has fuel. A full tank lasts 60% of
+  the night, so someone must carry the fuel can from the drum by the shed.
+- **Voice lures:** the creature plays a generic line from cover, aimed at whoever is most alone
+  and placed just past an armed trap near them when there is one. A faint reverb on its voice is
+  the tell. The lines are Windows text-to-speech placeholders (voices David and Zira) in
+  `game/assets/voices/`; replace them with real recordings.
+- **Atmosphere:** a sun that lowers into an orange dusk, a dark night with fog and a weak moon,
+  wind by day, crickets by night that fall silent when the creature is within 18 m of you, a
+  heartbeat when it chases near you, and the generator's hum. Sound effects are synthesised in
+  code (`scripts/sfx.gd`) as placeholders.
+- **Logging:** the host writes every event to `user://logs/<date>.log` (on Windows,
+  `%APPDATA%\Godot\app_userdata\Something in the Corn\logs`) and prints it.
+
+## Numbers
+
+Starting values, to be tuned from playtest logs. The ones the design doc gives are cited there;
+the rest are first guesses made for this prototype.
+
+| What | Value | Source |
+|---|---|---|
+| Day / dusk / night | 6 min / 1 min / 5 min | Doc says day 8-10 min; shortened because Phase 1 has one small field |
+| Bear trap slow | 40% for 60 s | Doc, Night Traps |
+| Turnip price | 10 | Doc, Crops |
+| Walk / sprint / crouch | 3.6 / 6.3 / 1.8 m/s; 6 s of sprint | Guess |
+| Creature lurk / investigate / chase | 1.6 / 2.4 (day), 3.4 (night) / 5.4 m/s | Guess: chase is between walking and sprinting |
+| Creature sight | 10 m; 24 m at a lantern; 5 m at a crouch | Guess |
+| Chase given up | 4 s out of sight, or the target reaches the lit barn | Guess |
+| Lures | every 50-80 s by day, 30-50 s at night | Guess |
+| Generator | starts at 40%; a can adds 50%; full lasts 60% of the night | Guess |
+| Pry free | 3 s alone, 1.5 s with help; disarm 4 s; fill a pit 3 s | Guess |
+
+## Playtesting
+
+The Build Plan's test: **the day feels safe, the night feels tense, and a generic voice from the
+corn makes a playtester walk toward it at least once.**
+
+1. Two people, one host and one joining, with headphones. Don't tell them what the voices are.
+2. Play one full day and night at normal length.
+3. Read the host's log. `LURE WORKED` lines count the lures a player walked toward (4 m closer
+   within 12 s, among players within 40 m of the voice). The dawn screen shows the totals too.
+4. Ask each player whether the day felt safe and the night felt tense, and note anything that
+   felt unfair: a trap they could not have seen, a death they could not have escaped.
+
+Only move to Phase 2 once this passes and the session was fun.
+
+## Not in Phase 1
+
+Left for later phases, as the Build Plan orders them: voice chat and lobby voice lines, the
+creature stealing traps from the pegboard, respawning at dawn and the medical bill, 3-4 players,
+the Director, jumpscares, ghost abilities, crops other than turnips, the economy and the
+season. A dead player in Phase 1 is a ghost that drifts until dawn.

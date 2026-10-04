@@ -6,3 +6,10 @@
 # OS
 .DS_Store
 Thumbs.db
+
+# Python tools (gdtoolkit), installed from tools/requirements.txt
+.venv/
+__pycache__/
+
+# Serena's per-project cache
+.serena/
