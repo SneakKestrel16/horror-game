@@ -56,7 +56,7 @@ func _ready() -> void:
 		"Lure me (pick a spot round me and call)",
 		func() -> void: _creature().lure_now(_me())
 	)
-	_button(column, "Chase me (night only)", func() -> void: _creature().chase(_me()))
+	_button(column, "Chase me, or the nearest living player (night)", _chase)
 	_button(column, "Bring it 15 m behind me", _bring)
 	_button(column, "Drive it off into the corn", func() -> void: _creature().drive_off())
 	_toggle(column, "Freeze it", func(on: bool) -> void: _creature().set_physics_process(not on))
@@ -145,6 +145,25 @@ func _set_speed(speed: float) -> void:
 
 func _call_now() -> void:
 	_creature().speak_now()
+
+
+## Sends the creature after me, or while I am a ghost, after the living player
+## nearest me.
+func _chase() -> void:
+	var me := _me()
+	var target: Player = null if me.dead else me
+	for player in game.living_players():
+		var closer := (
+			target == null
+			or (
+				player.global_position.distance_to(me.global_position)
+				< target.global_position.distance_to(me.global_position)
+			)
+		)
+		if target != me and closer:
+			target = player
+	if target:
+		_creature().chase(target)
 
 
 ## Puts the creature behind the player, out of view; it lurks from there.
