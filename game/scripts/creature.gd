@@ -424,8 +424,11 @@ func pick_lure_spot(target: Player, night: bool) -> Vector3:
 			continue
 		var score := _rng.randf() * 0.6 - global_position.distance_to(spot) / 50.0
 		for old in _recent:
-			if spot.distance_to(old) < LURE_SPREAD:
-				score -= 10.0  # Outweighs every bonus: only if nowhere else will do.
+			var near := spot.distance_to(old)
+			if near < LURE_SPREAD:
+				# Outweighs every bonus: only if nowhere else will do, and then
+				# the least close (by day the reachable corn is a narrow strip).
+				score -= 10.0 + LURE_SPREAD - near
 		var away := facing.angle_to(spot - from)
 		score += 0.8 if away > 1.9 else (0.4 if away > 1.2 else 0.0)  # Behind, or to the side.
 		for trap in traps:
@@ -553,8 +556,18 @@ func _set_state(new_state: State) -> void:
 
 ## Waypoints to point round the buildings; by day (and dusk) only through
 ## the corn, which it never leaves in daylight unless it is coming for prey.
+## Caught outside the corn at daybreak (after a kill in the barn, say), it first
+## walks out to the nearest corn by any way, since the corn-only grid has no
+## cells where it stands and would aim it straight through a wall.
 func _path(point: Vector3) -> Array[Vector3]:
-	return farm.route(global_position, point, game.phase() != "night" and state != State.CHASE)
+	if game.phase() == "night" or state == State.CHASE:
+		return farm.route(global_position, point)
+	if Farm.in_corn(global_position):
+		return farm.route(global_position, point, true)
+	var edge := Farm.corn_edge_near(global_position, 2.0)
+	var out := farm.route(global_position, edge)
+	out.append_array(farm.route(edge, point, true))
+	return out
 
 
 ## Steps toward point; true once there. Re-plans if it stops getting closer.

@@ -289,6 +289,22 @@ func _check_night() -> void:
 	var placed := traps.armed_positions().size() - armed_before
 	_check(placed >= 2 and traps.orders.is_empty(), "it set tonight's traps (%d)" % placed)
 	_check(not _player.dead, "the lit barn kept the creature out")
+	# The lights going out draws it from across the farm, even mid-errand.
+	traps.plan(0, 1)
+	_game.creature.global_position = Vector3(-40, 0, 40)
+	_game.creature.call("_lurk")
+	await _frames(3)
+	_dev.set_fuel(0.0)
+	await _frames(3)
+	var far := _game.creature.global_position.distance_to(Farm.GENERATOR)
+	_check(
+		_game.creature.state == Creature.State.INVESTIGATE,
+		"the generator dying draws the creature (%s)" % _game.creature.state_name()
+	)
+	await _game_seconds(5.0)
+	var nearer := _game.creature.global_position.distance_to(Farm.GENERATOR)
+	_check(nearer < far - 10.0, "it heads for the barn (%.0f m -> %.0f m)" % [far, nearer])
+	_dev.set_fuel(1.0)
 	# In the open with a lantern: it should come.
 	_armed_before_wipe = traps.armed_positions().size()
 	_put(_player, Vector3(0, 0, 20))
@@ -338,6 +354,11 @@ func _check_dev() -> void:
 	_check(armed, "dev: armed every trap")
 	_dev.set_fuel(0.1)
 	_check(is_equal_approx(_game.fuel, 0.1), "dev: set the fuel")
+	# Day can find it in the barn after a night kill there; it must walk out.
+	_game.creature.place(Vector3(0, 0, -17))
+	await _game_seconds(20.0)
+	var at := _game.creature.global_position
+	_check(not Farm.in_barn(at), "by day the creature walks out of the barn (at %s)" % at)
 
 
 func _arm(kind: String, at: Vector3) -> int:

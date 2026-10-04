@@ -51,6 +51,7 @@ const NOISE := {
 	"sell": 6.0,
 	"hang": 6.0,
 	"take": 4.0,
+	"lights_out": 80.0,  # The generator dying at night: the whole farm hears it.
 }
 const LURE_CHECK := 12.0  ## Seconds after a lure to see who walked toward it.
 const LURE_HEARD := 40.0  ## Players this close to a lure count as having heard it.
@@ -91,6 +92,7 @@ var _lure_checks: Array[Dictionary] = []
 var _log: FileAccess
 var _tick_left := 0.0
 var _last_phase := ""
+var _was_lit := false  ## Host: the lights were on last physics step.
 
 var _players: MultiplayerSpawner
 var _creatures: MultiplayerSpawner
@@ -188,6 +190,11 @@ func _physics_process(delta: float) -> void:
 		if fuel <= 0.0:
 			_announce.rpc("The barn lights went out!")
 			log_event("generator ran dry")
+	# However the fuel ran out (the dev panel too), the creature hears it and comes.
+	if _was_lit and not lights_on() and phase() == "night":
+		log_event("the barn went dark; the creature heard the generator die")
+		make_noise("lights_out", Farm.GENERATOR, "clank")
+	_was_lit = lights_on()
 	traps.check(living_players())
 	_watch_trapped(delta)
 	_check_lures()
