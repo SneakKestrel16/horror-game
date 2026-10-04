@@ -18,6 +18,7 @@ const SHED := Rect2(-13.0, -13.5, 4.0, 3.0)  ## Door on the +z side.
 const SHED_DOOR := 1.4
 const SHED_HEIGHT := 2.6
 const WALL := 0.25
+const BARN_LIGHT := 1.6  ## Energy of each barn lamp.
 
 const SPAWN := Vector3(0, 0, -3)
 const GENERATOR := Vector3(7.4, 0, -7.4)
@@ -130,7 +131,7 @@ func build(parent: Node3D) -> void:
 		var light := OmniLight3D.new()
 		light.position = spot
 		light.light_color = Color(1.0, 0.82, 0.55)
-		light.light_energy = 1.6
+		light.light_energy = BARN_LIGHT
 		light.omni_range = 9.0
 		light.shadow_enabled = true
 		light.visible = false
@@ -176,6 +177,12 @@ func set_barn_lit(lit: bool) -> void:
 		light.visible = lit
 	_fill(BARN.grow(-WALL), lit)
 	_block_walls()  # Clearing the inside cleared the wall cells it overlaps.
+
+
+## Low fuel: the barn lights stutter now and then (cosmetic, per peer).
+func flicker(on: bool) -> void:
+	for light in barn_lights:
+		light.light_energy = BARN_LIGHT * (randf_range(0.05, 0.4) if on and randf() < 0.1 else 1.0)
 
 
 func barn_lit() -> bool:

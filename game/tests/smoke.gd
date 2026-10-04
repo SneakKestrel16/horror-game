@@ -83,6 +83,17 @@ func _check_lure() -> void:
 	_put(_player, _player.global_position.move_toward(voice, 7.0))
 	await _game_seconds(Game.LURE_CHECK + 1.0)
 	_check(_game.get("_stats")["followed"] > 0, "walking toward the voice was logged")
+	var calls: int = _game.get("_stats")["lures"]
+	_check(calls >= 2, "it backed off and called again (%d calls)" % calls)
+	# Spots for calls in a row, all from the same player, should spread out.
+	var spots: Array[Vector3] = []
+	for i in 4:
+		spots.append(_game.creature.pick_lure_spot(_player, false))
+	var closest := INF
+	for i in spots.size():
+		for j in range(i + 1, spots.size()):
+			closest = minf(closest, spots[i].distance_to(spots[j]))
+	_check(closest > 6.0, "calls in a row come from different spots (closest %.1f m)" % closest)
 
 
 func _check_chores() -> void:
@@ -144,7 +155,7 @@ func _check_dusk() -> void:
 		_game.fuel > before + 0.4, "refuelled the generator (%.2f -> %.2f)" % [before, _game.fuel]
 	)
 	await _game_seconds(5.0)
-	_check(_game.fuel < before + Game.FUEL_PER_CAN, "the generator burns fuel")
+	_check(_game.fuel < 1.0, "the generator burns fuel")
 
 
 func _check_night() -> void:

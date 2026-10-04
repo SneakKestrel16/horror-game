@@ -21,15 +21,20 @@ const GROW_TIME := 60.0  ## Seconds from watered to ripe (scaled like the phases
 const CAN_WATER := 4  ## Plots one watering can full waters.
 const TURNIP_PRICE := 10  ## Design doc, Crops.
 const FUEL_START := 0.4
-const FUEL_PER_CAN := 0.5
-const FUEL_LASTS := 0.6  ## A full tank lasts this share of the night.
+## A full tank lasts this share of the night (2 of its 5 minutes), and the lights
+## burn from dusk, so even a tank filled at dusk runs dry early in the night:
+## the barn is only safe for someone who goes out for fuel at least twice.
+## A first playtest with 0.6 and half-tank cans left nobody a reason to go out.
+const FUEL_LASTS := 0.4
+const FUEL_PER_CAN := 1.0  ## A can fills the tank.
+const FLICKER_BELOW := 0.15  ## The barn lights flicker under this much fuel.
 const BEAR_REACH := 0.55  ## How close a foot must come to spring a trap (m).
 const PIT_REACH := 0.65
 const USE_RANGE := 2.0
 const LOOK_ANGLE := 0.7  ## Radians (40°) either side of where a player faces.
 const TRAP_LOOK_ANGLE := 0.45  ## Traps are only found by looking right at them (26°).
 ## Seconds to hold E. Prying is quicker with a friend (design doc, Night Traps).
-const HOLD := {"disarm": 4.0, "fill": 3.0, "pry": 3.0, "help": 1.5}
+const HOLD := {"disarm": 4.0, "fill": 3.0, "pry": 3.0, "help": 1.5, "refuel": 3.0}
 ## How far each action carries to the creature's ears (m).
 const NOISE := {
 	"water": 9.0,
@@ -149,6 +154,7 @@ func _process(delta: float) -> void:
 	var lit := lights_on()
 	if farm.barn_lit() != lit:
 		farm.set_barn_lit(lit)
+	farm.flicker(lit and fuel < FLICKER_BELOW)
 	var factor := short_factor()
 	var day := clampf(clock / (DAY * factor), 0.0, 1.0)
 	var dusk := clampf((clock - DAY * factor) / (DUSK * factor), 0.0, 1.0)
@@ -170,7 +176,7 @@ func _physics_process(delta: float) -> void:
 		_enter_phase(current)
 	if lights_on():
 		fuel = maxf(0.0, fuel - delta / (FUEL_LASTS * NIGHT * short_factor()))
-		if fuel < 0.15 and not _fuel_warned:
+		if fuel < FLICKER_BELOW and not _fuel_warned:
 			_fuel_warned = true
 			_announce.rpc("The generator is sputtering. It needs fuel.")
 		if fuel <= 0.0:
@@ -459,6 +465,7 @@ func _plot_action(player: Player, kind: String, charge: int) -> Dictionary:
 func _place_action(player: Player, kind: String, charge: int) -> Dictionary:
 	var text := ""
 	var action := ""
+	var hold := 0.0
 	if _looking_at(player, Farm.PUMP) and kind == "watering_can":
 		text = "E: fill the watering can"
 		action = "pump"
@@ -473,9 +480,10 @@ func _place_action(player: Player, kind: String, charge: int) -> Dictionary:
 	elif _looking_at(player, Farm.GENERATOR):
 		text = "Generator: %d%% fuel" % roundi(fuel * 100)
 		if kind == "fuel_can" and charge > 0:
-			text = "E: refuel the generator"
+			text = "Hold E to refuel the generator"
 			action = "refuel"
-	return _act(text, action, -1, 0.0)
+			hold = HOLD["refuel"]
+	return _act(text, action, -1, hold)
 
 
 static func _act(text: String, action: String, index: int, hold: float) -> Dictionary:

@@ -2,10 +2,13 @@ class_name Creature
 extends CharacterBody3D
 ## Something in the corn. Phase 1 fakes its mind with a few states and timers
 ## (design doc, Build Plan): it lurks in the corn, goes to look at noises, and
-## calls out in a generic voice from cover, near an armed trap when one is
-## close to its target. By day that is all it does, and it never leaves the
-## corn. At night it walks the farm, chases any player it hears and then sees,
-## and kills on reaching them. It will not enter the barn while the lights are on.
+## calls out in a generic voice from cover. Each call is placed around where its
+## target is now, out of their view and past an armed trap when it can, and
+## never near its last few calls; if they walk toward it, it backs off and calls
+## again from deeper in. By day that is all it does, and it never leaves the
+## corn. At night it walks the farm, waits by the fuel run while everyone hides
+## in the lit barn, chases any player it hears and then sees, and kills on
+## reaching them. It will not enter the barn while the lights are on.
 ##
 ## The host runs it; clients see the replicated transform and state and only
 ## animate it and play its sounds.
@@ -26,11 +29,20 @@ const CROUCH_SIGHT := 5.0
 const CORN_COVER := 3.0  ## Metres of corn in the way that hide a player beyond arm's reach.
 const LOSE_TIME := 4.0  ## Seconds out of sight before a chase is given up.
 const RETREAT_TIME := 25.0
-const LURE_WAIT := 3.0  ## Seconds it stands still after calling.
+const LURE_SPEED := {"day": 4.0, "night": 3.4}  ## Moving to a calling spot, unseen in the corn.
+const LURE_WAIT := 6.0  ## Seconds it stands still after calling, to see if anyone comes.
 const LURE_GIVE_UP := 30.0  ## Calls from wherever it is if the lure spot takes longer.
 ## Seconds between lures (min, max), by phase. Short games divide by Game.short_factor().
 const LURE_EVERY := {"day": Vector2(50.0, 80.0), "night": Vector2(30.0, 50.0)}
-const LURE_TRAP_RANGE := 30.0  ## Lures play by an armed trap within this of the target.
+const LURE_RANGE := Vector2(9.0, 24.0)  ## How far from the target it calls (min, max metres).
+const LURE_TRIES := 24  ## Candidate spots weighed for each call.
+const LURE_RECENT := 4  ## It keeps away from this many of its last calling spots...
+const LURE_SPREAD := 12.0  ## ...by this many metres.
+const RETARGET := 8.0  ## Re-aims if the target moved this far while it crept into place.
+const LEAD_ON := 2  ## Calls in a row leading someone deeper who keeps coming.
+const LEAD_CLOSER := 3.0  ## Metres closer that count as coming.
+## Chance a night lurk goes to the fuel run while every living player is in the lit barn.
+const AMBUSH := 0.6
 const VOICES := [
 	"over_here", "come_here", "found_something", "help_me", "where_are_you", "this_way"
 ]
@@ -42,7 +54,13 @@ var farm: Farm
 var state := State.LURK  ## Replicated, so clients can animate and play sounds.
 
 var _route: Array[Vector3] = []
-var _lure_after := false  ## Call out on reaching _goal.
+var _lure_after := false  ## Call out at the end of the route.
+var _lure_target: Player
+var _lure_aim := Vector3.ZERO  ## Where the target stood when the spot was picked.
+var _retargets := 0
+var _lead_ons := 0
+var _spoke_distance := INF  ## From the target, when it last called.
+var _recent: Array[Vector3] = []  ## Its last calling spots.
 var _target: Player
 var _unseen_for := 0.0
 var _state_time := 0.0
@@ -132,16 +150,24 @@ func _physics_process(delta: float) -> void:
 			elif _route.is_empty():
 				_lurk()
 		State.INVESTIGATE:
-			speed = INVESTIGATE_SPEED["night" if night else "day"]
+			var key := "night" if night else "day"
+			speed = LURE_SPEED[key] if _lure_after else INVESTIGATE_SPEED[key]
 			if _route.is_empty() or (_lure_after and _state_time > LURE_GIVE_UP):
-				if _lure_after:
-					_speak()
-				else:
+				if not _lure_after:
 					_lurk()
+				elif _lure_moved() and _retargets < 2:
+					_retargets += 1
+					_aim_lure(_lure_target, night)
+				else:
+					_speak()
 		State.LURE:
 			speed = 0.0
 			if _state_time > LURE_WAIT:
-				_lurk()
+				if _coming() and _lead_ons < LEAD_ON:
+					_lead_ons += 1
+					_lead_on(night)
+				else:
+					_lurk()
 		State.CHASE:
 			speed = CHASE_SPEED
 			_update_chase(delta)
@@ -163,7 +189,8 @@ func _physics_process(delta: float) -> void:
 
 
 ## Host only: a noise reached it. By day it creeps to the corn's edge nearest
-## the noise and calls from there; at night it goes to the noise itself.
+## the noise, or if a call is due, calls whoever made it; at night it goes to
+## the noise itself.
 func hear(at: Vector3, radius: float) -> void:
 	if state == State.CHASE or state == State.RETREAT or state == State.LURE:
 		return
@@ -173,7 +200,10 @@ func hear(at: Vector3, radius: float) -> void:
 	if night:
 		_go(at, false)
 	elif state != State.INVESTIGATE:
-		_go(Farm.corn_edge_near(at, 3.0), _lure_left <= 0.0)
+		if _lure_left <= 0.0:
+			_plan_lure(false, _nearest_player(at))
+		else:
+			_go(Farm.corn_edge_near(at, 3.0), false)
 
 
 ## Host only: it has just killed someone or been driven off.
@@ -189,7 +219,15 @@ func _lurk() -> void:
 	_lure_after = false
 	var night := game.phase() == "night"
 	var goal := Farm.random_corn_point(_rng)
-	if night and _rng.randf() < 0.35:
+	var hiding := game.living_players().all(
+		func(player: Player) -> bool:
+			return farm.barn_lit() and Farm.in_barn(player.global_position)
+	)
+	if night and hiding and _rng.randf() < AMBUSH:
+		# Somebody will have to fetch fuel: wait in the dark along the way.
+		var along := Farm.FUEL_DRUM.lerp(Farm.GENERATOR, _rng.randf())
+		goal = along + Vector3(_rng.randf_range(-6, 6), 0, _rng.randf_range(2, 8))
+	elif night and _rng.randf() < 0.35:
 		goal = Vector3(_rng.randf_range(-18, 18), 0, _rng.randf_range(-18, 18))
 	_route = _path(goal)
 
@@ -230,37 +268,121 @@ func _update_chase(delta: float) -> void:
 		_retreat()
 
 
-## Picks whoever is most alone, and a spot to call them from: just past an
-## armed trap near them, or the corn's edge near them.
-func _plan_lure(night: bool) -> void:
+## Starts a call: at target, or whoever is most alone. Resets the timer.
+func _plan_lure(night: bool, target: Player = null) -> void:
 	var timing: Vector2 = LURE_EVERY["night" if night else "day"]
 	var factor := game.short_factor()
 	_lure_left = maxf(12.0, _rng.randf_range(timing.x, timing.y) * factor)
 	var players := game.living_players()
 	if players.is_empty():
 		return
-	var target := players[0]
-	var loneliest := -1.0
-	for player in players:
-		var nearest := INF
-		for other in players:
-			if other != player:
-				nearest = minf(nearest, player.global_position.distance_to(other.global_position))
-		if nearest > loneliest:
-			loneliest = nearest
-			target = player
-	var spot := Farm.corn_edge_near(target.global_position, 3.0)
+	if target == null:
+		var loneliest := -1.0
+		for player in players:
+			var nearest := INF
+			for other in players:
+				if other != player:
+					nearest = minf(
+						nearest, player.global_position.distance_to(other.global_position)
+					)
+			if nearest > loneliest:
+				loneliest = nearest
+				target = player
+	_retargets = 0
+	_lead_ons = 0
+	_aim_lure(target, night)
+
+
+## Picks a spot round where target stands now and creeps there to call.
+func _aim_lure(target: Player, night: bool) -> void:
+	_lure_target = target
+	_lure_aim = target.global_position
+	_go(pick_lure_spot(target, night), true)
+
+
+## Where to call target from, and remembers it. Weighs LURE_TRIES spots round
+## them: away from its recent calls, out of their view, past an armed trap on
+## the way to it, not too far to creep to, with some chance mixed in. By day
+## only spots in the corn.
+func pick_lure_spot(target: Player, night: bool) -> Vector3:
+	var from := target.global_position
+	var facing := target.look_direction()
+	facing.y = 0.0
 	var traps := game.armed_traps()
-	var best := LURE_TRAP_RANGE
-	for trap in traps:
-		var distance := trap.distance_to(target.global_position)
-		if distance < best and (night or Farm.in_corn(trap)):
-			best = distance
-			var away := (trap - target.global_position).normalized()
-			spot = trap + away * 2.5
+	var best := Farm.corn_edge_near(from, 3.0)
+	var best_score := -INF
+	for i in LURE_TRIES:
+		var reach := _rng.randf_range(LURE_RANGE.x, LURE_RANGE.y)
+		var spot := from + Vector3.FORWARD.rotated(Vector3.UP, _rng.randf() * TAU) * reach
+		if not night:
+			spot = Farm.corn_edge_near(spot, _rng.randf_range(2.0, 5.0))
+		var limit := Farm.CORN_OUT - 1.0
+		spot = Vector3(clampf(spot.x, -limit, limit), 0, clampf(spot.z, -limit, limit))
+		var distance := from.distance_to(spot)
+		if distance < LURE_RANGE.x * 0.7 or distance > LURE_RANGE.y * 1.3:
+			continue
+		if farm.barn_lit() and Farm.in_barn(spot):
+			continue
+		var score := _rng.randf() * 0.6 - global_position.distance_to(spot) / 50.0
+		for old in _recent:
+			if spot.distance_to(old) < LURE_SPREAD:
+				score -= 1.5
+		var away := facing.angle_to(spot - from)
+		score += 0.8 if away > 1.9 else (0.4 if away > 1.2 else 0.0)  # Behind, or to the side.
+		for trap in traps:
+			var on_way := Geometry3D.get_closest_point_to_segment(trap, from, spot)
+			if trap.distance_to(on_way) < 1.5 and (night or Farm.in_corn(trap)):
+				score += 0.9
+				break
+		if score > best_score:
+			best_score = score
+			best = spot
+	_recent.append(best)
+	if _recent.size() > LURE_RECENT:
+		_recent.pop_front()
+	return best
+
+
+## The lure's target has moved far from where the calling spot was aimed.
+func _lure_moved() -> bool:
+	return _lure_alive() and _lure_target.global_position.distance_to(_lure_aim) > RETARGET
+
+
+## The lure's target came toward the call.
+func _coming() -> bool:
+	if not _lure_alive():
+		return false
+	var now := global_position.distance_to(_lure_target.global_position)
+	return now < _spoke_distance - LEAD_CLOSER
+
+
+func _lure_alive() -> bool:
+	return _lure_target != null and is_instance_valid(_lure_target) and not _lure_target.dead
+
+
+## They are coming: back off further in, a little to one side, and call again.
+func _lead_on(night: bool) -> void:
+	var from := _lure_target.global_position
+	var away := global_position - from
+	away.y = 0.0
+	away = away.normalized().rotated(Vector3.UP, _rng.randf_range(-0.6, 0.6))
+	var spot := global_position + away * _rng.randf_range(6.0, 10.0)
 	if not night:
-		spot = Farm.corn_edge_near(spot, 1.5)
+		spot = Farm.corn_edge_near(spot, 3.0)
+	_lure_aim = from
+	game.log_event("creature leads %s deeper" % _lure_target.label())
 	_go(spot, true)
+
+
+func _nearest_player(at: Vector3) -> Player:
+	var nearest: Player = null
+	var best := INF
+	for player in game.living_players():
+		var distance := at.distance_to(player.global_position)
+		if distance < best:
+			best = distance
+			nearest = player
+	return nearest
 
 
 ## Calls out with a generic voice line; every peer hears it from here.
@@ -269,6 +391,8 @@ func _speak() -> void:
 	_lure_after = false
 	var index := _rng.randi() % _voices.size()
 	_say.rpc(index)
+	if _lure_alive():
+		_spoke_distance = global_position.distance_to(_lure_target.global_position)
 	var line := (
 		"%s_%s" % [SPEAKERS[floori(index / float(VOICES.size()))], VOICES[index % VOICES.size()]]
 	)
