@@ -458,6 +458,32 @@ func _block_walls() -> void:
 		var box: AABB = wall
 		var area := Rect2(box.position.x, box.position.z, box.size.x, box.size.z).grow(CLEARANCE)
 		_fill(area, true)
+	for prop in props():
+		_fill(prop.grow(CLEARANCE), true)
+
+
+## The solid things standing about the farm (x, z footprints): the hay in the
+## barn, the generator, the pump and the shipping crate. Routes go round them;
+## left off the grid, the creature walked into them and stuck (2026-10-04).
+static func props() -> Array[Rect2]:
+	var middle := BARN.get_center()
+	var rects: Array[Rect2] = []
+	for side: float in [-4.2, 4.2]:
+		rects.append(Rect2(middle.x + side - 1.2, middle.y - 3.6 - 0.6, 2.4, 1.2))
+	rects.append(Rect2(GENERATOR.x - 0.6, GENERATOR.z - 0.4, 1.2, 0.8))
+	rects.append(Rect2(PUMP.x - 0.125, PUMP.z - 0.125, 0.25, 0.25))
+	rects.append(Rect2(CRATE.x - 0.7, CRATE.z - 0.5, 1.4, 1.0))
+	return rects
+
+
+## Whether a straight walk from a to b crosses nothing solid on the walking grid.
+func clear_line(a: Vector3, b: Vector3) -> bool:
+	var steps := maxi(1, ceili(Vector2(a.x - b.x, a.z - b.z).length() / 0.5))
+	for i in steps + 1:
+		var at := a.lerp(b, float(i) / steps)
+		if grid.is_point_solid(_cell(at)):
+			return false
+	return true
 
 
 func _fill(area: Rect2, solid: bool) -> void:

@@ -40,6 +40,16 @@ func _ready() -> void:
 	_rows = VBoxContainer.new()
 	column.add_child(_rows)
 	game.voices.clips_arrived.connect(_show_clips)
+	VoiceChat.local_speaking_changed.connect(_on_talking)
+
+
+## While the list is open, a phrase you just said shows up once the host has
+## closed it (VoiceChat.CLIP_GAP of quiet).
+func _on_talking(talking: bool) -> void:
+	if not talking and _panel.visible:
+		await get_tree().create_timer(VoiceChat.CLIP_GAP + 0.3).timeout
+		if _panel.visible:
+			game.voices.ask_my_clips()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -66,8 +76,8 @@ func _show_clips(clips: Array) -> void:
 		row.queue_free()
 	if clips.is_empty():
 		_note.text = (
-			"Nothing of yours is kept. Only what you say while holding V is kept, and only if"
-			+ " you ticked consent in the lobby."
+			"Nothing of yours is kept. Only what you say while holding V is kept, only if"
+			+ " you ticked consent in the lobby, and not if your mic picked up nothing."
 		)
 		return
 	_note.text = "The creature may call your friends with these. Deleted when the match ends."
@@ -80,12 +90,14 @@ func _show_clips(clips: Array) -> void:
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(label)
 		_button(row, "Play", _play.bind(data))
-		_button(row, "Delete", game.voices.delete_my_clip.bind(i))
-	_button(_rows, "Delete all", game.voices.delete_my_clip.bind(-1))
+		_button(row, "Delete", game.voices.delete_my_clip.bind(data))
+	_button(_rows, "Delete all", game.voices.delete_my_clip.bind(PackedByteArray()))
 
 
+## As the creature plays it to your friends (VoiceBank.chat_phrase), minus the tell.
 func _play(data: PackedByteArray) -> void:
-	_playback.stream = Sfx.from_samples(VoiceCodec.decode(data), VoiceCodec.RATE)
+	var samples := VoiceCodec.decode(data)
+	_playback.stream = Sfx.from_samples(samples, VoiceCodec.RATE)
 	_playback.play()
 
 

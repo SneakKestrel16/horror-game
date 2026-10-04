@@ -547,7 +547,7 @@ func trap_sprung(index: int, player: Player) -> void:
 ## Host only: the creature called out. Remember who could hear it and how far
 ## away they were, and check again in LURE_CHECK seconds.
 ## heard: what each listener heard, peer -> description ("Ana's 'help_me'").
-func _on_creature_spoke(at: Vector3, heard: Dictionary) -> void:
+func _on_creature_spoke(at: Vector3, heard: Dictionary, tells: Dictionary) -> void:
 	_stats["lures"] += 1
 	var distances := {}
 	var lines: Array[String] = []
@@ -556,7 +556,9 @@ func _on_creature_spoke(at: Vector3, heard: Dictionary) -> void:
 		var distance := at.distance_to(player.global_position)
 		if distance <= LURE_HEARD:
 			distances[peer] = distance
-			lines.append("%s heard %s" % [player.label(), heard.get(peer, "?")])
+			lines.append(
+				"%s heard %s (%s)" % [player.label(), heard.get(peer, "?"), tells.get(peer, "?")]
+			)
 	_lure_checks.append(
 		{"due": clock + LURE_CHECK, "at": at, "distances": distances, "heard": heard}
 	)

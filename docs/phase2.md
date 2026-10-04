@@ -189,6 +189,32 @@ From the host's log (`2026-10-04T16-14-13.log`); mostly dev-panel skips, so no d
 - **Log wording:** "1 players" and "1 traps off the pegboard" now count in the singular, as does
   the morning's "missing 1 bear trap".
 
+### 2026-10-04, playtest 2 (one person, both windows, `--dev`)
+
+From the host's log (`2026-10-04T17-16-08.log`) and the player's report. Live chat clips, the
+corn strips and the C list were new.
+
+- **Chat clips reach the creature:** the idle window heard "words from voice chat" in the other
+  player's voice four times. Three lures worked, led 17 m to 6 m and 25 m to 5 m.
+- **The C list worked;** once it seemed not to, most likely with the mic off. Hardened anyway:
+  phrases a muted mic records (near silence) are no longer kept, the open list refreshes after
+  you speak, and Delete names the phrase rather than its place in the list, which could shift.
+- **The creature ran past the nearer player** to stay on its target. Mid-chase it now turns on a
+  player it can see who is at least 2 m nearer.
+- **It never went for the other player** after the kill: it retreated, then wandered the corn
+  while the idle player stood still and made no sound. At night it now prowls within 8 m of a
+  random player half the time, and goes into a dark barn where someone hides.
+- **It got stuck on things.** The hay, generator, pump and crate are solid but were missing from
+  its walking grid, and a chase ran straight at the target through anything not tall enough to
+  hide them. Routes now go round them, and a chase goes straight only with nothing in the way.
+- **The in-game copy sounded off at the start,** next to the recording. Every call has a tell
+  (an echo, or pitch 6% off) two times in three, by design, but the log didn't say which this
+  was; it does now. Inference: the start also carries the push-to-talk key's click and can begin
+  mid-wave, so chat phrases now lose their first 0.1 s and fade in and out over 20 ms.
+- **Corn money again:** 155 coins by 84 s from three corn plots and two turnip sales. Still to
+  judge with real players.
+- **Log wording:** "Farmer 1 pried Farmer 1 free" now reads "pried themselves free".
+
 ## Checklist
 
 What is still to build or check, from the

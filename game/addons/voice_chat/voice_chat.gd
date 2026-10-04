@@ -20,6 +20,7 @@ const CLIP_GAP := 0.4  # silence that ends a clip
 const CLIP_MIN := 0.5  # seconds
 const CLIP_MAX := 3.0  # seconds; design doc, Build Notes: live clips
 const CLIPS_PER_PEER := 8
+const CLIP_SILENT := 0.005  # RMS below this is a muted or switched-off mic: not kept
 
 ## Push-to-talk (hold V) or talk automatically when loud enough.
 @export var mode: Mode = Mode.PUSH_TO_TALK
@@ -312,7 +313,8 @@ func _finish_quiet_clips() -> void:
 		if _time - _clip_last[peer_id] < CLIP_GAP:
 			continue
 		var clip: PackedFloat32Array = _clip_building.get(peer_id, PackedFloat32Array())
-		if clip.size() >= int(CLIP_MIN * VoiceCodec.RATE) and has_consent(peer_id):
+		var heard := VoiceCodec.rms(clip) >= CLIP_SILENT
+		if clip.size() >= int(CLIP_MIN * VoiceCodec.RATE) and heard and has_consent(peer_id):
 			var list: Array = _clips.get(peer_id, [])
 			list.append(clip)
 			while list.size() > CLIPS_PER_PEER:

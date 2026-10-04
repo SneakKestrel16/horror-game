@@ -18,7 +18,8 @@ extends CharacterBody3D
 ## animate it and play its sounds.
 
 ## Host only: a lure was played here; heard is listener peer -> what they heard.
-signal spoke(at: Vector3, heard: Dictionary)
+## tells: listener peer -> its tell ("echo", "pitch +6%" or "no tell"), for the log.
+signal spoke(at: Vector3, heard: Dictionary, tells: Dictionary)
 
 enum State { LURK, INVESTIGATE, LURE, CHASE, RETREAT, ERRAND }  ## ERRAND: trap work.
 
@@ -34,6 +35,8 @@ const CROUCH_SIGHT := 5.0
 const CORN_COVER := 3.0  ## Metres of corn in the way that hide a player beyond arm's reach.
 const LOSE_TIME := 4.0  ## Seconds out of sight before a chase is given up.
 const RETREAT_TIME := 25.0
+const SWITCH_MARGIN := 2.0  ## Metres nearer another player must be to turn on them.
+const PROWL := 8.0  ## How near a player a night prowl takes it (m).
 const LURE_SPEED := {"day": 4.0, "night": 3.4}  ## Moving to a calling spot, unseen in the corn.
 const LURE_WAIT := 6.0  ## Seconds it stands still after calling, to see if anyone comes.
 const LURE_GIVE_UP := 30.0  ## Calls from wherever it is if the lure spot takes longer.
@@ -76,6 +79,8 @@ var _unseen_for := 0.0
 var _state_time := 0.0
 var _lure_left := 20.0
 var _replan_left := 0.0
+var _switch_left := 0.0  ## Until it next looks for a nearer player mid-chase.
+var _direct := false  ## Chasing straight at the target, nothing in the way.
 var _best_distance := INF
 var _stuck_for := 0.0
 var _rng := RandomNumberGenerator.new()
@@ -202,7 +207,7 @@ func _physics_process(delta: float) -> void:
 				_lurk()
 			elif _route.is_empty():
 				_route = _path(Farm.random_corn_point(_rng))
-	if state == State.CHASE and _target and _unseen_for == 0.0:
+	if state == State.CHASE and _target and _direct:
 		_walk_toward(_target.global_position, speed, delta)
 	elif not _route.is_empty():
 		if _walk_toward(_route[0], speed, delta):
@@ -321,13 +326,23 @@ func _lurk() -> void:
 		func(player: Player) -> bool:
 			return farm.barn_lit() and Farm.in_barn(player.global_position)
 	)
-	if night and hiding and _rng.randf() < AMBUSH:
+	var living := game.living_players()
+	var in_the_dark := living.filter(
+		func(player: Player) -> bool:
+			return not farm.barn_lit() and Farm.in_barn(player.global_position)
+	)
+	if night and not in_the_dark.is_empty():
+		# The lights are out: the barn is where they hide.
+		goal = (in_the_dark[_rng.randi() % in_the_dark.size()] as Player).global_position
+	elif night and hiding and _rng.randf() < AMBUSH:
 		# Somebody will have to fetch fuel: wait in the dark along the way.
 		var along := Farm.FUEL_DRUM.lerp(Farm.GENERATOR, _rng.randf())
 		goal = along + Vector3(_rng.randf_range(-6, 6), 0, _rng.randf_range(2, 8))
-	elif night and _rng.randf() < 0.35:
-		var open := Farm.CORN_IN - 2.0
-		goal = Vector3(_rng.randf_range(-open, open), 0, _rng.randf_range(-open, open))
+	elif night and not living.is_empty() and _rng.randf() < 0.5:
+		# Prowls near someone: a quiet player isn't safe, only harder to find.
+		var near: Player = living[_rng.randi() % living.size()]
+		var off := Vector3.FORWARD.rotated(Vector3.UP, _rng.randf() * TAU) * _rng.randf() * PROWL
+		goal = near.global_position + off
 	_route = _path(goal)
 
 
@@ -354,9 +369,16 @@ func _update_chase(delta: float) -> void:
 		_retreat()
 		return
 	_unseen_for = 0.0 if _can_see(_target) else _unseen_for + delta
+	_switch_left -= delta
+	if _switch_left <= 0.0:
+		_switch_left = 0.5
+		_turn_on_nearest()
+	# Straight at them only with nothing solid between; else round it (a low
+	# generator hides nobody but still blocks the way).
+	_direct = _unseen_for == 0.0 and farm.clear_line(global_position, _target.global_position)
 	_replan_left -= delta
-	if _unseen_for > 0.0 and (_route.is_empty() or _replan_left <= 0.0):
-		_route = _path(_target.global_position)  # Round whatever hid them.
+	if not _direct and (_route.is_empty() or _replan_left <= 0.0):
+		_route = _path(_target.global_position)
 		_replan_left = 0.5
 	if _unseen_for > LOSE_TIME:
 		game.log_event("creature lost %s" % _target.label())
@@ -365,6 +387,22 @@ func _update_chase(delta: float) -> void:
 	if global_position.distance_to(_target.global_position) < CATCH_RANGE:
 		game.creature_caught(_target)
 		_retreat()
+
+
+## Mid-chase, goes for a player it can see who is clearly nearer than its
+## target, rather than running past them (2026-10-04 playtest).
+func _turn_on_nearest() -> void:
+	var nearest := _visible_player()
+	if nearest == null or nearest == _target:
+		return
+	if farm.barn_lit() and Farm.in_barn(nearest.global_position):
+		return
+	var current := global_position.distance_to(_target.global_position)
+	if global_position.distance_to(nearest.global_position) < current - SWITCH_MARGIN:
+		game.log_event("creature turns on %s" % nearest.label())
+		_target = nearest
+		_unseen_for = 0.0
+		_route.clear()
 
 
 ## Starts a call: at target, or whoever is most alone. Resets the timer.
@@ -496,6 +534,7 @@ func _speak() -> void:
 	_lure_after = false
 	var generic := _rng.randi() % _voices.size()
 	var heard := {}
+	var tells := {}
 	var listeners := Array(multiplayer.get_peers())
 	listeners.append(multiplayer.get_unique_id())
 	for listener: int in listeners:
@@ -504,6 +543,7 @@ func _speak() -> void:
 		var pitch := 1.0
 		if tell == 2:
 			pitch += PITCH_TELL if _rng.randf() < 0.5 else -PITCH_TELL
+		tells[listener] = ["no tell", "echo", "pitch %+d%%" % roundi((pitch - 1.0) * 100)][tell]
 		var pick := game.voices.pick(listener)
 		if pick.is_empty():
 			_say_to(listener, &"_say", [generic, echo, pitch])
@@ -514,7 +554,7 @@ func _speak() -> void:
 			heard[listener] = "%s's '%s'" % [who, game.voices.line_text(pick["key"])]
 	if _lure_alive():
 		_spoke_distance = global_position.distance_to(_lure_target.global_position)
-	spoke.emit(global_position, heard)
+	spoke.emit(global_position, heard, tells)
 
 
 func _generic_name(index: int) -> String:

@@ -402,7 +402,14 @@ func _trap_request(action: String, index: int, player: Player, held: int, kind: 
 				if trapped and not trapped.dead:
 					trapped.released.rpc_id(victim)
 				game.log_event(
-					"%s pried %s free" % [player.label(), trapped.label() if trapped else "someone"]
+					(
+						"%s pried themselves free" % player.label()
+						if trapped == player
+						else (
+							"%s pried %s free"
+							% [player.label(), trapped.label() if trapped else "someone"]
+						)
+					)
 				)
 		"take_trap":
 			if trap["state"] == TrapField.State.DISARMED and trap["kind"] == "bear":

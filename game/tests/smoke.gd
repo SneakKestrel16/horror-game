@@ -132,18 +132,32 @@ func _check_lobby() -> void:
 	var listed := []
 	var on_list := func(clips: Array) -> void: listed.assign(clips)
 	voices.clips_arrived.connect(on_list)
-	VoiceChat.call("_store_clip_samples", 1, tone)
+	var silence := PackedFloat32Array()
+	silence.resize(VoiceCodec.RATE)
+	VoiceChat.call("_store_clip_samples", 1, silence)  # A muted mic.
+	await _frames(40)
+	var higher := tone.duplicate()  # Another phrase: same level, different pitch.
+	for i in higher.size():
+		higher[i] = 0.3 * sin(TAU * 330.0 * i / VoiceCodec.RATE)
+	VoiceChat.call("_store_clip_samples", 1, higher)
 	await _frames(40)
 	voices.ask_my_clips()
 	await _frames(3)
-	_check(listed.size() == 2, "you can list your kept chat phrases (%d)" % listed.size())
-	voices.delete_my_clip(0)
-	await _frames(3)
 	_check(
-		listed.size() == 1 and VoiceChat.get_clips(1).size() == 1,
-		"you can delete one of your kept phrases"
+		listed.size() == 2,
+		"you can list your kept phrases, not the silent one (%d)" % listed.size()
 	)
-	voices.delete_my_clip(-1)
+	var first: PackedByteArray = listed[0]
+	VoiceChat.delete_clip(1, 0)  # The oldest drops off the end before the delete arrives.
+	voices.delete_my_clip(first)
+	await _frames(3)
+	_check(listed.size() == 1, "deleting a phrase already gone deletes nothing else")
+	voices.delete_my_clip(listed[0])
+	await _frames(3)
+	_check(listed.is_empty() and VoiceChat.get_clips(1).is_empty(), "you can delete one by one")
+	VoiceChat.call("_store_clip_samples", 1, tone)
+	await _frames(40)
+	voices.delete_my_clip(PackedByteArray())
 	await _frames(3)
 	_check(listed.is_empty() and VoiceChat.get_clips(1).is_empty(), "and all of them")
 	voices.clips_arrived.disconnect(on_list)
@@ -171,6 +185,16 @@ func _check_routes() -> void:
 			"a corn-only route reaches %s from the ring" % goal
 		)
 	_check(not Farm.in_corn(Farm.GENERATOR), "the generator stands in the open")
+	var past := farm.route(Farm.GENERATOR + Vector3(-3, 0, 0), Farm.GENERATOR + Vector3(3, 0, 0))
+	var generator: Rect2 = Farm.props()[2]
+	var through := past.filter(
+		func(point: Vector3) -> bool: return generator.has_point(Vector2(point.x, point.z))
+	)
+	_check(not past.is_empty() and through.is_empty(), "routes go round the generator")
+	_check(
+		not farm.clear_line(Farm.GENERATOR + Vector3(-3, 0, 0), Farm.GENERATOR + Vector3(3, 0, 0)),
+		"a straight run through the generator is blocked"
+	)
 	for building: Rect2 in [Farm.BARN, Farm.SHED]:
 		var clear := true
 		for x in range(floori(building.position.x), ceili(building.end.x)):
@@ -390,6 +414,20 @@ func _check_night() -> void:
 	var nearer := _game.creature.global_position.distance_to(Farm.GENERATOR)
 	_check(nearer < far - 10.0, "it heads for the barn (%.0f m -> %.0f m)" % [far, nearer])
 	_dev.set_fuel(1.0)
+	# Mid-chase it turns on a nearer player it can see, not running past them.
+	var players: MultiplayerSpawner = _game.get("_players")
+	var other := players.spawn(_game.call("_player_data", FRIEND, "Bea")) as Player
+	other.set_physics_process(false)
+	await _frames(2)
+	_put(_player, Vector3(18, 0, 4))
+	_put(other, Vector3(18, 0, -1))
+	_game.creature.place(Vector3(18, 0, -6))
+	_game.creature.chase(_player)
+	await _game_seconds(0.6)
+	var chasing: Player = _game.creature.get("_target")
+	_check(chasing == other, "mid-chase it turns on the nearer player")
+	_game.creature.place(Vector3(0, 0, 40))
+	other.free()
 	# In the open with a lantern: it should come.
 	_armed_before_wipe = traps.armed_positions().size()
 	_game.coins = 10  # Less than the bill, so the morning tests the floor.

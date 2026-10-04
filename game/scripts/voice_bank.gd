@@ -44,6 +44,8 @@ const OWN_WEIGHT := 0.05
 ## came out calm (2026-10-04 playtest). Guess.
 const LIVE_CHANCE := 0.7
 const LIVE := "live"  ## The key for a chat clip.
+const CHAT_TRIM := 0.1  ## Seconds cut from the start of a chat phrase. Guess.
+const CHAT_FADE := 0.02  ## Seconds faded in and out.
 
 var names := {}  ## peer -> name.
 var counts := {}  ## peer -> takes recorded.
@@ -94,6 +96,21 @@ static func normalized(samples: PackedFloat32Array) -> PackedFloat32Array:
 	return out
 
 
+## A chat phrase as it is played and listed: the first CHAT_TRIM seconds cut
+## (the mic catches the push-to-talk key), the ends faded so it neither starts
+## nor stops on a click, then normalized and encoded. A playtest found the
+## start sounded off (2026-10-04); that this was the cause is inference.
+static func chat_phrase(clip: PackedFloat32Array) -> PackedByteArray:
+	var trim := mini(roundi(CHAT_TRIM * VoiceCodec.RATE), floori(clip.size() / 2.0))
+	var out := clip.slice(trim)
+	var fade := mini(roundi(CHAT_FADE * VoiceCodec.RATE), floori(out.size() / 2.0))
+	for i in fade:
+		var gain := float(i) / fade
+		out[i] *= gain
+		out[out.size() - 1 - i] *= gain
+	return VoiceCodec.encode(normalized(out))
+
+
 ## Sends one recorded take to the host.
 func upload(key: String, samples: PackedFloat32Array) -> void:
 	_receive_take.rpc_id(1, key, VoiceCodec.encode(samples))
@@ -104,10 +121,12 @@ func ask_my_clips() -> void:
 	_send_my_clips.rpc_id(1)
 
 
-## Deletes one of this player's kept chat phrases on the host, or all (index
-## -1); clips_arrived then brings what is left.
-func delete_my_clip(index: int) -> void:
-	_delete_my_clip.rpc_id(1, index)
+## Deletes one of this player's kept chat phrases on the host, named by its
+## data as clips_arrived sent it, or all of them (empty data); clips_arrived
+## then brings what is left. By data, not position: a phrase kept or dropped
+## off the end since the list was sent would shift the positions.
+func delete_my_clip(data: PackedByteArray) -> void:
+	_delete_my_clip.rpc_id(1, hash(data) if not data.is_empty() else -1)
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -117,17 +136,21 @@ func _send_my_clips() -> void:
 
 
 @rpc("any_peer", "call_local", "reliable")
-func _delete_my_clip(index: int) -> void:
+func _delete_my_clip(id: int) -> void:
 	if multiplayer.is_server():
 		var peer := multiplayer.get_remote_sender_id()
-		VoiceChat.delete_clip(peer, index)
+		var clips := VoiceChat.get_clips(peer)
+		for i in clips.size():
+			if id == -1 or hash(chat_phrase(clips[i])) == id:
+				VoiceChat.delete_clip(peer, -1 if id == -1 else i)
+				break
 		_reply_clips(peer)
 
 
 func _reply_clips(peer: int) -> void:
 	var encoded := []
 	for clip: PackedFloat32Array in VoiceChat.get_clips(peer):
-		encoded.append(VoiceCodec.encode(clip))
+		encoded.append(chat_phrase(clip))
 	_receive_my_clips.rpc_id(peer, encoded)
 
 
@@ -204,7 +227,7 @@ func pick(listener: int) -> Dictionary:
 	if name_key not in keys or _rng.randf() >= NAME_CHANCE:
 		if not live.is_empty() and (keys.is_empty() or _rng.randf() < LIVE_CHANCE):
 			var clip: PackedFloat32Array = live[_rng.randi() % live.size()]
-			return {"source": source, "key": LIVE, "data": VoiceCodec.encode(normalized(clip))}
+			return {"source": source, "key": LIVE, "data": chat_phrase(clip)}
 		key = keys[_rng.randi() % keys.size()]
 	var takes: Array = _takes[source][key]
 	return {"source": source, "key": key, "data": takes[_rng.randi() % takes.size()]}
