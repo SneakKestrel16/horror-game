@@ -208,27 +208,33 @@ func hear(at: Vector3, radius: float) -> void:
 
 ## Host only (dev panel): calls out from where it stands, now.
 func speak_now() -> void:
+	game.log_event("dev: creature calls now")
 	_lure_target = null
 	_speak()
 
 
 ## Host only (dev panel): starts a lure at target now, as if one were due.
 func lure_now(target: Player) -> void:
+	game.log_event("dev: creature lures %s" % target.label())
 	_plan_lure(game.phase() == "night", target)
 
 
-## Host only (dev panel): runs at target. By day it gives up at once.
+## Host only (dev panel): runs at a living target. By day it gives up at once.
 func chase(target: Player) -> void:
-	_chase(target)
+	if not target.dead:
+		game.log_event("dev: creature sent after %s" % target.label())
+		_chase(target)
 
 
 ## Host only (dev panel): sends it back into the corn for a while.
 func drive_off() -> void:
+	game.log_event("dev: creature driven off")
 	_retreat()
 
 
 ## Host only (dev panel): puts it at a point and has it lurk from there.
 func place(at: Vector3) -> void:
+	game.log_event("dev: creature moved to %s" % Game._where(at))
 	global_position = Vector3(at.x, 0.0, at.z)
 	_lurk()
 

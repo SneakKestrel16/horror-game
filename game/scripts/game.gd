@@ -287,10 +287,12 @@ func set_fuel(amount: float) -> void:
 	fuel = amount
 	_fuel_warned = amount < FLICKER_BELOW
 	sync_state()
+	log_event("dev: fuel set to %d%%" % roundi(amount * 100))
 
 
 ## Host only (dev panel): arms or clears every trap; sprung traps let go.
 func set_all_traps(armed: bool) -> void:
+	log_event("dev: %s every trap" % ("armed" if armed else "cleared"))
 	for i in traps.size():
 		var victim: int = traps[i]["victim"]
 		if victim != 0:
@@ -302,6 +304,7 @@ func set_all_traps(armed: bool) -> void:
 
 ## Host only (dev panel): every plot ripe.
 func ripen_all() -> void:
+	log_event("dev: ripened every plot")
 	for i in plots.size():
 		_set_plot.rpc(i, Stage.RIPE)
 
@@ -319,6 +322,7 @@ func skip_phase() -> void:
 	var factor := short_factor()
 	for start: float in [DAY, DAY + DUSK, DAY + DUSK + NIGHT]:
 		if clock < start * factor:
+			log_event("dev: skipped %.0f s ahead" % (start * factor - clock))
 			clock = start * factor
 			return
 

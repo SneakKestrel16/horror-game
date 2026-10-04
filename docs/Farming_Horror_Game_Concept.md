@@ -112,7 +112,7 @@ While players work or hide through the night, the creature sets traps around the
 
 - **Pegboard:** Bear traps hang on a pegboard with painted outlines, so one glance through the shed door shows how many are missing. Every empty outline is a trap hidden somewhere on the farm.
 - **Locking it:** Buying a lock or boarding up the shed keeps traps in, but costs money and time, and from day 5 the creature can break in anyway.
-- **Returning traps:** Disarmed bear traps can be carried back to the shed, which takes time but stops the creature from reusing them. Any bear trap not hanging on the pegboard at nightfall is the creature’s to take, wherever it is, even inside a lit building, so hoarding traps only hands them over.
+- **Returning traps:** Disarmed bear traps can be carried back to the shed, which takes time but stops the creature from reusing them. Any bear trap not hanging on the pegboard at nightfall is the creature’s to take, wherever it is, so hoarding traps only hands them over. A trap kept inside a lit building is simply gone by morning, with no sign of how: the creature still never enters a lit building while anyone can see it.
 
 ### Finding and Disarming
 
@@ -328,7 +328,7 @@ A review sits between each phase and the next. It starts once the phase passes i
 
 - **Phase 1 (prototype):** One small field and the shed, one day and one night, 2 players, the creature wandering and chasing by sound, bear traps and small pits in scripted spots, the generator, and the creature playing generic pre-recorded voice lines. Done when: the day feels safe, the night feels tense, and a generic voice from the corn makes a playtester walk toward it at least once. Passed after two playtests, which led to reworked lures, fuel runs and a more spread-out farm; it uses a 6-minute day because it has only one small field (see [Phase 1 prototype](phase1.md)).
 - **Review 1 (done):** Before Phase 2 adds recorded voices, the pegboard and the medical bill, it settled mimicry as a supporting hook, lobby recording, voice tells, bear trap hoarding and the cost of death (see Resolved Issues).
-- **Before Phase 2’s build:** settle traps in lit buildings and how players place a teammate (both in issue 5).
+- **Before Phase 2’s build:** settle how players place a teammate (issue 5).
 - **Phase 2:** Lobby voice-line recording, the creature stealing bear traps from the shed and the pegboard, death with respawn at dawn and the medical bill, and up to 4 players. Done when: hearing a friend’s recorded voice from the corn fools someone, and trap sweeps feel worth doing.
 - **Review 2:** Before Phase 3 adds live clips, ghosts and jumpscares, settle what Phase 2 turned up, the lantern flicker’s light (issue 5), one tracked state (6) and fuzzier day-death rules (7), and check from its playtest whether ghosts without trap sight will have enough to do.
 - **Phase 3:** Live clips from proximity chat, the creature favoring dead players’ voices, the Director and jumpscares, and dead players’ ghost abilities including the lantern flicker. Done when: dead players stay engaged, and the living argue over whether to trust a static voice.
@@ -379,6 +379,7 @@ How the earlier open issues were settled, and where to find each answer.
 - **Live clips could carry anything:** push-to-talk only, 3 seconds at most, reviewable and deletable, and blockable. See Build Notes.
 - **The creature was seen too often:** glimpse rules for every scare. See The Creature.
 - **There was no reason to play a second season:** the farm carries over, the debt grows, and the creature gains a trait. See The Next Season.
+- **Traps in a lit building contradicted “never enters a lit building”:** a trap kept in one is simply gone by morning, unexplained. See The Tool Shed.
 - **Dead players saw every trap:** ghosts no longer see traps, for now; it may need reworking after Phase 3. See Ghost spectating.
 - **Lures repeated from one spot** (Phase 1 playtest): calls now move with the target, avoid recent spots and lead on whoever approaches. See [Phase 1 prototype](phase1.md).
 - **The lit barn was a sure refuge** (Phase 1 playtest): fuel lasts too little to hide all night, and the creature waits along the fuel run. See Nights and [Phase 1 prototype](phase1.md).
@@ -405,7 +406,6 @@ Payments scale down for smaller teams but the 4-plot moonflower bed doesn’t, s
 
 ### 5. A few rules contradict each other
 
-- **Traps in a lit building:** the creature never enters a lit building, yet any bear trap off the pegboard at nightfall is its to take, “even inside a lit building.” Players will ask how. Either it does go in for traps, or the trap is simply gone by morning with no explanation, which is creepier. Phase 2 builds trap stealing, so this needs settling before it.
 - **The lantern flicker needs a light:** a dead player can only flicker a lantern near a living one, but carrying a light makes you visible, so the one unfakeable signal is missing exactly when players go dark to hide. Letting it work on any light (barn bulbs, porch lights, the moonflower glow) would fix that. Needs settling before Phase 3.
 - **“Somewhere the teammate can’t be” needs a sense of where teammates are:** with proximity chat the only cue, a teammate who goes quiet can’t be placed, so the one tell that never goes away stops working. Decide whether that is the point, or add a light hint such as a whistle or teammates’ lanterns showing at a distance. Phase 2 brings recorded voices, so this needs settling before its playtest.
 
