@@ -121,6 +121,21 @@ and nobody walked toward one.
   Inference: digging has no animation, so it reads as staring; a digging pose would show it.
 - **Voice chat errored when the host left** (`get_unique_id` after the peer was gone). Fixed.
 
+### 2026-10-04, earlier solo run (recording voice lines)
+
+From the player's report; no log was kept of it.
+
+- **Recording works with a real microphone:** takes recorded, played back in the lobby, and were
+  heard when the creature called.
+- **People record in a neutral tone,** not scared, whatever the prompt asks. The player's view: a
+  bigger, more chaotic farm would make a calm "Come look at this." believable, so the lines can
+  work as recorded if the game around them gives a reason to say them calmly. To be weighed in
+  Review 2 against processing the takes to sound strained.
+- **Quality is poor.** Takes go through the chat codec (`addons/voice_chat/voice_codec.gd`):
+  16 kHz mono, 8-bit mu-law. Inference: that is telephone quality and may be most of it; what it
+  sounded like (hiss, muffled, quiet, clipped) would say whether the codec or the microphone level
+  is to blame.
+
 ## Checklist
 
 What is still to build or check, from the
@@ -133,7 +148,10 @@ the art and sound the prototype fakes.
 - [x] Creature walks out of the barn by day
 - [x] Creature reacts to the barn going dark
 - [ ] A playtest with 2-4 real people, each on their own machine
-- [ ] Recording and proximity chat checked with real microphones
+- [x] Recording with a real microphone
+- [ ] Proximity chat between two machines with real microphones
+- [ ] Better quality recorded takes
+- [ ] Neutral-tone takes: make the farm busy enough that calm lines fit, or process them
 - [ ] A friend's recorded voice fools someone (`LURE WORKED` in the log)
 - [ ] Trap sweeps and rehanging traps on the pegboard feel worth doing
 - [ ] Digging and trap-setting animations, so an errand doesn't look like staring
