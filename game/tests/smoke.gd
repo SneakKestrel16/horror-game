@@ -133,6 +133,10 @@ func _check_routes() -> void:
 		spots["corn"].size() > 20 and spots["path"].size() > 10,
 		"trap spots in the corn and on the paths"
 	)
+	var in_corn_bears := 0
+	for i in 100:
+		in_corn_bears += 1 if Farm.in_corn(_game.traps.call("_pick_spot", "bear")) else 0
+	_check(in_corn_bears >= 70, "bear traps go mostly in the corn (%d of 100)" % in_corn_bears)
 
 
 ## Stands the player alone near the north corn, makes the creature due a lure,
@@ -234,6 +238,7 @@ func _check_day_prey() -> void:
 	_put(_player, Vector3(0, 0, 24))
 	# Placed afresh: after the night's kill it would still be retreating.
 	_game.creature.place(Vector3(0, 0, 36))
+	var traps_before := _game.traps.traps.size()
 	var killed := false
 	for i in roundi((Game.ALONE_TIME + 20.0) * 60 / SPEEDUP):
 		await get_tree().physics_frame
@@ -247,6 +252,7 @@ func _check_day_prey() -> void:
 	await _frames(5)
 	# Alone, that was a wipe on the last day: the run is over.
 	_check(_game.ended and _game.phase() == "dawn", "a wipe on the last day ends the run")
+	_check(_game.traps.traps.size() == traps_before, "no traps are set once the run is over")
 	_check(
 		("Taken in it: %s" % _player.label()) in _game.hud._overlay.text,
 		"the dawn screen lists the player taken, not as a survivor"
@@ -333,7 +339,10 @@ func _check_morning() -> void:
 	var armed_before := _armed_before_wipe
 	await _frames(5)
 	_check(_game.day_number() == 2 and _game.phase() == "day", "a wipe brings the morning of day 2")
-	_check(not _player.dead and _player.global_position.z < 0.0, "the dead came back at the barn")
+	_check(
+		not _player.dead and Farm.in_barn(_player.global_position),
+		"the dead came back inside the barn"
+	)
 	_check(
 		_game.coins == Game.BILL_FLOOR,
 		"the medical bill left a seed pack's worth (%d)" % _game.coins

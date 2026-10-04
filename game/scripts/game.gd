@@ -396,12 +396,15 @@ func _enter_phase(current: String, key: String) -> void:
 
 ## Host only, at each dawn: the creature finishes its traps; the dead come back
 ## at the barn and the medical bill is paid; after a full wipe it sets more.
+## At the last dawn the run is over, so it sets nothing.
 func _morning() -> void:
 	var wiped := _night_deaths > 0 and living_players().is_empty()
-	traps.finish_night()
-	if wiped:
-		traps.plan(TrapField.WIPE_EXTRA.x, TrapField.WIPE_EXTRA.y)
+	if phase() != "dawn":
 		traps.finish_night()
+		if wiped:
+			log_event("everyone died, so the creature sets extra traps")
+			traps.plan(TrapField.WIPE_EXTRA.x, TrapField.WIPE_EXTRA.y)
+			traps.finish_night()
 	var bill := 0
 	if _night_deaths > 0:
 		bill = mini(BILL_CAP, BILL_FIRST + (_night_deaths - 1) * BILL_EACH)

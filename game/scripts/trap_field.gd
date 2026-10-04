@@ -18,6 +18,10 @@ const SLOTS := 4  ## Bear traps on the pegboard at the start.
 const RAMP: Array[Vector2i] = [Vector2i(2, 1), Vector2i(2, 2)]
 const WIPE_EXTRA := Vector2i(1, 1)  ## More if everyone died: it had the farm to itself.
 const SPACING := 5.0  ## Metres between traps.
+## Chance a trap goes on a path instead of its usual place. Bear traps were 0.4
+## like pits, and a playtest morning had both on paths (2026-10-04); the design
+## doc wants them mostly in the corn.
+const ON_PATH := {"bear": 0.15, "pit": 0.4}
 const UNSEEN := 15.0  ## A claimed trap vanishes with no living player this close.
 const BEAR_REACH := 0.55  ## How close a foot must come to spring a trap (m).
 const PIT_REACH := 0.65
@@ -95,7 +99,9 @@ func plan(bears: int, pits: int) -> void:
 	for i in pits:
 		_order("pit")
 	_claim_left = 0.0
-	game.log_event("the creature means to set %d bear traps and %d pits" % [bears, pits])
+	game.log_event(
+		"the creature means to set %s and %s" % [_count(bears, "bear trap"), _count(pits, "pit")]
+	)
 
 
 ## Host only: the trap the creature should set next, the one nearest to
@@ -124,7 +130,7 @@ func take_from_board() -> void:
 		stock += taken
 		set_board(board - taken)
 		game.log_event(
-			"the creature took %d bear traps from the pegboard (%d left)" % [taken, board]
+			"the creature took %s from the pegboard (%d left)" % [_count(taken, "bear trap"), board]
 		)
 
 
@@ -221,6 +227,10 @@ func _seen(at: Vector3) -> bool:
 	return false
 
 
+static func _count(count: int, thing: String) -> String:
+	return "%d %s%s" % [count, thing, "" if count == 1 else "s"]
+
+
 func _order(kind: String) -> void:
 	var spot := _pick_spot(kind)
 	if spot.is_finite():
@@ -233,7 +243,7 @@ func _pick_spot(kind: String) -> Vector3:
 	var spots := Farm.trap_spots()
 	var first := "corn" if kind == "bear" else "rows"
 	var groups: Array[String] = [first, "path", "corn" if kind == "pit" else "rows"]
-	if _rng.randf() < 0.4:
+	if _rng.randf() < ON_PATH[kind]:
 		groups = ["path", first]
 	var taken: Array[Vector3] = []
 	for trap in traps:

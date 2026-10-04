@@ -23,7 +23,7 @@ const SHED_HEIGHT := 2.6
 const WALL := 0.25
 const BARN_LIGHT := 1.6  ## Energy of each barn lamp.
 
-const SPAWN := Vector3(0, 0, -9)
+const SPAWN := Vector3(0, 0, -15)  ## Inside the barn, so the dead come back under its lights.
 ## Where the creature stands to take traps: outside the shed door (it never goes in).
 const SHED_DOOR_OUT := Vector3(-23.0, 0, 0.6)
 ## The pegboard on the shed's back wall, facing the door.

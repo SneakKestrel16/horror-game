@@ -80,6 +80,7 @@ Phase 1's numbers still hold ([Numbers](phase1.md#numbers)); new ones:
 | Recorded lines | 4 fixed lines plus each teammate's name, 3 takes each, 0.4-3 s | Guess |
 | Own voice weight | 5% of a teammate's | Guess |
 | Off-board trap vanishes | no living player within 15 m | Guess |
+| Trap on a path instead of its usual place | bear trap 15%, pit 40% | Guess; bear traps were 40% until the solo playtest |
 
 ## Playtesting
 
@@ -120,6 +121,16 @@ and nobody walked toward one.
   dying now makes a noise the whole farm hears, and the creature drops its errand to go and look.
   Inference: digging has no animation, so it reads as staring; a digging pose would show it.
 - **Voice chat errored when the host left** (`get_unique_id` after the peer was gone). Fixed.
+- **Players came back outside the barn,** at (0, -9), 3 m from the door, where the idle player
+  was caught both nights. Players now spawn and respawn inside it, at (0, -15).
+- **Neither wipe morning put a trap in the corn:** both bear traps went on paths, a 16% chance
+  when each had a 40% chance of a path. Bear traps now take a path 15% of the time.
+- **At the last dawn the creature still set the wipe's extra traps,** after the run had ended.
+  It no longer does.
+- **The log read badly after a wipe:** the extra traps printed a second "means to set" line
+  like a duplicate, and said "1 bear traps". It now says why, and counts in the singular.
+- **Untested:** no bear trap was sprung or hung back on the pegboard, and one call in nine used
+  the listener's own voice (expected with only one person recording).
 
 ### 2026-10-04, earlier solo run (recording voice lines)
 
