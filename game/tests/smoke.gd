@@ -238,6 +238,10 @@ func _check_day_prey() -> void:
 	await _frames(5)
 	# Alone, that was a wipe on the last day: the run is over.
 	_check(_game.ended and _game.phase() == "dawn", "a wipe on the last day ends the run")
+	_check(
+		("Taken in it: %s" % _player.label()) in _game.hud._overlay.text,
+		"the dawn screen lists the player taken, not as a survivor"
+	)
 
 
 func _check_dusk() -> void:

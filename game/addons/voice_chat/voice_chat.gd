@@ -170,7 +170,8 @@ func reset() -> void:
 	_dead.clear()
 	_last_heard.clear()
 	_speaking.clear()
-	_consent[multiplayer.get_unique_id()] = _my_consent
+	if _is_online():  # Not after the host left: get_unique_id() errors then.
+		_consent[multiplayer.get_unique_id()] = _my_consent
 
 
 # --- Microphone -----------------------------------------------------------------

@@ -379,8 +379,12 @@ func _enter_phase(current: String, key: String) -> void:
 			traps.plan_night(day_number() - 1, team_scale())
 			_announce.rpc("Night. Stay in the light. Something is out there.")
 		"dawn":
+			var taken: Array[String] = []  # Before _morning() revives them.
+			for node in get_tree().get_nodes_in_group("players"):
+				if (node as Player).dead:
+					taken.append((node as Player).label())
 			_morning()
-			_finish()
+			_finish(taken)
 
 
 ## Host only, at each dawn: the creature finishes its traps; the dead come back
@@ -422,12 +426,12 @@ func _morning() -> void:
 	sync_state()
 
 
-func _finish() -> void:
+func _finish(died: Array[String]) -> void:
 	var survived: Array[String] = []
-	var died: Array[String] = []
 	for node in get_tree().get_nodes_in_group("players"):
-		var player := node as Player
-		(died if player.dead else survived).append(player.label())
+		var label := (node as Player).label()
+		if label not in died:
+			survived.append(label)
 	var summary := (
 		(
 			"DAWN\n\nSurvived the last night: %s\nTaken in it: %s\n\n"
