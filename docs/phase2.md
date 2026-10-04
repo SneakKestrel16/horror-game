@@ -164,6 +164,24 @@ From the player's report; no log was kept of it.
   level; if takes then sound hissy, the cause is the chat codec they go through (16 kHz, 8-bit
   mu-law, `addons/voice_chat/voice_codec.gd`).
 
+### 2026-10-04, solo session with the new corn (one window, `--dev`)
+
+From the host's log (`2026-10-04T16-14-13.log`); mostly dev-panel skips, so no deaths.
+
+- **The planted corn pays at once:** two plots cut and sold within 20 s of the day starting,
+  100 coins by 26 s, with the creature calling from far off. Inference: by day, alone, cutting
+  corn costs nothing yet; with the bill the only use for coins, 4 plots (180) cover most of a
+  run's bills. Worth watching with more players before changing the price or the plot count.
+- **The strips are in use:** the creature called from the generator strip at (18, -16) on the
+  morning of day 2, and a pit on the fuel run caught the player.
+- **Lures worked at dusk,** leading the player from 29 m to 1 m and on again, in their own voice,
+  since nobody else had recorded.
+- **The dawn screen counted those as a friend's voice.** Own-voice lures no longer count.
+- **A lure check was logged after the dawn screen,** so the screen missed it. Checks stop at the
+  end of the run.
+- **Log wording:** "1 players" and "1 traps off the pegboard" now count in the singular, as does
+  the morning's "missing 1 bear trap".
+
 ## Checklist
 
 What is still to build or check, from the

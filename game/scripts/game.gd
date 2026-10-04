@@ -198,7 +198,8 @@ func _physics_process(delta: float) -> void:
 	_was_lit = lights_on()
 	traps.check(living_players())
 	_watch_trapped(delta)
-	_check_lures()
+	if not ended:  # The dawn screen is written; a late check would miss it.
+		_check_lures()
 	_tick_left -= delta
 	if _tick_left <= 0.0:
 		_tick_left = 0.2
@@ -272,7 +273,7 @@ func start_day() -> void:
 	_begin.rpc()
 	clock = 0.0
 	_last_phase = ""
-	log_event("the day starts with %d players (scale %.2f)" % [team_size, team_scale()])
+	log_event("the day starts with %s (scale %.2f)" % [counted(team_size, "player"), team_scale()])
 	sync_state()
 
 
@@ -422,15 +423,15 @@ func _morning() -> void:
 	var missing := TrapField.SLOTS - traps.board
 	log_event(
 		(
-			"morning: %d died, bill %d, %d traps off the pegboard%s"
-			% [_night_deaths, bill, missing, ", full wipe" if wiped else ""]
+			"morning: %d died, bill %d, %s off the pegboard%s"
+			% [_night_deaths, bill, counted(missing, "trap"), ", full wipe" if wiped else ""]
 		)
 	)
 	if phase() != "dawn":
 		_announce.rpc(
 			(
-				"Morning, day %d. Medical bill: %d. The pegboard is missing %d bear traps."
-				% [day_number(), bill, missing]
+				"Morning, day %d. Medical bill: %d. The pegboard is missing %s."
+				% [day_number(), bill, counted(missing, "bear trap")]
 			)
 		)
 	_night_deaths = 0
@@ -567,7 +568,8 @@ func _check_lures() -> void:
 			if before - after >= LURE_FOLLOWED:
 				_stats["followed"] += 1
 				var heard: String = check["heard"].get(peer, "")
-				if heard.ends_with("'") and not heard.begins_with("a generic"):
+				var own := heard.begins_with("%s's '" % player.label())
+				if heard.ends_with("'") and not heard.begins_with("a generic") and not own:
 					_stats["friend"] += 1
 				log_event(
 					(
@@ -581,6 +583,11 @@ func _check_lures() -> void:
 func _who(peer: int) -> String:
 	var player := get_node_or_null("Players/%d" % peer) as Player
 	return player.label() if player else "peer %d" % peer
+
+
+## "1 pit", "2 pits".
+static func counted(count: int, thing: String) -> String:
+	return "%d %s%s" % [count, thing, "" if count == 1 else "s"]
 
 
 static func _where(at: Vector3) -> String:

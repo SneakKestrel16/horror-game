@@ -100,7 +100,10 @@ func plan(bears: int, pits: int) -> void:
 		_order("pit")
 	_claim_left = 0.0
 	game.log_event(
-		"the creature means to set %s and %s" % [_count(bears, "bear trap"), _count(pits, "pit")]
+		(
+			"the creature means to set %s and %s"
+			% [Game.counted(bears, "bear trap"), Game.counted(pits, "pit")]
+		)
 	)
 
 
@@ -130,7 +133,10 @@ func take_from_board() -> void:
 		stock += taken
 		set_board(board - taken)
 		game.log_event(
-			"the creature took %s from the pegboard (%d left)" % [_count(taken, "bear trap"), board]
+			(
+				"the creature took %s from the pegboard (%d left)"
+				% [Game.counted(taken, "bear trap"), board]
+			)
 		)
 
 
@@ -225,10 +231,6 @@ func _seen(at: Vector3) -> bool:
 		if player.global_position.distance_to(at) < UNSEEN:
 			return true
 	return false
-
-
-static func _count(count: int, thing: String) -> String:
-	return "%d %s%s" % [count, thing, "" if count == 1 else "s"]
 
 
 func _order(kind: String) -> void:
