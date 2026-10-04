@@ -2,7 +2,7 @@ extends Node
 ## Hosts a game, sets the clock, looks from a point and saves a PNG, so the
 ## farm can be checked without playing. Opens a window briefly:
 ##   godot --path game res://tools/snapshot.tscn -- --clock=430 --from=0,1.6,-3
-##       --look=0,1,20 --out=shot.png [--creature=0,0,8]
+##       --look=0,1,20 --out=shot.png [--creature=0,0,8] [--dev --panel]
 ## --clock is seconds into the day (day 0-360, dusk -420, night -720).
 
 var _game: Game
@@ -41,6 +41,10 @@ func _ready() -> void:
 		_game.creature.set_physics_process(false)
 		_game.creature.global_position = creature
 		_game.creature.look_at(Vector3(from.x, 0, from.z))
+	if "--panel" in OS.get_cmdline_user_args():  # With --dev: show the developer panel.
+		for dev in _game.find_children("*", "CanvasLayer", false, false):
+			if dev is Dev:
+				dev.call("_show", true)
 	for i in 30:
 		await get_tree().process_frame
 	var image := get_viewport().get_texture().get_image()

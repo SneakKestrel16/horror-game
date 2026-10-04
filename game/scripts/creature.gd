@@ -206,6 +206,38 @@ func hear(at: Vector3, radius: float) -> void:
 			_go(Farm.corn_edge_near(at, 3.0), false)
 
 
+## Host only (dev panel): calls out from where it stands, now.
+func speak_now() -> void:
+	_lure_target = null
+	_speak()
+
+
+## Host only (dev panel): starts a lure at target now, as if one were due.
+func lure_now(target: Player) -> void:
+	_plan_lure(game.phase() == "night", target)
+
+
+## Host only (dev panel): runs at target. By day it gives up at once.
+func chase(target: Player) -> void:
+	_chase(target)
+
+
+## Host only (dev panel): sends it back into the corn for a while.
+func drive_off() -> void:
+	_retreat()
+
+
+## Host only (dev panel): puts it at a point and has it lurk from there.
+func place(at: Vector3) -> void:
+	global_position = Vector3(at.x, 0.0, at.z)
+	_lurk()
+
+
+## The current state's name, for the dev panel.
+func state_name() -> String:
+	return State.keys()[state]
+
+
 ## Host only: it has just killed someone or been driven off.
 func _retreat() -> void:
 	_set_state(State.RETREAT)
@@ -326,7 +358,7 @@ func pick_lure_spot(target: Player, night: bool) -> Vector3:
 		var score := _rng.randf() * 0.6 - global_position.distance_to(spot) / 50.0
 		for old in _recent:
 			if spot.distance_to(old) < LURE_SPREAD:
-				score -= 1.5
+				score -= 10.0  # Outweighs every bonus: only if nowhere else will do.
 		var away := facing.angle_to(spot - from)
 		score += 0.8 if away > 1.9 else (0.4 if away > 1.2 else 0.0)  # Behind, or to the side.
 		for trap in traps:

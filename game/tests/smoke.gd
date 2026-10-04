@@ -37,6 +37,7 @@ func _ready() -> void:
 	_check(_left_corn == 0, "the creature stayed in the corn by day (%d frames out)" % _left_corn)
 	await _check_dusk()
 	await _check_night()
+	await _check_dev()
 	Engine.time_scale = 1.0
 	_finish()
 
@@ -182,6 +183,35 @@ func _check_night() -> void:
 	_check(_player.dead, "the creature killed a player in the open at night")
 	await _frames(5)
 	_check(_game.ended, "with everyone dead, dawn came")
+
+
+## The developer panel builds and its controls reach the game.
+func _check_dev() -> void:
+	var dev := Dev.new()
+	dev.game = _game
+	_game.add_child(dev)
+	_game.jump_to("day")
+	await _frames(3)
+	_check(not _game.ended and _game.phase() == "day", "dev: back to day from the dawn screen")
+	_game.revive(_player)
+	await _frames(3)
+	_check(not _player.dead, "dev: came back to life")
+	var before := _game.clock
+	dev.call("_set_speed", 10.0)
+	await _game_seconds(1.0)
+	_check(_game.clock - before > 5.0, "dev: time x10 (%.1f s in 1 s)" % (_game.clock - before))
+	dev.call("_set_speed", 1.0)
+	var calls: int = _game.get("_stats")["lures"]
+	dev.call("_call_now")
+	_check(_game.get("_stats")["lures"] == calls + 1, "dev: the creature called on demand")
+	_game.set_all_traps(true)
+	var armed := _game.traps.all(
+		func(trap: Dictionary) -> bool: return trap["state"] == Game.TrapState.ARMED
+	)
+	_check(armed, "dev: armed every trap")
+	_game.set_fuel(0.1)
+	_check(is_equal_approx(_game.fuel, 0.1), "dev: set the fuel")
+	dev.queue_free()
 
 
 ## Sends a request to the host as the player would (the host is this process).

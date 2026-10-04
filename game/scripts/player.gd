@@ -240,6 +240,15 @@ func killed() -> void:
 	collision_mask = 0
 
 
+## Sent by the host (dev panel): back from the dead where the ghost is.
+@rpc("any_peer", "call_local", "reliable")
+func revived() -> void:
+	dead = false
+	collision_layer = 1
+	collision_mask = 1
+	global_position.y = 0.05
+
+
 func _part(mesh: PrimitiveMesh, at: Vector3, size: Vector3, colour: Color) -> void:
 	var material := StandardMaterial3D.new()
 	material.albedo_color = colour

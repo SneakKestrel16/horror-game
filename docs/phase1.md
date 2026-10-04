@@ -19,8 +19,12 @@ Godot 4.7.2 from winget. From the repo root:
 
 - Two players on one PC: run the game twice, once with `-- --host` and once with
   `-- --join=127.0.0.1`. In the editor, Debug > Customize Run Instances does the same.
-- `--short` runs the day, dusk and night at a sixth of their length for quick checks;
-  `--dev` lets the host press F2 to skip to the next phase.
+- `--short` runs the day, dusk and night at a sixth of their length for quick checks.
+- `--dev` gives the host a developer panel on F2 (`scripts/dev.gd`): run time at x1 to x30 or
+  jump to any phase; make the creature call, lure you, chase you, come up behind you, back off
+  or freeze; fill or drain the generator; arm or clear every trap; ripen the field; die and come
+  back. Later phases add their triggers (jumpscares, recorded voices, marks) to its Events
+  section. Launch playtests with it, on both windows.
 - `bash tools/check.sh` imports the project headless and plays through the smoke test
   (`game/tests/smoke.gd`).
 - `godot --path game res://tools/snapshot.tscn -- --clock=500 --from=0,1.6,8 --look=0,1.6,14

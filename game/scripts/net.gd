@@ -13,7 +13,7 @@ var message := ""  ## Shown by the main menu after a session ends.
 var args_used := false  ## Command-line --host/--join only apply once.
 ## `-- --short` runs the day and night at a sixth of their length, for testing.
 var short := false
-var dev := false  ## `-- --dev`: the host can skip ahead a phase with F2.
+var dev := false  ## `-- --dev`: the host gets the developer panel (scripts/dev.gd, F2).
 
 
 func _ready() -> void:

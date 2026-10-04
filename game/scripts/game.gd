@@ -70,7 +70,6 @@ const CONTROLS := {
 	"interact": KEY_E,
 	"drop": KEY_G,
 	"lantern": KEY_F,
-	"skip_phase": KEY_F2,
 }
 
 var farm := Farm.new()
@@ -78,6 +77,8 @@ var clock := 0.0
 var fuel := FUEL_START
 var coins := 0
 var ended := false
+## How fast the day runs: the clock, fuel and crops (dev panel; 1 in play).
+var clock_rate := 1.0
 ## {kind, holder (peer id, 0 on the ground, -1 gone), position, charge}.
 var items: Array[Dictionary] = []
 var plots: Array[int] = []
@@ -102,12 +103,7 @@ var _trap_nodes: Array[Node3D] = []
 var _daylight: Looks.Daylight
 var _ambience: Sfx.Ambience
 
-var _status: Label
-var _info: Label
-var _prompt: Label
-var _message: Label
-var _message_left := 0.0
-var _overlay: Label
+var _hud := Hud.new()
 
 
 func _ready() -> void:
@@ -121,7 +117,7 @@ func _ready() -> void:
 	_build_world_state()
 	_daylight = Looks.Daylight.new(self)
 	_ambience = Sfx.Ambience.new(self)
-	_build_hud()
+	add_child(_hud)
 	_players = _spawner("Players", _spawn_player)
 	_creatures = _spawner("Creatures", _spawn_creature)
 
@@ -141,16 +137,18 @@ func _ready() -> void:
 		log_event("host started (short: %s)" % Net.short)
 		_creatures.spawn({"position": Vector3(0, 0, 30)})
 		_players.spawn(_player_data(1))
+		if Net.dev:
+			var dev := Dev.new()
+			dev.game = self
+			add_child(dev)
 		flash("Day one. Water the turnips, sell what's ripe. Be back in the barn by dark.", 6.0)
 	else:
 		flash("Connecting to %s:%d..." % [Net.address, Net.port], 10.0)
 
 
 func _process(delta: float) -> void:
-	_message_left -= delta
-	_message.visible = _message_left > 0.0
 	if not multiplayer.is_server():
-		clock += delta  # Corrected by the host's ticks.
+		clock += delta * clock_rate  # Corrected by the host's ticks.
 	var lit := lights_on()
 	if farm.barn_lit() != lit:
 		farm.set_barn_lit(lit)
@@ -161,7 +159,7 @@ func _process(delta: float) -> void:
 	_daylight.apply(day, dusk, phase() == "night" or phase() == "dawn")
 	_place_items()
 	_update_sounds()
-	_update_hud()
+	_hud.update(self)
 	var player := local_player()
 	if player and not ended:
 		_interact(player, delta)
@@ -170,12 +168,12 @@ func _process(delta: float) -> void:
 func _physics_process(delta: float) -> void:
 	if not multiplayer.is_server() or ended:
 		return
-	clock += delta
+	clock += delta * clock_rate
 	var current := phase()
 	if current != _last_phase:
 		_enter_phase(current)
 	if lights_on():
-		fuel = maxf(0.0, fuel - delta / (FUEL_LASTS * NIGHT * short_factor()))
+		fuel = maxf(0.0, fuel - delta * clock_rate / (FUEL_LASTS * NIGHT * short_factor()))
 		if fuel < FLICKER_BELOW and not _fuel_warned:
 			_fuel_warned = true
 			_announce.rpc("The generator is sputtering. It needs fuel.")
@@ -184,7 +182,7 @@ func _physics_process(delta: float) -> void:
 			log_event("generator ran dry")
 	for i in plots.size():
 		if plots[i] == Stage.GROWING:
-			_grow_left[i] -= delta
+			_grow_left[i] -= delta * clock_rate
 			if _grow_left[i] <= 0.0:
 				_set_plot.rpc(i, Stage.RIPE)
 	_check_traps()
@@ -192,7 +190,7 @@ func _physics_process(delta: float) -> void:
 	_tick_left -= delta
 	if _tick_left <= 0.0:
 		_tick_left = 0.2
-		_tick.rpc(clock, fuel, coins)
+		sync_state()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -201,8 +199,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		else:
 			Net.stop("")
-	elif event.is_action_pressed("skip_phase") and Net.dev and multiplayer.is_server():
-		skip_phase()
 	elif event.is_action_pressed("drop") and local_player():
 		_request.rpc_id(1, "drop", -1)
 
@@ -274,6 +270,50 @@ func creature_caught(player: Player) -> void:
 		clock = (DAY + DUSK + NIGHT) * short_factor()
 
 
+## Host only (dev panel): jumps to the start of a phase ("day" restarts the day).
+func jump_to(target: String) -> void:
+	var factor := short_factor()
+	var starts := {"day": 0.0, "dusk": DAY, "night": DAY + DUSK, "dawn": DAY + DUSK + NIGHT}
+	clock = starts[target] * factor
+	_last_phase = ""  # Announce the phase again, even going back.
+	if ended and target != "dawn":
+		_resume.rpc()
+	sync_state()
+	log_event("dev: jumped to %s" % target)
+
+
+## Host only (dev panel): sets the generator's fuel (0 to 1).
+func set_fuel(amount: float) -> void:
+	fuel = amount
+	_fuel_warned = amount < FLICKER_BELOW
+	sync_state()
+
+
+## Host only (dev panel): arms or clears every trap; sprung traps let go.
+func set_all_traps(armed: bool) -> void:
+	for i in traps.size():
+		var victim: int = traps[i]["victim"]
+		if victim != 0:
+			var player := get_node_or_null("Players/%d" % victim) as Player
+			if player:
+				player.released.rpc_id(victim)
+		_set_trap.rpc(i, TrapState.ARMED if armed else TrapState.DISARMED, 0)
+
+
+## Host only (dev panel): every plot ripe.
+func ripen_all() -> void:
+	for i in plots.size():
+		_set_plot.rpc(i, Stage.RIPE)
+
+
+## Host only (dev panel): brings a dead player back where they are.
+func revive(player: Player) -> void:
+	if player.dead:
+		player.revived.rpc_id(player.get_multiplayer_authority())
+		player.dead = false
+		log_event("dev: revived %s" % player.label())
+
+
 ## Host only (dev mode, smoke test): jumps to the start of the next phase.
 func skip_phase() -> void:
 	var factor := short_factor()
@@ -301,8 +341,7 @@ func log_event(text: String) -> void:
 
 ## Shows text in the middle of the screen for a few seconds.
 func flash(text: String, seconds := 4.0) -> void:
-	_message.text = text
-	_message_left = seconds
+	_hud.flash(text, seconds)
 
 
 func _open_log() -> void:
@@ -493,7 +532,7 @@ static func _act(text: String, action: String, index: int, hold: float) -> Dicti
 ## The local player's E key: instant actions on press, held ones once held long enough.
 func _interact(player: Player, delta: float) -> void:
 	if player.dead:
-		_prompt.text = "You are dead. Drift until dawn. (WASD, Space up, Ctrl down)"
+		_hud.prompt("You are dead. Drift until dawn. (WASD, Space up, Ctrl down)")
 		return
 	var found := _find_action(player)
 	var key := "%s:%d" % [found["action"], found["index"]]
@@ -509,7 +548,7 @@ func _interact(player: Player, delta: float) -> void:
 	if hold > 0.0 and _hold_time > 0.0:
 		var bars := roundi(_hold_time / hold * 10.0)
 		text += "\n[%s%s]" % ["#".repeat(bars), "-".repeat(maxi(0, 10 - bars))]
-	_prompt.text = text
+	_hud.prompt(text)
 	if found["action"] == "":
 		return
 	if hold > 0.0 and _hold_time >= hold:
@@ -535,6 +574,12 @@ func _looking_at(player: Player, point: Vector3, closely := false) -> bool:
 	var to_point := point - player.global_position
 	to_point.y = 0.0
 	return to_point.length() < 0.6 or Vector3(facing.x, 0, facing.z).angle_to(to_point) < LOOK_ANGLE
+
+
+## The item peer carries ({kind, holder, position, charge}), or {}.
+func held_item(peer: int) -> Dictionary:
+	var held := _held_index(peer)
+	return items[held] if held >= 0 else {}
 
 
 func _held_index(peer: int) -> int:
@@ -584,7 +629,7 @@ func _request(action: String, index: int) -> void:
 			if kind == "turnip":
 				_sync_item(held, -1, at, 0)
 				coins += TURNIP_PRICE
-				_tick.rpc(clock, fuel, coins)
+				sync_state()
 				_make_noise("sell", Farm.CRATE, "coin")
 				log_event("%s sold turnips (coins %d)" % [player.label(), coins])
 		"fuel":
@@ -596,7 +641,7 @@ func _request(action: String, index: int) -> void:
 				_sync_item(held, peer, at, 0)
 				fuel = minf(1.0, fuel + FUEL_PER_CAN)
 				_fuel_warned = false
-				_tick.rpc(clock, fuel, coins)
+				sync_state()
 				_make_noise("refuel", Farm.GENERATOR, "clank")
 				log_event(
 					"%s refuelled the generator (%d%%)" % [player.label(), roundi(fuel * 100)]
@@ -672,18 +717,31 @@ func _announce(text: String) -> void:
 	flash(text)
 
 
+## Host only: sends the clock, fuel, coins and clock rate to every client.
+func sync_state() -> void:
+	_tick.rpc(clock, fuel, coins, clock_rate)
+
+
 @rpc("authority", "call_remote", "unreliable_ordered")
-func _tick(host_clock: float, host_fuel: float, host_coins: int) -> void:
+func _tick(host_clock: float, host_fuel: float, host_coins: int, rate: float) -> void:
 	clock = host_clock
 	fuel = host_fuel
 	coins = host_coins
+	clock_rate = rate
+
+
+## Dev panel: back from the dawn screen to play on.
+@rpc("authority", "call_local", "reliable")
+func _resume() -> void:
+	ended = false
+	_hud.summary("")
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 
 
 @rpc("authority", "call_local", "reliable")
 func _end(summary: String) -> void:
 	ended = true
-	_overlay.text = summary
-	_overlay.visible = true
+	_hud.summary(summary)
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 
 
@@ -843,7 +901,7 @@ func _snapshot(
 		_set_plot(i, host_plots[i])
 	for i in host_traps.size():
 		_set_trap(i, host_traps[i]["state"], host_traps[i]["victim"])
-	_tick(host_clock, host_fuel, host_coins)
+	_tick(host_clock, host_fuel, host_coins, 1.0)
 	flash("Joined. Water the turnips, sell what's ripe. Be back in the barn by dark.", 6.0)
 
 
@@ -880,93 +938,3 @@ func _update_sounds() -> void:
 		distance = seen.global_position.distance_to(player.global_position)
 		chased = seen.state == Creature.State.CHASE
 	_ambience.update(phase() != "day", ended, distance, chased, lights_on())
-
-
-func _build_hud() -> void:
-	var hud := CanvasLayer.new()
-	add_child(hud)
-	_status = Label.new()
-	_status.position = Vector2(24, 18)
-	_status.add_theme_font_size_override("font_size", 26)
-	hud.add_child(_status)
-
-	_info = Label.new()
-	_info.position = Vector2(24, 60)
-	_info.add_theme_font_size_override("font_size", 20)
-	hud.add_child(_info)
-
-	var crosshair := Label.new()
-	crosshair.text = "·"
-	crosshair.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	crosshair.add_theme_font_size_override("font_size", 32)
-	hud.add_child(crosshair)
-
-	_message = Label.new()
-	_message.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-	_message.position.y = 110
-	_message.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_message.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_message.add_theme_font_size_override("font_size", 30)
-	_message.visible = false
-	hud.add_child(_message)
-
-	_prompt = Label.new()
-	_prompt.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	_prompt.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_prompt.position.y += 40
-	_prompt.add_theme_font_size_override("font_size", 22)
-	hud.add_child(_prompt)
-
-	var hint := Label.new()
-	hint.text = (
-		"E use (hold for traps) · G drop · F lantern · Shift sprint · Ctrl crouch"
-		+ " · Esc mouse / leave"
-	)
-	hint.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
-	hint.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	hint.position.y -= 40
-	hint.modulate = Color(1, 1, 1, 0.5)
-	hud.add_child(hint)
-
-	_overlay = Label.new()
-	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_overlay.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_overlay.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_overlay.add_theme_font_size_override("font_size", 30)
-	var shade := StyleBoxFlat.new()
-	shade.bg_color = Color(0, 0, 0, 0.8)
-	_overlay.add_theme_stylebox_override("normal", shade)
-	_overlay.visible = false
-	hud.add_child(_overlay)
-
-
-func _update_hud() -> void:
-	var left := phase_left()
-	_status.text = (
-		"%s · %d:%02d left" % [phase().to_upper(), floori(left / 60.0), floori(fmod(left, 60.0))]
-	)
-	var player := local_player()
-	var lines: Array[String] = ["Coins: %d" % coins]
-	if phase() != "day" or fuel < 0.3:
-		lines.append("Generator: %d%%%s" % [roundi(fuel * 100), "" if fuel > 0.0 else " (OUT)"])
-	if player:
-		var held := _held_index(player.get_multiplayer_authority())
-		if held >= 0:
-			var item := items[held]
-			var extra := ""
-			if item["kind"] == "watering_can":
-				extra = " (%d/%d)" % [item["charge"], CAN_WATER]
-			elif item["kind"] == "fuel_can":
-				extra = " (full)" if item["charge"] > 0 else " (empty)"
-			lines.append("Carrying: %s%s" % [ITEM_NAMES[item["kind"]], extra])
-		if player.stamina < Player.STAMINA:
-			var bars := roundi(player.stamina / Player.STAMINA * 10.0)
-			lines.append("Stamina: %s" % "|".repeat(bars))
-		if player.pinned:
-			lines.append("TRAPPED")
-		elif player.slowed_left > 0.0:
-			lines.append("Limping: %ds" % ceili(player.slowed_left))
-		if player.dead:
-			lines.append("DEAD until dawn")
-	_info.text = "\n".join(lines)
