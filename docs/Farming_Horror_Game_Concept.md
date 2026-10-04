@@ -261,6 +261,38 @@ A season is 7 days. Night 7 is the Harvest Moon, the final night. All numbers he
 
 Upgrades and plots carry into the next season. The debt grows, and each new season the creature gains one new trait, for example copying tools better or setting more pits, so the farm players built is worth defending again.
 
+### Economy Check
+
+The [Farm Economy Simulator](Farm_Economy_Simulator.xlsx) spreadsheet tests the money side of this doc: crops, plots, labor, payments, the medical bill and the corn quota. Its sheets are **Inputs** (every number here, to change), **Season Plan** (plan seven days of planting and deaths; it flags broken rules and says whether the season is won), **Crop Value** and **Player Scaling**.
+
+It has to assume what this doc doesn’t pin down:
+
+1. “Grows in 1 day” means plant today, harvest and sell tomorrow.
+2. Moonflowers are planted by day in the 4-plot bed, harvested that night and sold at dawn, so they count toward a payment due that dawn.
+3. A harvested plot can be replanted the same day; crops not ready by day 7 earn nothing.
+4. Each planted field plot and each moonflower costs one unit of labor (6 per player per day); trap sweeps cost nothing extra.
+5. The festival pays 45 per corn plot on the cart (the doc gives no price), paid before the final payment.
+6. Payments, traps and disturbances scale with team size; the moonflower bed and the medical bill don’t.
+
+What it shows:
+
+| Crop | Profit per harvest | Profit per plot per day |
+|---|---|---|
+| Turnips | 6 | 6 |
+| Pumpkins | 15 | 7.5 |
+| Corn | 30 | 10 |
+| Moonflowers | 45 | 45 (per night, 4 plots only) |
+
+| | 2 players | 3 players | 4 players |
+|---|---|---|---|
+| Field plots the team can tend (after the moonflower bed) | 8 | 14 | 16 |
+| Moonflower profit per night | 180 | 180 | 180 |
+| Total owed | 840 | 1,020 | 1,200 |
+| Share of the debt moonflowers alone can cover | 107% | 88% | 75% |
+
+- **The best case misses the first payment.** With 4 players and no deaths, turnips on every plot for days 1 to 3 and moonflowers from day 3, the team has about 362 coins at dawn after night 3, against 400 owed. Corn can’t help: anything planted on day 1 isn’t ready until day 4. The same plan then makes the final payment with 426 to spare, and moonflowers bring in 57% of all its income.
+- These results are open issues 2 to 4 below.
+
 ### Upgrades
 
 Over the season, players unlock new seeds, upgrade tools, and expand the farm (up to 24 plots). Examples: a quiet watering can (slower, but the creature can’t hear it as far), a shed lock, walkie-talkies and batteries, brighter lanterns, more scarecrows, and new plots.
@@ -296,12 +328,13 @@ A review sits between each phase and the next. It starts once the phase passes i
 
 - **Phase 1 (prototype):** One small field and the shed, one day and one night, 2 players, the creature wandering and chasing by sound, bear traps and small pits in scripted spots, the generator, and the creature playing generic pre-recorded voice lines. Done when: the day feels safe, the night feels tense, and a generic voice from the corn makes a playtester walk toward it at least once. Passed after two playtests, which led to reworked lures, fuel runs and a more spread-out farm; it uses a 6-minute day because it has only one small field (see [Phase 1 prototype](phase1.md)).
 - **Review 1 (done):** Before Phase 2 adds recorded voices, the pegboard and the medical bill, it settled mimicry as a supporting hook, lobby recording, voice tells, bear trap hoarding and the cost of death (see Resolved Issues).
+- **Before Phase 2’s build:** settle traps in lit buildings and how players place a teammate (both in issue 5).
 - **Phase 2:** Lobby voice-line recording, the creature stealing bear traps from the shed and the pegboard, death with respawn at dawn and the medical bill, and up to 4 players. Done when: hearing a friend’s recorded voice from the corn fools someone, and trap sweeps feel worth doing.
-- **Review 2:** Before Phase 3 adds live clips, ghosts and jumpscares, settle what Phase 2 turned up, and check from its playtest whether ghosts without trap sight will have enough to do.
+- **Review 2:** Before Phase 3 adds live clips, ghosts and jumpscares, settle what Phase 2 turned up, the lantern flicker’s light (issue 5), one tracked state (6) and fuzzier day-death rules (7), and check from its playtest whether ghosts without trap sight will have enough to do.
 - **Phase 3:** Live clips from proximity chat, the creature favoring dead players’ voices, the Director and jumpscares, and dead players’ ghost abilities including the lantern flicker. Done when: dead players stay engaged, and the living argue over whether to trust a static voice.
-- **Review 3:** Before Phase 4 builds the season, settle what Phase 3 turned up.
+- **Review 3:** Before Phase 4 builds the season, settle what Phase 3 turned up, what “grows in” means and the first payment (issue 2), moonflowers’ share (3), player scaling (4) and the Harvest Moon’s length (8), testing each in the Farm Economy Simulator.
 - **Phase 4:** The full 7-day season with crops, the economy, upgrades, roles, payments and the corn quota. Done when: teams sometimes win and sometimes lose, and the logs show the numbers are close.
-- **Review 4:** Tune the numbers from the Phase 4 logs (issue 2), pick the fourth role once teams have tried both (3), and settle whatever is still open before calling the game feature-complete.
+- **Review 4:** Tune the numbers from the Phase 4 logs (issue 9), pick the fourth role once teams have tried both (10), and settle whatever is still open before calling the game feature-complete.
 - **Fake it first:** Scripted trap spots and simple timers can stand in for smart AI until the core loop is proven.
 
 ## Engine: Godot
@@ -358,13 +391,43 @@ Problems that still need solving, most important first.
 
 Voice recording and playback, a trap-setting AI that lures players, the Director, jumpscares, a farming economy and online multiplayer add up to a lot. Addressed by the four-phase Build Plan; still worth watching as features are added.
 
-### 2. The numbers are untested
+### 2. The first payment may be out of reach, and “grows in” is undefined
+
+The doc never says whether “grows in 1 day” means plant today and sell tomorrow, or plant in the morning and sell that evening. Under the first reading the best possible 4-player start reaches about 362 coins by dawn after night 3, short of the 400 payment (see Economy Check). Under the second, the numbers change completely. Settle the reading first, then check the first payment against it. Needs settling before Phase 4.
+
+### 3. Moonflowers carry the whole economy
+
+Moonflowers earn about 45 per plot per night, against 10 for corn and 6 for turnips, and over a season they can cover about three-quarters of a 4-player debt on their own. Daytime farming, the cozy part meant to build stakes, then matters little for money. That may be intended, as a strong push to go out at night; if not, cut moonflower profit or raise day-crop value. Needs settling before Phase 4.
+
+### 4. Player-count scaling runs backwards
+
+Payments scale down for smaller teams but the 4-plot moonflower bed doesn’t, so 2 players get the same 280 coins a night from it while owing only 280 for the first payment. On paper a 2-player team makes the first payment more easily than 4 players do, and moonflowers alone can cover 107% of a 2-player debt. Scale the bed, its price or the payments differently. Needs settling before Phase 4.
+
+### 5. A few rules contradict each other
+
+- **Traps in a lit building:** the creature never enters a lit building, yet any bear trap off the pegboard at nightfall is its to take, “even inside a lit building.” Players will ask how. Either it does go in for traps, or the trap is simply gone by morning with no explanation, which is creepier. Phase 2 builds trap stealing, so this needs settling before it.
+- **The lantern flicker needs a light:** a dead player can only flicker a lantern near a living one, but carrying a light makes you visible, so the one unfakeable signal is missing exactly when players go dark to hide. Letting it work on any light (barn bulbs, porch lights, the moonflower glow) would fix that. Needs settling before Phase 3.
+- **“Somewhere the teammate can’t be” needs a sense of where teammates are:** with proximity chat the only cue, a teammate who goes quiet can’t be placed, so the one tell that never goes away stops working. Decide whether that is the point, or add a light hint such as a whistle or teammates’ lanterns showing at a distance. Phase 2 brings recorded voices, so this needs settling before its playtest.
+
+### 6. Three tracking systems do the same job
+
+Marks, scent from dropped items and the wound trail all mean “the creature finds you more easily tonight.” Players won’t keep them apart; they’ll just feel “it found me.” Merge them into one “tracked” state with several causes and one visible cue, such as a smell or a stain on your character’s hands. Needs settling before Phase 3, which brings marks and wounds.
+
+### 7. The day-death rules are a checklist
+
+A day death needs a player alone, marked and deep in the corn, or stuck in a bear trap with nobody near. That is fair, but exact: someone will post it within a week of launch, and the day goes from “never called safe” to provably safe. Keep the rule, but let the Director bend it now and then: some fuzziness about how deep “deep” is, or a rare exception after a very long quiet stretch. The fear lives in what players aren’t sure of. Needs settling before Phase 3, which brings the Director.
+
+### 8. The night may be too short for everything in it
+
+A refuel run, moonflower harvesting, door testing from day 6 and, on the last night, the whole festival cart run all have to fit in 5 minutes. Short nights suit days 1 to 3; the Harvest Moon could run longer, or end when the cart gets out rather than on a timer. Needs settling before Phase 4.
+
+### 9. The numbers are untested
 
 Every price, payment and trap count is a first guess. They should be tuned from the logs once Phase 4 is playable.
 
-### 3. The fourth role
+### 10. The fourth role
 
-Hunter or Tracker. To be decided after playtesting, once the team can try both. If ghosts are ever given sight of traps again (see Ghost spectating), the Tracker gets much weaker, since dead players would do its job.
+Hunter or Tracker. To be decided after playtesting, once the team can try both. If ghosts are ever given sight of traps again (see Ghost spectating), the Tracker gets much weaker, since dead players would do its job. And if the Tracker wins, the team has nothing that drives the creature off except lit buildings, since the Hunter’s flare goes with it.
 
 ## Dependencies
 
