@@ -72,7 +72,7 @@ The creature can copy players’ voices. Proximity voice chat becomes both the t
 
 ### How Players Fight Back
 
-- **Tells:** Each mimicked voice has at most one small giveaway, picked at random (a faint echo, a slightly wrong pitch, a missing radio crackle), and about a third have none. The one clue that never goes away is the voice coming from somewhere the teammate can’t be.
+- **Tells:** Each mimicked voice has at most one small giveaway, picked at random (a faint echo, a slightly wrong pitch, a missing radio crackle), and about a third have none. The one clue that never goes away is the voice coming from somewhere the teammate can’t be. Players place teammates by their real proximity voice, by sight and lanterns, and by radio; there is no extra hint, so a teammate who is far away and quiet can’t be placed, and the only way to be sure is to ask, which feeds the creature. Check this again after Phase 2’s playtest: if players can never use this tell, add a light hint such as a whistle or lanterns visible at a distance.
 - **Passwords:** Teams can agree on a code word, but the creature can pick that up too if someone says it near it.
 - **Staying quiet:** Talking less gives it less to copy, but it also makes teamwork harder.
 - **Walkie-talkies:** A craftable radio that the creature can’t fake, but it runs on limited batteries and fills with static when the creature is near, so “was that you?” doesn’t always get through.
@@ -328,9 +328,8 @@ A review sits between each phase and the next. It starts once the phase passes i
 
 - **Phase 1 (prototype):** One small field and the shed, one day and one night, 2 players, the creature wandering and chasing by sound, bear traps and small pits in scripted spots, the generator, and the creature playing generic pre-recorded voice lines. Done when: the day feels safe, the night feels tense, and a generic voice from the corn makes a playtester walk toward it at least once. Passed after two playtests, which led to reworked lures, fuel runs and a more spread-out farm; it uses a 6-minute day because it has only one small field (see [Phase 1 prototype](phase1.md)).
 - **Review 1 (done):** Before Phase 2 adds recorded voices, the pegboard and the medical bill, it settled mimicry as a supporting hook, lobby recording, voice tells, bear trap hoarding and the cost of death (see Resolved Issues).
-- **Before Phase 2’s build:** settle how players place a teammate (issue 5).
 - **Phase 2:** Lobby voice-line recording, the creature stealing bear traps from the shed and the pegboard, death with respawn at dawn and the medical bill, and up to 4 players. Done when: hearing a friend’s recorded voice from the corn fools someone, and trap sweeps feel worth doing.
-- **Review 2:** Before Phase 3 adds live clips, ghosts and jumpscares, settle what Phase 2 turned up, the lantern flicker’s light (issue 5), one tracked state (6) and fuzzier day-death rules (7), and check from its playtest whether ghosts without trap sight will have enough to do.
+- **Review 2:** Before Phase 3 adds live clips, ghosts and jumpscares, settle what Phase 2 turned up, check whether players could place a teammate well enough to use the position tell (see How Players Fight Back), the lantern flicker’s light (issue 5), one tracked state (6) and fuzzier day-death rules (7), and check from its playtest whether ghosts without trap sight will have enough to do.
 - **Phase 3:** Live clips from proximity chat, the creature favoring dead players’ voices, the Director and jumpscares, and dead players’ ghost abilities including the lantern flicker. Done when: dead players stay engaged, and the living argue over whether to trust a static voice.
 - **Review 3:** Before Phase 4 builds the season, settle what Phase 3 turned up, what “grows in” means and the first payment (issue 2), moonflowers’ share (3), player scaling (4) and the Harvest Moon’s length (8), testing each in the Farm Economy Simulator.
 - **Phase 4:** The full 7-day season with crops, the economy, upgrades, roles, payments and the corn quota. Done when: teams sometimes win and sometimes lose, and the logs show the numbers are close.
@@ -380,6 +379,7 @@ How the earlier open issues were settled, and where to find each answer.
 - **The creature was seen too often:** glimpse rules for every scare. See The Creature.
 - **There was no reason to play a second season:** the farm carries over, the debt grows, and the creature gains a trait. See The Next Season.
 - **Traps in a lit building contradicted “never enters a lit building”:** a trap kept in one is simply gone by morning, unexplained. See The Tool Shed.
+- **Placing a teammate for the position tell:** no extra hint; proximity voice, sight, lanterns and radios do it, and a quiet teammate far away is meant to be uncertain. To be checked again in Review 2. See How Players Fight Back.
 - **Dead players saw every trap:** ghosts no longer see traps, for now; it may need reworking after Phase 3. See Ghost spectating.
 - **Lures repeated from one spot** (Phase 1 playtest): calls now move with the target, avoid recent spots and lead on whoever approaches. See [Phase 1 prototype](phase1.md).
 - **The lit barn was a sure refuge** (Phase 1 playtest): fuel lasts too little to hide all night, and the creature waits along the fuel run. See Nights and [Phase 1 prototype](phase1.md).
@@ -407,7 +407,6 @@ Payments scale down for smaller teams but the 4-plot moonflower bed doesn’t, s
 ### 5. A few rules contradict each other
 
 - **The lantern flicker needs a light:** a dead player can only flicker a lantern near a living one, but carrying a light makes you visible, so the one unfakeable signal is missing exactly when players go dark to hide. Letting it work on any light (barn bulbs, porch lights, the moonflower glow) would fix that. Needs settling before Phase 3.
-- **“Somewhere the teammate can’t be” needs a sense of where teammates are:** with proximity chat the only cue, a teammate who goes quiet can’t be placed, so the one tell that never goes away stops working. Decide whether that is the point, or add a light hint such as a whistle or teammates’ lanterns showing at a distance. Phase 2 brings recorded voices, so this needs settling before its playtest.
 
 ### 6. Three tracking systems do the same job
 
