@@ -22,6 +22,8 @@ The contrast between peaceful daytime farming and terrifying nights is the hook.
 
 You never see it clearly. It lives in the wild corn that rings the farm, a field players can’t cut down, so it always has somewhere to hide. Corn the players plant extends its hunting ground: tall crops block your view, so the crops you plant literally shape where it can hunt. Corn is the best-paying day crop and the harvest festival demands it, so the team can’t simply refuse to grow it (see Crops). It hunts with two tools: players’ own voices and the traps it sets at night.
 
+**What players see of it:** by day only parts and motion: a head above the corn, an arm, stalks parting. A clear full view comes only at night during a chase, in the dark, and never for more than a second. Lunges cut to black or a knockdown before it is in full view, and the stare and hallucinations are distant silhouettes.
+
 ### How It Hunts
 
 - **Hearing:** Its main sense. Tools, footsteps, doors and talking all make noise, and louder sounds carry further.
@@ -78,6 +80,7 @@ Groups of friends often talk on Discord or a party chat instead. The design give
 ### Build Notes
 
 - **Lobby lines first:** Record lobby voice lines and replay them from the creature’s position. Live clips from proximity chat and splicing come later.
+- **Live clips:** Only push-to-talk speech is kept, at most 3 seconds a clip. Each player can see and delete their kept clips from the pause menu, and the voice block from lobby lines applies. There is no word filter, since that would need speech-to-text.
 - **Fallback:** Players with mics off, or who opt out, get pre-recorded generic lines instead.
 - **Consent:** Tell players up front that the game records their voice for this, keep the clips only for that match, and include an opt-out setting. Any player can also block their voice from replay, entirely or to players they choose. Fixed lobby lines can’t carry slurs or private remarks; live clips can, which is still open.
 
@@ -125,7 +128,7 @@ Hiding in the barn all night is never fully safe and never free. Nights are shor
 
 ## Jumpscares
 
-The creature can’t kill during the day, but it can still terrify. A daytime jumpscare knocks the player down, makes them drop what they’re carrying, and leaves them shaken, then the creature vanishes back into the corn.
+The creature can’t kill during the day, but it can still terrify. The game never tells players the day is safe; they learn it, and doubt it. A daytime jumpscare knocks the player down, makes them drop what they’re carrying, and leaves them shaken, then the creature vanishes back into the corn.
 
 ### Scare Moments
 
@@ -199,6 +202,7 @@ Prices are in coins per plot. All values are starting numbers to tune from playt
 | Corn | 3 days | 15 | 45 | Tall from day 2, giving the creature cover. Needed for the festival. |
 | Moonflowers | 1 night | 25 | 70 | Night harvest only, and they glow. Unlocks on day 3. |
 
+- **Plots and labor:** The farm starts with 16 plots, and upgrades add up to 24. Planting, watering and harvesting are each a hold of a few seconds, so one player tends about 6 plots a day and nobody can work the whole farm alone. Moonflowers only grow in a 4-plot moonflower bed. Plots are the bottleneck, which makes corn the best crop per plot.
 - **The wild corn ring:** It’s always there and can’t be cleared, so growing no corn never removes the creature’s home. Planted corn just brings its cover closer to the house.
 - **The festival quota:** The harvest festival buys corn, and delivering 8 plots of corn by the end of the season is part of winning.
 - **Harvesting opens the field:** Cutting a corn patch removes that cover, so when to harvest is a choice too.
@@ -211,8 +215,9 @@ A season is 7 days. Night 7 is the Harvest Moon, the final night. All numbers he
 
 - **The debt:** The farm owes the bank 1,200 coins. The team starts with 60 coins.
 - **First payment:** 400 coins due at dawn after night 3.
-- **Final payment:** The remaining 800 coins and the 8-plot corn quota, due at dawn after the Harvest Moon.
-- **Win:** Make both payments and meet the quota, with at least one player alive at dawn after the Harvest Moon.
+- **Final payment:** The remaining 800 coins, due at dawn after the Harvest Moon.
+- **The festival cart:** On the Harvest Moon the corn quota leaves by cart. The team loads 8 plots of corn onto the festival cart and gets it out the farm gate before dawn, under attack all night.
+- **Win:** Make both payments and get the festival cart out the gate, with at least one player alive at dawn after the Harvest Moon.
 - **Lose:** Miss a payment and the bank takes the farm, ending the season. If everyone dies during the Harvest Moon, the season is also lost. A full wipe on any earlier night isn’t a loss, it just costs medical bills and farm damage.
 - **Player count:** With 2 or 3 players, payments, trap counts and the disturbance budget scale down (starting point: 70% for 2 players, 85% for 3).
 
@@ -232,11 +237,20 @@ A season is 7 days. Night 7 is the Harvest Moon, the final night. All numbers he
 | 4 | 2 | 3 bear traps, 3 pits | Spliced clips | Mimicry gets more convincing |
 | 5 | 3 | 4 bear traps, 3 pits | Spliced clips | It can break the shed lock; hallucination scares start |
 | 6 | 3 | 5 bear traps, 4 pits | Spliced clips | It tests the barn doors |
-| 7 | 4 | Harvest Moon: hunts all night | Spliced clips | Final payment and quota at dawn |
+| 7 | 4 | Harvest Moon: hunts all night | Spliced clips | Load and run the festival cart; final payment at dawn |
+
+### Length and Saving
+
+- **Dawn saves:** The host’s game saves at every dawn, so a season can be played over several evenings.
+- **Short season:** A 3-day option for a single sitting, with the debt and corn quota scaled down.
+
+### The Next Season
+
+Upgrades and plots carry into the next season. The debt grows, and each new season the creature gains one new trait, for example copying tools better or setting more pits, so the farm players built is worth defending again.
 
 ### Upgrades
 
-Over the season, players unlock new seeds, upgrade tools, and expand the farm. Examples: a quiet watering can (slower, but the creature can’t hear it as far), a shed lock, walkie-talkies and batteries, brighter lanterns, more scarecrows, and new plots.
+Over the season, players unlock new seeds, upgrade tools, and expand the farm (up to 24 plots). Examples: a quiet watering can (slower, but the creature can’t hear it as far), a shed lock, walkie-talkies and batteries, brighter lanterns, more scarecrows, and new plots.
 
 ## Mechanics That Tie Farming and Horror Together
 
@@ -270,11 +284,11 @@ A review sits between each phase and the next. It starts once the phase passes i
 - **Phase 1 (prototype):** One small field and the shed, one day and one night, 2 players, the creature wandering and chasing by sound, bear traps and small pits in scripted spots, the generator, and the creature playing generic pre-recorded voice lines. Done when: the day feels safe, the night feels tense, and a generic voice from the corn makes a playtester walk toward it at least once. Built in `game/` and through its first playtest, which led to reworked lures and fuel runs; it uses a 6-minute day because it has only one small field (see [Phase 1 prototype](phase1.md)).
 - **Review 1 (done):** Before Phase 2 adds recorded voices, the pegboard and the medical bill, it settled mimicry as a supporting hook, lobby recording, voice tells, bear trap hoarding and the cost of death (see Resolved Issues).
 - **Phase 2:** Lobby voice-line recording, the creature stealing bear traps from the shed and the pegboard, death with respawn at dawn and the medical bill, and up to 4 players. Done when: hearing a friend’s recorded voice from the corn fools someone, and trap sweeps feel worth doing.
-- **Review 2:** Before Phase 3 adds live clips, ghosts and jumpscares, settle: how often and how clearly the creature is seen (issue 6) and the filter and opt-out for live clips (5), and check whether ghosts without trap sight still have enough to do.
+- **Review 2:** Before Phase 3 adds live clips, ghosts and jumpscares, settle what Phase 2 turned up, and check from its playtest whether ghosts without trap sight will have enough to do.
 - **Phase 3:** Live clips from proximity chat, the creature favoring dead players’ voices, the Director and jumpscares, and dead players’ ghost abilities including the lantern flicker. Done when: dead players stay engaged, and the living argue over whether to trust a static voice.
-- **Review 3:** Before Phase 4 builds the season, settle: the plot and labor limits (issue 2), stakes before the Harvest Moon and its final objective (3), season length and saving (4), a reason to play again (7) and the fourth role (9).
+- **Review 3:** Before Phase 4 builds the season, settle what Phase 3 turned up.
 - **Phase 4:** The full 7-day season with crops, the economy, upgrades, roles, payments and the corn quota. Done when: teams sometimes win and sometimes lose, and the logs show the numbers are close.
-- **Review 4:** Tune the numbers from the Phase 4 logs (issue 8) and settle whatever is still open before calling the game feature-complete.
+- **Review 4:** Tune the numbers from the Phase 4 logs (issue 2), pick the fourth role once teams have tried both (3), and settle whatever is still open before calling the game feature-complete.
 - **Fake it first:** Scripted trap spots and simple timers can stand in for smart AI until the core loop is proven.
 
 ## Engine: Godot
@@ -313,6 +327,12 @@ How the earlier open issues were settled, and where to find each answer.
 - **Voice tells could be learned** (Review 1): random, subtle tells, some fakes with none, and radios that jam near the creature. See How Players Fight Back.
 - **Mimicry was not a unique hook** (Review 1): MIMESIS (ReLU Games, published by KRAFTON) already sells AI voice copying, so the farm under siege is the pitch and mimicry supports it. See the opening.
 - **Lobby recordings sounded calm and could carry anything** (Review 1): a fixed list of lines, each recorded a few times with an urgent prompt, and a block on replaying your voice. See Build Notes. Live clips are still open.
+- **There was no limit on plots or labor:** 16 plots growing to 24, chores that take time, and a 4-plot moonflower bed. See Crops.
+- **Little was at stake until the Harvest Moon:** a higher medical bill, a day the game never calls safe, and a final night spent running the festival cart out the gate. See Season and Numbers and Jumpscares.
+- **A season was long with no save:** dawn saves and a 3-day short season. See Length and Saving.
+- **Live clips could carry anything:** push-to-talk only, 3 seconds at most, reviewable and deletable, and blockable. See Build Notes.
+- **The creature was seen too often:** glimpse rules for every scare. See The Creature.
+- **There was no reason to play a second season:** the farm carries over, the debt grows, and the creature gains a trait. See The Next Season.
 - **Dead players saw every trap:** ghosts no longer see traps, for now; it may need reworking after Phase 3. See Ghost spectating.
 - **Lures repeated from one spot** (Phase 1 playtest): calls now move with the target, avoid recent spots and lead on whoever approaches. See [Phase 1 prototype](phase1.md).
 - **The lit barn was a sure refuge** (Phase 1 playtest): fuel lasts too little to hide all night, and the creature waits along the fuel run. See Nights and [Phase 1 prototype](phase1.md).
@@ -325,34 +345,11 @@ Problems that still need solving, most important first.
 
 Voice recording and playback, a trap-setting AI that lures players, the Director, jumpscares, a farming economy and online multiplayer add up to a lot. Addressed by the four-phase Build Plan; still worth watching as features are added.
 
-### 2. There is no limit on plots or labor
-
-The doc never says how many plots the farm has or how many one player can tend in a day, so the economy can’t be balanced. With unlimited plots, turnips compound (60 coins becomes about 150 by day 2 and 375 by day 3), and per coin they beat corn: 2.5× in one day against 3× over three days. Corn is only the best crop if plots are the bottleneck. Moonflowers earn 45 profit per plot per night, about 4.5× corn per plot-day, so the obvious plan is to fill the farm with them and send one player out. A plot cap and a time cost per chore are the real balance levers, and they are what make splitting up necessary rather than just suggested. Needs settling before Phase 4.
-
-### 3. Little is at stake until the Harvest Moon
-
-Nights 1 to 6 can’t end the season and deaths are cheap, so the horror has little bite for most of the game. Publishing “it can’t kill by day” also tells players the day is safe, so daytime jumpscares may annoy more than scare. The Harvest Moon is the climax but only adds “hunts all night”; it needs a distinct final objective, such as loading the festival cart under attack or defending the corn.
-
-### 4. A season is long with no save
-
-A season is about 1 hour 45 minutes for four friends, and missing the first payment ends about 45 minutes of play. Needs mid-season saves, a shorter season option, or both.
-
-### 5. Live clips can carry what shouldn’t be replayed
-
-Lobby lines are settled (fixed, prompted, blockable; see Build Notes). Live clips from proximity chat, in Phase 3, can capture slurs or private remarks and replay them to other players. Needs a filter or a rule for what gets kept before Phase 3. Splicing clips usually sounds worse rather than more natural, so it stays a stretch goal for a solo build.
-### 6. The creature is seen a lot for something “never seen clearly”
-
-Disarm lunges, the trap stare, shed ambushes and hallucinations across seven days mean players will see it often. Decide what is visible in each scare and keep it to silhouettes, motion and partial glimpses.
-
-### 7. No reason to play a second season
-
-One creature on one farm, with crops that live a day or a week, gives little long-term attachment. Persistent farm upgrades between seasons, map variants or creature variants would give the cozy side real investment.
-
-### 8. The numbers are untested
+### 2. The numbers are untested
 
 Every price, payment and trap count is a first guess. They should be tuned from the logs once Phase 4 is playable.
 
-### 9. The fourth role
+### 3. The fourth role
 
 Hunter or Tracker. To be decided after playtesting, once the team can try both. If ghosts are ever given sight of traps again (see Ghost spectating), the Tracker gets much weaker, since dead players would do its job.
 
