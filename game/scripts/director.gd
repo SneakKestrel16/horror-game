@@ -236,10 +236,15 @@ func _alone(player: Player) -> bool:
 
 ## A recording of someone else for a whisper behind player, or {}.
 func _whisper_clip(player: Player) -> Dictionary:
-	var pick := game.voices.pick(player.get_multiplayer_authority())
-	if pick.is_empty() or pick["source"] == player.get_multiplayer_authority():
-		return {}
-	return pick
+	# A few tries: the pick is random and now and then rolls the player's own
+	# voice, which never whispers (a smoke run failed on that, 2026-10-04).
+	for attempt in 6:
+		var pick := game.voices.pick(player.get_multiplayer_authority())
+		if pick.is_empty():
+			return {}
+		if pick["source"] != player.get_multiplayer_authority():
+			return pick
+	return {}
 
 
 ## The victim: the screen cuts to black, so the lunge is never seen in full
