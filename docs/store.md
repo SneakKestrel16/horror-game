@@ -55,6 +55,23 @@ Each upgrade is for the whole team, for the rest of the run, and is bought once 
   it able to break the lock only from day 5 of 7; with two days, it breaks it every night, and the
   lock buys time and a warning.
 
+## Playtests
+
+### 2026-10-04, solo (one window, `--dev`)
+
+From the host's log (`2026-10-04T23-00-55.log`).
+
+- **One purchase, the walkie-talkies,** with dev-panel coins. They need a second player to hear, so
+  nothing about them was tested.
+- **No seeds bought or planted.** Seeds, the other upgrades and the shed lock are still untried in
+  play; only the smoke test has exercised them.
+- **No errors** in the engine log.
+- **Not the store:** "Fill the tension meter" was pressed 15 times and no scare followed. A full meter
+  only lets a scare fire once its own condition is met: kneeling by the corn for a lunge, caught in a
+  trap for a stare, alone with a friend's recording for a whisper, and the crow by chance. Solo,
+  with no friend's voice, the whisper can never fire. Inference: the button reads as "scare me
+  now", which it isn't; the Scares buttons below it are the direct ones.
+
 ## Not built yet
 
 - **Scarecrows,** from the doc's list: there are none on the farm yet.
