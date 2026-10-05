@@ -10,4 +10,5 @@
 - Set up tools: `uv venv --python 3.13.16 .venv` then `uv pip install --python .venv/Scripts/python.exe -r tools/requirements.txt`, then `prek install`.
 - `bash tools/check.sh` imports `game/` headless and runs `game/tests/smoke.tscn`; `prek run --all-files` (from Git Bash) runs it with gdformat and gdlint. Warnings are errors.
 - See it without playing: `godot --path game res://tools/snapshot.tscn -- --clock=N --from=x,y,z --look=x,y,z --out=<png>`.
+- Rebuild the Blender textures and models (Blender 5.2 is not on PATH): `"/c/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b --factory-startup --python tools/blender/build.py`, then check them with `godot --path game res://tools/showcase.tscn -- --set=characters|props|plants`. See `docs/models.md`.
 - The owner prefers accuracy over speed: verify engine features, API names and other facts against the Godot docs before relying on them.

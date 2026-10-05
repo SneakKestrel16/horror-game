@@ -19,6 +19,8 @@ const HALF := 52.0  ## Invisible walls stand here; dark trees beyond.
 const CORN_IN := 30.0  ## The wild corn ring starts about this far out (by max(|x|, |z|)).
 const CORN_OUT := 50.0
 const CORN_HEIGHT := 2.5
+const CORN_CHUNK := 8.0  ## Metres a side of each square of corn drawn together.
+const CORN_NEAR := 30.0  ## Detailed stalks within this; plain ones past it.
 ## Strips of wild corn reaching in from the ring (x, z, width, depth), clear of
 ## the buildings, the barn door and the paths' ends.
 const CORN_STRIPS: Array[Rect2] = [
@@ -134,30 +136,23 @@ func build(parent: Node3D) -> void:
 	plane.shape = WorldBoundaryShape3D.new()
 	ground.add_child(plane)
 	root.add_child(ground)
-	_add_box(root, Vector3(0, -0.05, 0), Vector3(140, 0.1, 140), Color(0.28, 0.33, 0.16), false)
+	_add_ground(root, Vector3(0, -0.05, 0), Vector3(140, 0.1, 140), "grass")
 	# A worn dirt yard between the barn, shed and field.
-	_add_box(root, Vector3(-4, -0.04, -4), Vector3(44, 0.1, 18), Color(0.36, 0.3, 0.2), false)
+	_add_ground(root, Vector3(-4, -0.04, -4), Vector3(44, 0.1, 18), "dirt")
 	for plot in PLOTS:
-		_add_box(root, plot + Vector3(0, -0.02, 0), Vector3(2.4, 0.1, 2.4), Color(0.22, 0.15, 0.09))
+		_add_ground(root, plot + Vector3(0, -0.02, 0), Vector3(2.4, 0.1, 2.4), "soil")
 
+	# The buildings are models (tools/blender/models.py) built where they stand;
+	# their walls and the hay collide through these plain boxes.
+	root.add_child(Dress.model("barn"))
+	root.add_child(Dress.model("shed"))
 	for wall in _walls():
 		var box: AABB = wall
-		var colour := (
-			Color(0.42, 0.1, 0.08) if box.size.y > SHED_HEIGHT + 0.5 else Color(0.4, 0.37, 0.3)
-		)
-		_add_box(root, box.get_center(), box.size, colour, true)
-	# Roofs: overhanging slabs, no colliders needed above head height.
-	_add_box(
-		root, _rect_center(BARN, BARN_HEIGHT + 0.2), Vector3(13, 0.4, 11), Color(0.2, 0.2, 0.22)
-	)
-	_add_box(
-		root, _rect_center(SHED, SHED_HEIGHT + 0.1), Vector3(4.6, 0.2, 3.6), Color(0.25, 0.22, 0.2)
-	)
+		_add_collider(root, box.get_center(), box.size)
 	# Hay inside the barn, and a door frame lamp outside it.
 	var middle := _rect_center(BARN, 0.0)
 	for side: float in [-4.2, 4.2]:
-		var hay := middle + Vector3(side, 0.5, -3.6)
-		_add_box(root, hay, Vector3(2.4, 1.0, 1.2), Color(0.75, 0.62, 0.3), true)
+		_add_collider(root, middle + Vector3(side, 0.5, -3.6), Vector3(2.4, 1.0, 1.2))
 	for spot: Vector3 in [
 		middle + Vector3(-2.5, 4.2, -0.5),
 		middle + Vector3(2.5, 4.2, -0.5),
@@ -173,23 +168,18 @@ func build(parent: Node3D) -> void:
 		root.add_child(light)
 		barn_lights.append(light)
 
-	_add_box(
-		root, GENERATOR + Vector3(0, 0.45, 0), Vector3(1.2, 0.9, 0.8), Color(0.55, 0.5, 0.15), true
-	)
-	var drum := MeshInstance3D.new()
-	var cylinder := CylinderMesh.new()
-	cylinder.top_radius = 0.35
-	cylinder.bottom_radius = 0.35
-	cylinder.height = 1.0
-	cylinder.material = _material(Color(0.6, 0.12, 0.08))
-	drum.mesh = cylinder
-	drum.position = FUEL_DRUM + Vector3(0, 0.5, 0)
-	root.add_child(drum)
-	_add_box(
-		root, PUMP + Vector3(0, 0.6, 0), Vector3(0.25, 1.2, 0.25), Color(0.25, 0.3, 0.32), true
-	)
-	_add_box(root, PUMP + Vector3(0, 1.1, 0.3), Vector3(0.12, 0.12, 0.6), Color(0.25, 0.3, 0.32))
-	_add_box(root, CRATE + Vector3(0, 0.4, 0), Vector3(1.4, 0.8, 1.0), Color(0.5, 0.36, 0.2), true)
+	for prop: Array in [
+		["generator", GENERATOR, Vector3(1.2, 0.9, 0.8)],
+		["drum", FUEL_DRUM, Vector3.ZERO],
+		["pump", PUMP, Vector3(0.25, 1.2, 0.25)],
+		["crate", CRATE, Vector3(1.4, 0.8, 1.0)],
+	]:
+		var model := Dress.model(prop[0])
+		model.position = prop[1]
+		root.add_child(model)
+		var size: Vector3 = prop[2]
+		if size != Vector3.ZERO:
+			_add_collider(root, prop[1] + Vector3(0, size.y / 2.0, 0), size)
 
 	for side in 4:
 		var wall := StaticBody3D.new()
@@ -204,11 +194,11 @@ func build(parent: Node3D) -> void:
 	root.add_child(_corn())
 	for i in CORN_PLOTS.size():
 		var rect := corn_plot_rect(i)
-		_add_box(
+		_add_ground(
 			root,
 			Vector3(rect.get_center().x, -0.03, rect.get_center().y),
 			Vector3(rect.size.x, 0.1, rect.size.y),
-			Color(0.22, 0.15, 0.09)
+			"soil"
 		)
 		corn_patches.append(_corn_patch(i))
 		root.add_child(corn_patches[i])
@@ -529,14 +519,14 @@ static func _rect_center(rect: Rect2, y: float) -> Vector3:
 	return Vector3(center.x, y, center.y)
 
 
-## Rows of wild corn filling the ring and the strips, as one MultiMesh. Corn
-## has no collider: players and the creature walk through it, and it hides
-## whoever is inside.
-func _corn() -> MultiMeshInstance3D:
+## Rows of wild corn filling the ring and the strips. Corn has no collider:
+## players and the creature walk through it, and it hides whoever is inside.
+## Drawn in CORN_CHUNK-metre squares, each the detailed stalk up close and the
+## plain one past CORN_NEAR, since a MultiMesh picks no detail per stalk.
+func _corn() -> Node3D:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 1  # Fixed, so every peer grows the same corn.
-	var spots: Array[Transform3D] = []
-	var colours: Array[Color] = []
+	var chunks := {}  ## Vector2i -> [spots, colours]
 	var z := -CORN_OUT
 	while z <= CORN_OUT:
 		var x := -CORN_OUT
@@ -546,14 +536,34 @@ func _corn() -> MultiMeshInstance3D:
 				var scale := rng.randf_range(0.85, 1.15)
 				var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(1, scale, 1))
 				basis = basis.rotated(Vector3.RIGHT, rng.randf_range(-0.06, 0.06))
-				spots.append(Transform3D(basis, at))
 				var dry := rng.randf()
-				colours.append(Color(0.3, 0.42, 0.14).lerp(Color(0.55, 0.5, 0.25), dry * 0.6))
+				var colour := Color(0.4, 0.55, 0.2).lerp(Color(0.66, 0.6, 0.32), dry * 0.6)
+				var key := Vector2i(floori(at.x / CORN_CHUNK), floori(at.z / CORN_CHUNK))
+				var chunk: Array = chunks.get_or_add(
+					key, [[] as Array[Transform3D], [] as Array[Color]]
+				)
+				chunk[0].append(Transform3D(basis, at))
+				chunk[1].append(colour)
 			x += 0.55
 		z += 0.9  # Rows run along x.
-	var instance := _stalks(spots, colours)
-	instance.name = "Corn"
-	return instance
+	var corn := Node3D.new()
+	corn.name = "Corn"
+	var close := Dress.mesh("corn", true)
+	var far := Dress.mesh("corn_far", true)
+	for key: Vector2i in chunks:
+		var centre := Vector3((key.x + 0.5) * CORN_CHUNK, 0, (key.y + 0.5) * CORN_CHUNK)
+		for detail: bool in [true, false]:
+			var instance := _stalks(
+				chunks[key][0], chunks[key][1], close if detail else far, centre
+			)
+			if detail:
+				instance.visibility_range_end = CORN_NEAR
+				instance.visibility_range_end_margin = 2.0
+			else:
+				instance.visibility_range_begin = CORN_NEAR
+				instance.visibility_range_begin_margin = 2.0
+			corn.add_child(instance)
+	return corn
 
 
 ## One planted plot's corn: straight, even rows, greener than the wild corn.
@@ -566,10 +576,11 @@ func _corn_patch(index: int) -> MultiMeshInstance3D:
 		var x := rect.position.x
 		while x <= rect.end.x:
 			spots.append(Transform3D(Basis(Vector3.UP, (x + z) * 2.0), Vector3(x, 0, z)))
-			colours.append(Color(0.28, 0.48, 0.14))
+			colours.append(Color(0.36, 0.6, 0.2))
 			x += 0.5
 		z += 0.75
-	return _stalks(spots, colours)
+	var centre := Vector3(rect.get_center().x, 0, rect.get_center().y)
+	return _stalks(spots, colours, Dress.mesh("corn", true), centre)
 
 
 ## Which planted corn plot point is in, or -1.
@@ -580,119 +591,69 @@ static func _corn_plot_at(point: Vector3) -> int:
 	return -1
 
 
-func _stalks(spots: Array[Transform3D], colours: Array[Color]) -> MultiMeshInstance3D:
+## Stalks at spots (world positions) as one MultiMesh placed at centre, each
+## tinted its colour.
+func _stalks(
+	spots: Array[Transform3D], colours: Array[Color], mesh: Mesh, centre: Vector3
+) -> MultiMeshInstance3D:
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.use_colors = true
-	multimesh.mesh = _stalk_mesh()
+	multimesh.mesh = mesh
 	multimesh.instance_count = spots.size()
 	for i in spots.size():
-		multimesh.set_instance_transform(i, spots[i])
+		multimesh.set_instance_transform(i, spots[i].translated(-centre))
 		multimesh.set_instance_color(i, colours[i])
 	var instance := MultiMeshInstance3D.new()
 	instance.multimesh = multimesh
+	instance.position = centre
 	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return instance
 
 
-## One stalk: two crossed tapering quads and four drooping leaves.
-static func _stalk_mesh() -> ArrayMesh:
-	var tool := SurfaceTool.new()
-	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for turn in 2:
-		var across := Vector3.RIGHT.rotated(Vector3.UP, turn * PI / 2.0)
-		_quad(
-			tool,
-			[
-				across * -0.05,
-				across * 0.05,
-				across * 0.02 + Vector3.UP * CORN_HEIGHT,
-				across * -0.02 + Vector3.UP * CORN_HEIGHT
-			]
-		)
-	for leaf in 4:
-		var out := Vector3.FORWARD.rotated(Vector3.UP, leaf * 1.7)
-		var side := out.cross(Vector3.UP) * 0.06
-		var base := Vector3.UP * (0.7 + leaf * 0.38)
-		var tip := base + out * 0.55 + Vector3.UP * 0.15
-		_quad(
-			tool,
-			[
-				base - side,
-				base + side,
-				tip + side * 0.3 + Vector3.DOWN * 0.25,
-				tip - side * 0.3 + Vector3.DOWN * 0.25
-			]
-		)
-	tool.generate_normals()
-	var mesh := tool.commit()
-	var material := StandardMaterial3D.new()
-	material.vertex_color_use_as_albedo = true
-	material.cull_mode = BaseMaterial3D.CULL_DISABLED
-	material.roughness = 0.9
-	mesh.surface_set_material(0, material)
-	return mesh
-
-
-static func _quad(tool: SurfaceTool, corners: Array) -> void:
-	for index: int in [0, 1, 2, 0, 2, 3]:
-		tool.set_color(Color.WHITE)
-		tool.add_vertex(corners[index])
-
-
-## A dark wall of trees past the corn, so the world has an edge.
+## A dark wall of pines past the corn, so the world has an edge.
 static func _trees() -> MultiMeshInstance3D:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 2
 	var multimesh := MultiMesh.new()
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
-	var cone := CylinderMesh.new()
-	cone.top_radius = 0.0
-	cone.bottom_radius = 2.2
-	cone.height = 9.0
-	cone.material = _material(Color(0.07, 0.11, 0.07))
-	multimesh.mesh = cone
+	multimesh.mesh = Dress.mesh("pine")
 	var spots: Array[Vector3] = []
 	var along := -HALF - 4.0
 	while along <= HALF + 4.0:
 		for side in 4:
-			var at := Vector3(along, 4.5, HALF + rng.randf_range(1.5, 4.0))
+			var at := Vector3(along, 0.0, HALF + rng.randf_range(1.5, 4.0))
 			spots.append(at.rotated(Vector3.UP, side * PI / 2.0))
 		along += 2.6
 	multimesh.instance_count = spots.size()
 	for i in spots.size():
 		var scale := rng.randf_range(0.8, 1.4)
-		multimesh.set_instance_transform(
-			i, Transform3D(Basis.from_scale(Vector3.ONE * scale), spots[i])
-		)
+		var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * scale)
+		multimesh.set_instance_transform(i, Transform3D(basis, spots[i]))
 	var instance := MultiMeshInstance3D.new()
 	instance.multimesh = multimesh
 	return instance
 
 
-static func _material(colour: Color) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = colour
-	material.roughness = 0.95
-	return material
-
-
-static func _add_box(
-	parent: Node3D, center: Vector3, size: Vector3, colour: Color, solid := false
-) -> void:
+## A flat ground box (grass, the yard, a plot) in a texture projected in world
+## space, so it tiles at the same size on every box.
+static func _add_ground(parent: Node3D, center: Vector3, size: Vector3, texture: String) -> void:
 	var mesh := MeshInstance3D.new()
 	var box := BoxMesh.new()
 	box.size = size
-	box.material = _material(colour)
+	box.material = Dress.material(texture, Color.WHITE, true)
 	mesh.mesh = box
 	mesh.position = center
 	parent.add_child(mesh)
-	if solid:
-		var body := StaticBody3D.new()
-		var shape := CollisionShape3D.new()
-		var collider := BoxShape3D.new()
-		collider.size = size
-		shape.shape = collider
-		body.add_child(shape)
-		body.position = center
-		parent.add_child(body)
+
+
+## An invisible solid box; the models are what is seen.
+static func _add_collider(parent: Node3D, center: Vector3, size: Vector3) -> void:
+	var body := StaticBody3D.new()
+	var shape := CollisionShape3D.new()
+	var collider := BoxShape3D.new()
+	collider.size = size
+	shape.shape = collider
+	body.add_child(shape)
+	body.position = center
+	parent.add_child(body)

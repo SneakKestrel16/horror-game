@@ -1,0 +1,128 @@
+{
+	"bark": {
+		"mapping": "triplanar",
+		"metal": 0.0,
+		"roughness": 0.95,
+		"size": 1.5
+	},
+	"bone": {
+		"mapping": "triplanar",
+		"metal": 0.0,
+		"roughness": 0.55,
+		"size": 0.2
+	},
+	"denim": {
+		"mapping": "triplanar",
+		"metal": 0.0,
+		"roughness": 0.9,
+		"size": 0.25
+	},
+	"dirt": {
+		"mapping": "triplanar",
+		"metal": 0.0,
+		"roughness": 0.95,
+		"size": 3.0
+	},
+	"flannel": {
+		"mapping": "triplanar",
+		"metal": 0.0,
+		"roughness": 0.9,
+		"size": 0.3
+	},
+	"grass": {
+		"mapping": "triplanar",
+		"metal": 0.0,
+		"roughness": 0.95,
+		"size": 3.0
+	},
+	"hay": {
+		"mapping": "triplanar",
+		"metal": 0.0,
+		"roughness": 0.95,
+		"size": 1.0
+	},
+	"hide": {
+		"mapping": "triplanar",
+		"metal": 0.0,
+		"roughness": 0.4,
+		"size": 0.5
+	},
+	"iron": {
+		"mapping": "triplanar",
+		"metal": 0.5,
+		"roughness": 0.65,
+		"size": 0.5
+	},
+	"leaf": {
+		"mapping": "uv",
+		"metal": 0.0,
+		"roughness": 0.75,
+		"size": 1.0
+	},
+	"leather": {
+		"mapping": "triplanar",
+		"metal": 0.0,
+		"roughness": 0.7,
+		"size": 0.3
+	},
+	"metal_paint": {
+		"mapping": "triplanar",
+		"metal": 0.2,
+		"roughness": 0.5,
+		"size": 1.0
+	},
+	"needles": {
+		"mapping": "triplanar",
+		"metal": 0.0,
+		"roughness": 0.9,
+		"size": 1.0
+	},
+	"planks_grey": {
+		"mapping": "triplanar",
+		"metal": 0.0,
+		"roughness": 0.9,
+		"size": 2.0
+	},
+	"planks_red": {
+		"mapping": "triplanar",
+		"metal": 0.0,
+		"roughness": 0.85,
+		"size": 2.4
+	},
+	"planks_white": {
+		"mapping": "triplanar",
+		"metal": 0.0,
+		"roughness": 0.8,
+		"size": 2.4
+	},
+	"roof_tin": {
+		"mapping": "triplanar",
+		"metal": 0.4,
+		"roughness": 0.55,
+		"size": 2.0
+	},
+	"skin": {
+		"mapping": "triplanar",
+		"metal": 0.0,
+		"roughness": 0.6,
+		"size": 0.15
+	},
+	"soil": {
+		"mapping": "triplanar",
+		"metal": 0.0,
+		"roughness": 1.0,
+		"size": 2.0
+	},
+	"straw_weave": {
+		"mapping": "triplanar",
+		"metal": 0.0,
+		"roughness": 0.85,
+		"size": 0.12
+	},
+	"wood": {
+		"mapping": "triplanar",
+		"metal": 0.0,
+		"roughness": 0.8,
+		"size": 1.0
+	}
+}

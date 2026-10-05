@@ -57,7 +57,12 @@ var _stride := 0.0
 var _last_position := Vector3.ZERO
 var _head: Node3D
 var _camera: Camera3D
-var _body: Node3D
+var _body: Node3D  ## The farmer model (tools/blender/models.py); others see it.
+var _legs: Array[Node3D] = []
+var _arms: Array[Node3D] = []
+var _neck: Node3D  ## The model's head joint, which follows pitch.
+var _gait := 0.0  ## Walk cycle, in radians.
+var _walked_from := Vector3.ZERO
 var _light: OmniLight3D
 
 
@@ -71,13 +76,20 @@ func _ready() -> void:
 	collision.position.y = 0.9
 	add_child(collision)
 
-	_body = Node3D.new()
+	_body = Dress.model("farmer")
 	add_child(_body)
 	# Golden-ratio hues give each peer distinct overalls.
-	var overalls := Color.from_hsv(fmod(get_multiplayer_authority() * 0.618, 1.0), 0.5, 0.6)
-	_part(CapsuleMesh.new(), Vector3(0, 0.75, 0), Vector3(0.7, 0.75, 0.7), overalls)
-	_part(SphereMesh.new(), Vector3(0, 1.65, 0), Vector3(0.36, 0.4, 0.36), Color(0.85, 0.68, 0.55))
-	_part(CylinderMesh.new(), Vector3(0, 1.88, 0), Vector3(0.75, 0.06, 0.75), Color(0.8, 0.7, 0.4))
+	var hue := fmod(get_multiplayer_authority() * 0.618, 1.0)
+	var overalls := Dress.material("denim", Color.from_hsv(hue, 0.45, 0.8), false, 0.9)
+	for child in _body.find_children("*", "MeshInstance3D", true, false):
+		var instance := child as MeshInstance3D
+		for i in instance.mesh.get_surface_count():
+			if instance.mesh.surface_get_material(i).resource_name.begins_with("denim"):
+				instance.set_surface_override_material(i, overalls)
+	for i in 2:
+		_legs.append(_body.find_child("leg_%d" % i) as Node3D)
+		_arms.append(_body.find_child("arm_%d" % i) as Node3D)
+	_neck = _body.find_child("head") as Node3D
 
 	_head = Node3D.new()
 	_head.position.y = EYE_HEIGHT
@@ -138,6 +150,24 @@ func _process(delta: float) -> void:
 	_light.visible = lantern and not dead and not blink
 	_body.visible = not dead and not is_multiplayer_authority()
 	_footsteps()
+	_walk_cycle(delta)
+
+
+## Swings the model's legs and arms with how fast it moves, and tips its head
+## with the camera's pitch, for the other players to see.
+func _walk_cycle(delta: float) -> void:
+	var moved := global_position - _walked_from
+	moved.y = 0.0
+	_walked_from = global_position
+	var speed := moved.length() / maxf(delta, 0.001)
+	if speed > SPRINT_SPEED * 2.0:  # A teleport.
+		speed = 0.0
+	_gait += minf(moved.length(), 1.0) * 2.4
+	var swing := sin(_gait) * clampf(speed / WALK_SPEED, 0.0, 1.4) * 0.45
+	for i in _legs.size():
+		_legs[i].rotation.x = swing * (1.0 if i == 0 else -1.0)
+		_arms[i].rotation.x = swing * (-0.8 if i == 0 else 0.8)
+	_neck.rotation.x = pitch * 0.6
 
 
 func _physics_process(delta: float) -> void:
@@ -289,14 +319,3 @@ func revived(at: Vector3) -> void:
 	collision_layer = 1
 	collision_mask = 1
 	global_position = Vector3(at.x, 0.05, at.z)
-
-
-func _part(mesh: PrimitiveMesh, at: Vector3, size: Vector3, colour: Color) -> void:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = colour
-	mesh.material = material
-	var instance := MeshInstance3D.new()
-	instance.mesh = mesh
-	instance.position = at
-	instance.scale = size
-	_body.add_child(instance)

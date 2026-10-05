@@ -103,7 +103,6 @@ var _time := 0.0
 var _rustle_left := 0.0
 var _arms: Array[Node3D] = []
 var _legs: Array[Node3D] = []
-var _torso: Node3D
 var _head: Node3D
 var _last_state := State.LURK
 
@@ -727,71 +726,16 @@ func _can_see(player: Player) -> bool:
 	return get_world_3d().direct_space_state.intersect_ray(query).get("collider") == player
 
 
-## A tall, thin, hunched dark shape. You are not meant to see it clearly.
+## A gaunt, hunched thing in dark hide (tools/blender/models.py). You are not
+## meant to see it clearly. Its joints are empties named leg_N, arm_N and head,
+## where the old primitive body had them; it is modelled hunched over.
 func _build_model() -> void:
-	var skin := StandardMaterial3D.new()
-	skin.albedo_color = Color(0.03, 0.03, 0.025)
-	skin.roughness = 1.0
-	var model := Node3D.new()
+	var model := Dress.model("creature")
 	add_child(model)
-	for side: float in [-1.0, 1.0]:
-		var leg := _limb(model, Vector3(0.18 * side, 1.3, 0), 1.3, 0.07, skin)
-		_legs.append(leg)
-	_torso = Node3D.new()
-	_torso.position.y = 1.3
-	_torso.rotation.x = -0.35  # Hunched forward (-z is its front).
-	model.add_child(_torso)
-	var chest := MeshInstance3D.new()
-	var capsule := CapsuleMesh.new()
-	capsule.radius = 0.2
-	capsule.height = 1.1
-	capsule.material = skin
-	chest.mesh = capsule
-	chest.position.y = 0.55
-	_torso.add_child(chest)
-	for side: float in [-1.0, 1.0]:
-		_arms.append(_limb(_torso, Vector3(0.28 * side, 1.0, 0), 1.55, 0.05, skin))
-	_head = Node3D.new()
-	_head.position = Vector3(0, 1.2, -0.12)
-	_torso.add_child(_head)
-	var skull := MeshInstance3D.new()
-	var sphere := SphereMesh.new()
-	sphere.radius = 0.16
-	sphere.height = 0.42
-	sphere.material = skin
-	skull.mesh = sphere
-	_head.add_child(skull)
-	var glint := StandardMaterial3D.new()
-	glint.albedo_color = Color(0.0, 0.0, 0.0)
-	glint.emission_enabled = true
-	glint.emission = Color(0.75, 0.78, 0.6)
-	glint.emission_energy_multiplier = 0.6
-	for side: float in [-1.0, 1.0]:
-		var eye := MeshInstance3D.new()
-		var dot := SphereMesh.new()
-		dot.radius = 0.018
-		dot.height = 0.036
-		dot.material = glint
-		eye.mesh = dot
-		eye.position = Vector3(0.06 * side, 0.04, -0.14)
-		_head.add_child(eye)
-
-
-## A limb hanging down from a joint at top; returns the joint to swing.
-func _limb(parent: Node3D, top: Vector3, length: float, radius: float, skin: Material) -> Node3D:
-	var joint := Node3D.new()
-	joint.position = top
-	parent.add_child(joint)
-	var mesh := MeshInstance3D.new()
-	var cylinder := CylinderMesh.new()
-	cylinder.top_radius = radius
-	cylinder.bottom_radius = radius * 0.6
-	cylinder.height = length
-	cylinder.material = skin
-	mesh.mesh = cylinder
-	mesh.position.y = -length / 2.0
-	joint.add_child(mesh)
-	return joint
+	for i in 2:
+		_legs.append(model.find_child("leg_%d" % i) as Node3D)
+		_arms.append(model.find_child("arm_%d" % i) as Node3D)
+	_head = model.find_child("head") as Node3D
 
 
 func _animate(delta: float) -> void:

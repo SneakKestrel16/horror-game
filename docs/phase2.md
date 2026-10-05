@@ -294,14 +294,15 @@ generator's hum. Each plays one of several takes at a slightly random pitch and 
 
 ### Textures
 
-There are none yet: every surface is a flat colour.
+Baked in Blender and put on models built there (2026-10-04); see [Models and textures](models.md).
 
-- [ ] Ground: grass, dirt paths, tilled soil in the field
-- [ ] Corn stalks and leaves
-- [ ] Barn and shed: weathered wood, roof, doors
-- [ ] Metal: bear traps, generator, fuel drum, pegboard tools
+- [x] Ground: grass, dirt paths, tilled soil in the field
+- [x] Corn stalks and leaves
+- [x] Barn and shed: weathered wood, roof, doors
+- [x] Metal: generator, fuel drum, pump
+- [ ] Metal: bear traps, pegboard tools (still primitives in `looks.gd`)
 - [ ] Crops at each growth stage
-- [ ] The creature's skin, and player models
+- [x] The creature's skin, and player models
 - [ ] Night sky and moon
 
 ## Not in Phase 2

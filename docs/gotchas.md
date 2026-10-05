@@ -66,6 +66,9 @@ Traps hit while building the game, with what fixed them.
 
 - **Non-ASCII text piped into Python through a Bash heredoc gets mangled.** A `·` in a pattern
   stopped matching. Write the editing script to a file with the Write tool and run that.
+- **A very long Bash heredoc failed to parse** ("unexpected EOF while looking for matching `'`")
+  and nothing past it ran. The 600-line half of `models.py` went in through the Write tool and
+  `cat >>` instead. A `cat > file` with no heredoc waits on stdin until the tool's timeout.
 - **Two local instances share one `godot.log`.** Host and joiner use the same user folder, so
   `logs/godot.log` interleaves both, with lines cut mid-word. Read the host's own timestamped log
   (`logs/<date>T<time>.log`, the `log_event` lines) instead.
@@ -96,6 +99,25 @@ Traps hit while building the game, with what fixed them.
   host relays every voice to everyone else, so with four people talking at once the host sends
   about 0.45 MB/s (its own voice to three, each other voice to two). Fine on a LAN; inference:
   may be tight on a slow home upload. Lower `VoiceCodec.RATE` before going back to mu-law.
+
+## Models and textures
+
+- **Godot imports a JPEG without mipmaps and lossless,** which shimmers on tiled ground. Each map's
+  `.import` turns mipmaps and VRAM compression on, and the `_n` maps' normal-map compression.
+  A new texture needs the same `[params]`.
+- **A MultiMesh's instance colours did not tint the glTF corn** until the mesh was given white
+  vertex colours (`Dress.mesh`); every stalk drew the texture's own pale colour. Seen in two
+  snapshots, not traced in Godot's source.
+- **check-added-large-files allows 500 KB**, and the first barn (627 KB) and creature (701 KB)
+  were over. Hay bales with one bevel segment, and a coarser metaball resolution on the creature's
+  body and limbs, brought them to 440 and 430 KB. Check `ls -la game/assets/models` after a
+  rebuild.
+- **A metaball chain is fatter than its radii.** `models._taper` lays balls 3 cm apart and their
+  fields add, so limbs come out thicker than the numbers say. Judge them in the showcase, not by
+  the radii.
+- **Blender's Math node has no smootherstep;** Map Range does (`Graph.band`).
+- **A light inside a mesh is shadowed by it.** The barn lamps' bulbs sat round Farm's lights at
+  first. The lamps are now raised 0.12 m so the light is below the bulb and the shade.
 
 ## Lighting
 
