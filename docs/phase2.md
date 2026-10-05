@@ -255,7 +255,8 @@ Built ahead of Review 2; see [Phase 3](phase3.md) and its checklist.
 ### Phase 4
 
 - [ ] The 7-day season, saving between days, the corn quota and payments
-- [ ] Crops and moonflowers, the economy and upgrades
+- [x] Seed packs, pumpkins and moonflowers, and a first set of upgrades (built early: [The farm store](store.md))
+- [ ] The economy around them: payments, the corn quota, prices tuned
 - [ ] Roles
 - [ ] The sabotage pool and the unattended farm (wrecked crops and fences)
 - [ ] The farmhouse, animals, fences and scarecrows

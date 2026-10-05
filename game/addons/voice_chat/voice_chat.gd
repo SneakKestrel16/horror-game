@@ -36,6 +36,9 @@ var mic_muted := false
 ## Save live speech for the creature (Phase 3). Off in Phase 2, which uses lobby
 ## lines recorded with start_take()/end_take() instead.
 var keep_live_clips := false
+## Walkie-talkies: living players beyond a speaker's hearing range hear each
+## other over the radio instead (VoiceSpeaker), through the "Radio" bus.
+var radio_enabled := false
 
 var _capture: AudioEffectCapture
 var _encoder: VoiceCodec
@@ -348,6 +351,15 @@ func _setup_buses() -> void:
 	var crunch := AudioEffectDistortion.new()
 	crunch.drive = 0.35
 	_ensure_bus(&"DeadVoice", [band, crunch])
+
+	# Walkie-talkies: a narrow phone band, a little crackle.
+	var low_cut := AudioEffectHighPassFilter.new()
+	low_cut.cutoff_hz = 350.0
+	var high_cut := AudioEffectLowPassFilter.new()
+	high_cut.cutoff_hz = 3200.0
+	var crackle := AudioEffectDistortion.new()
+	crackle.drive = 0.2
+	_ensure_bus(&"Radio", [low_cut, high_cut, crackle])
 
 	# The creature's copies: a faint echo as a tell.
 	var reverb := AudioEffectReverb.new()

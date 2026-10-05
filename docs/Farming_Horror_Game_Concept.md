@@ -297,6 +297,8 @@ What it shows:
 
 Over the season, players unlock new seeds, upgrade tools, and expand the farm (up to 24 plots). Examples: a quiet watering can (slower, but the creature can’t hear it as far), a shed lock, walkie-talkies and batteries, brighter lanterns, more scarecrows, and new plots.
 
+A first set is built ahead of Phase 4: a store at the shipping crate selling seed packs and seven of these upgrades, with prices still to tune ([The farm store](store.md)). Walkie-talkies carry only real teammates’ voices, since the creature copies voices only from the corn.
+
 ## Mechanics That Tie Farming and Horror Together
 
 - **Noise:** Tractors, watering cans, and the barn door all make sound. Fast tools are loud; quiet tools are slow.

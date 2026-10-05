@@ -39,6 +39,7 @@ const FLICKER_BELOW := 0.15  ## The barn lights flicker under this much fuel.
 ## How far each action carries to the creature's ears (m).
 const NOISE := {
 	"water": 9.0,
+	"water_quiet": 3.0,  # With the quiet watering can (Store). Guess.
 	"harvest": 4.0,
 	"pump": 12.0,
 	"fuel": 5.0,
@@ -53,6 +54,7 @@ const NOISE := {
 	"take": 4.0,
 	"cut": 8.0,  # Cutting corn: stalks crack and fall. Guess.
 	"lights_out": 80.0,  # The generator dying at night: the whole farm hears it.
+	"lock": 40.0,  # The creature breaking the shed lock (Store). Guess.
 }
 const LURE_CHECK := 12.0  ## Seconds after a lure to see who walked toward it.
 const LURE_HEARD := 40.0  ## Players this close to a lure count as having heard it.
@@ -69,6 +71,7 @@ const CONTROLS := {
 	"drop": KEY_G,
 	"lantern": KEY_F,
 	"my_clips": KEY_C,
+	"store": KEY_B,
 }
 
 var farm := Farm.new()
@@ -83,6 +86,7 @@ var clock_rate := 1.0
 var traps := TrapField.new()
 var chores := Chores.new()
 var voices := VoiceBank.new()
+var store := Store.new()
 var creature: Creature  ## Host only.
 var director: Director  ## Tension and scares (Phase 3); the host drives it.
 var hud := Hud.new()
@@ -106,6 +110,7 @@ var _ambience: Sfx.Ambience
 ## Recordings live for this match only.
 func _exit_tree() -> void:
 	VoiceChat.keep_live_clips = false
+	VoiceChat.radio_enabled = false
 	VoiceChat.clear_clips()
 
 
@@ -125,7 +130,11 @@ func _ready() -> void:
 	chores.name = "Chores"
 	chores.game = self
 	add_child(chores)
+	store.name = "Store"
+	store.game = self
+	add_child(store)
 	add_child(ClipList.new(self))
+	add_child(StorePanel.new(self))
 	director = Director.new(self)
 	add_child(director)
 	add_child(Ghosts.new(self))
@@ -417,6 +426,8 @@ func _enter_phase(current: String, key: String) -> void:
 func _morning() -> void:
 	var wiped := _night_deaths > 0 and living_players().is_empty()
 	director.dawn()
+	chores.dawn()
+	store.dawn()
 	if phase() != "dawn":
 		traps.finish_night()
 		if wiped:
@@ -693,6 +704,7 @@ func _client_ready(player_name: String) -> void:
 	var data := _player_data(id, player_name)
 	_players.spawn(data)
 	voices.welcome(id)
+	store.welcome(id)
 	voices.register(id, data["name"])
 	log_event("%s joined (peer %d)" % [_who(id), id])
 

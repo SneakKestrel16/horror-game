@@ -89,6 +89,7 @@ func _ready() -> void:
 	_button(traps, "Arm all traps", func() -> void: set_all_traps(true))
 	_button(traps, "Clear all traps", func() -> void: set_all_traps(false))
 	_button(column, "Ripen every plot", func() -> void: game.chores.ripen_all())
+	_button(column, "100 more coins (for the store)", _add_coins)
 
 	_heading(column, "Me")
 	_button(column, "Die", _die)
@@ -320,3 +321,10 @@ func _toggle(parent: Control, text: String, action: Callable) -> void:
 	box.focus_mode = Control.FOCUS_NONE
 	box.toggled.connect(action)
 	parent.add_child(box)
+
+
+## Host only (dev panel): 100 coins, to try the store.
+func _add_coins() -> void:
+	game.coins += 100
+	game.sync_state()
+	game.log_event("dev: +100 coins (coins %d)" % game.coins)

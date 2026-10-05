@@ -38,6 +38,21 @@ const ITEM_PARTS := {
 		["cylinder", Vector3(0.07, 0.18, 0), Vector3(0.09, 0.18, 0.09), Color(0.9, 0.78, 0.3)],
 		["box", Vector3(0, 0.2, 0.04), Vector3(0.24, 0.3, 0.03), Color(0.55, 0.6, 0.3)],
 	],
+	"pumpkin":
+	[
+		["sphere", Vector3(0, 0.16, 0), Vector3(0.36, 0.28, 0.36), Color(0.9, 0.45, 0.08)],
+		["cylinder", Vector3(0, 0.33, 0), Vector3(0.04, 0.06, 0.04), Color(0.35, 0.3, 0.15)],
+	],
+	"moonflower":  # A bunch of pale blooms; Looks.item makes them glow.
+	[
+		["box", Vector3(0, 0.15, 0), Vector3(0.04, 0.3, 0.04), Color(0.3, 0.45, 0.35)],
+		["sphere", Vector3(0, 0.32, 0), Vector3(0.22, 0.1, 0.22), Color(0.75, 0.85, 1.0)],
+	],
+	"turnip_seeds": [["box", Vector3(0, 0.1, 0), Vector3(0.16, 0.22, 0.04), Color(0.7, 0.45, 0.7)]],
+	"pumpkin_seeds":
+	[["box", Vector3(0, 0.1, 0), Vector3(0.16, 0.22, 0.04), Color(0.9, 0.5, 0.15)]],
+	"moonflower_seeds":
+	[["box", Vector3(0, 0.1, 0), Vector3(0.16, 0.22, 0.04), Color(0.35, 0.4, 0.75)]],
 	"crow":  # Body and two spread wings; it only flaps past (Director fake-out).
 	[
 		["sphere", Vector3.ZERO, Vector3(0.22, 0.18, 0.4), Color(0.04, 0.04, 0.05)],
@@ -53,24 +68,61 @@ static func item(parent: Node3D, kind: String) -> Node3D:
 	parent.add_child(node)
 	for part: Array in ITEM_PARTS[kind]:
 		mesh(node, part[0], part[1], part[2], part[3])
+	if kind == "moonflower":  # Picked, they still glow: a light to carry in the dark.
+		var bloom: Array = ITEM_PARTS[kind][1]
+		glow(node, bloom[1], bloom[2], bloom[3])
 	return node
 
 
-## Rebuilds a plot's soil and turnips for its Chores.Stage.
-static func plot(node: Node3D, stage: int) -> void:
+## Rebuilds a plot's soil and crop for its Chores.Stage: turnips, pumpkins
+## or moonflowers (pale, and glowing once ripe); weeds while it is LOCKED.
+static func plot(node: Node3D, stage: int, crop: String) -> void:
 	_clear(node)
 	var soil := Color(0.16, 0.1, 0.06) if stage == Chores.Stage.GROWING else Color(0.22, 0.15, 0.09)
 	mesh(node, "box", Vector3(0, 0.035, 0), Vector3(2.3, 0.02, 2.3), soil)
 	if stage == Chores.Stage.EMPTY:
 		return
-	var leaf := 0.35 if stage == Chores.Stage.RIPE else 0.18
+	if stage == Chores.Stage.LOCKED:
+		for i in 14:  # Weeds, at fixed spots so every peer sees the same.
+			var at := Vector3(fmod(i * 0.83, 2.0) - 1.0, 0.3, fmod(i * 0.57, 2.0) - 1.0)
+			mesh(node, "box", at, Vector3(0.06, 0.6, 0.06), Color(0.32, 0.36, 0.14))
+		return
+	var ripe := stage == Chores.Stage.RIPE
+	var leaf := 0.35 if ripe else 0.18
 	for x in 3:
 		for z in 3:
 			var at := Vector3((x - 1) * 0.65, leaf / 2.0, (z - 1) * 0.65)
-			mesh(node, "sphere", at, Vector3(leaf, leaf, leaf), Color(0.25, 0.55, 0.2))
-			if stage == Chores.Stage.RIPE:
-				var top := at + Vector3(0.1, -leaf / 2.0 + 0.05, 0.1)
-				mesh(node, "sphere", top, Vector3(0.14, 0.1, 0.14), Color(0.8, 0.5, 0.8))
+			match crop:
+				"pumpkin":
+					if x != 1 or z != 1:
+						continue  # Sprawling vines, fewer fruit.
+					mesh(
+						node, "sphere", at, Vector3(leaf, leaf, leaf) * 1.6, Color(0.2, 0.45, 0.15)
+					)
+					if ripe:
+						var fruit := at + Vector3(0.35, -0.05, 0.3)
+						mesh(node, "sphere", fruit, Vector3(0.5, 0.36, 0.5), Color(0.9, 0.45, 0.08))
+				"moonflower":
+					var stem := Vector3(0.04, leaf * 1.6, 0.04)
+					mesh(node, "box", at, stem, Color(0.3, 0.45, 0.35))
+					if ripe:
+						var bloom := at + Vector3(0, leaf * 0.8, 0)
+						glow(node, bloom, Vector3(0.22, 0.08, 0.22), Color(0.75, 0.85, 1.0))
+				_:
+					mesh(node, "sphere", at, Vector3(leaf, leaf, leaf), Color(0.25, 0.55, 0.2))
+					if ripe:
+						var top := at + Vector3(0.1, -leaf / 2.0 + 0.05, 0.1)
+						mesh(node, "sphere", top, Vector3(0.14, 0.1, 0.14), Color(0.8, 0.5, 0.8))
+
+
+## A glowing part (a ripe moonflower).
+static func glow(parent: Node3D, at: Vector3, size: Vector3, colour: Color) -> void:
+	mesh(parent, "sphere", at, size, colour)
+	var part := parent.get_child(parent.get_child_count() - 1) as MeshInstance3D
+	var material := (part.mesh as PrimitiveMesh).material as StandardMaterial3D
+	material.emission_enabled = true
+	material.emission = colour
+	material.emission_energy_multiplier = 1.5
 
 
 ## Rebuilds a trap for its TrapField.State. An armed pit is husks over a hole,

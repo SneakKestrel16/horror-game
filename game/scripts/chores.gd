@@ -1,37 +1,60 @@
 class_name Chores
 extends Node
 ## The farm's tools and crops, and everything the E key does: picking up and
-## dropping, watering, harvesting, selling, fuel, and the traps (disarming,
-## filling, prying free, carrying a bear trap back to the pegboard). The local
-## player's use prompt is worked out here; the request goes to the host, which
-## checks it still makes sense (another player may have got there first) and
-## tells every peer what changed. Same path ("Chores") on every peer.
+## dropping, planting, watering, harvesting, selling, fuel, and the traps
+## (disarming, filling, prying free, carrying a bear trap back to the
+## pegboard). The local player's use prompt is worked out here; the request
+## goes to the host, which checks it still makes sense (another player may have
+## got there first) and tells every peer what changed. Same path ("Chores") on
+## every peer. Seeds and upgrades come from the Store.
 
-enum Stage { DRY, GROWING, RIPE, EMPTY }  ## A plot's turnips.
+## A plot's crop. EMPTY: harvested, to replant from a seed pack. LOCKED:
+## overgrown until the team buys the new plots (Store).
+enum Stage { DRY, GROWING, RIPE, EMPTY, LOCKED }
 
 const GROW_TIME := 60.0  ## Seconds from watered to ripe (scaled like the phases).
+## Each crop's growing time in GROW_TIMEs, keeping the doc's ratios (Crops:
+## turnips 1 day, pumpkins 2). Moonflowers grow only at night ("1 night") and
+## wilt at dawn if not picked: the doc's "night harvest only".
+const GROWTH := {"turnip": 1.0, "pumpkin": 2.0, "moonflower": 1.0}
+const NIGHT_CROPS: Array[String] = ["moonflower"]
 const CAN_WATER := 4  ## Plots one watering can full waters.
-const PRICES := {"turnip": 10, "corn": 45}  ## Per plot. Design doc, Crops.
+const BIG_CAN := 8  ## With the bigger watering can (Store).
+## Per plot. Design doc, Crops.
+const PRICES := {"turnip": 10, "pumpkin": 25, "corn": 45, "moonflower": 70}
+const CROP_NAMES := {
+	"turnip": "turnips", "pumpkin": "pumpkin", "corn": "corn", "moonflower": "moonflowers"
+}
 const USE_RANGE := 2.0
 const LOOK_ANGLE := 0.7  ## Radians (40°) either side of where a player faces.
 const TRAP_LOOK_ANGLE := 0.45  ## Traps are only found by looking right at them (26°).
 ## Seconds to hold E. Prying is quicker with a friend (design doc, Night Traps).
-## Cutting corn is a guess: the doc's "a hold of a few seconds" for harvesting.
-const HOLD := {"disarm": 4.0, "fill": 3.0, "pry": 3.0, "help": 1.5, "refuel": 3.0, "cut": 3.0}
+## Cutting corn and planting are guesses: the doc's "a hold of a few seconds".
+const HOLD := {
+	"disarm": 4.0, "fill": 3.0, "pry": 3.0, "help": 1.5, "refuel": 3.0, "cut": 3.0, "plant": 1.5
+}
+## Holds the upgrades change (Store): the oiled crowbar, the quiet watering can.
+const UPGRADED_HOLD := {"disarm": 2.0, "pry": 2.0, "water": 1.5}
 const ITEM_NAMES := {
 	"watering_can": "watering can",
 	"shovel": "shovel",
 	"crowbar": "crowbar",
 	"fuel_can": "fuel can",
 	"turnip": "turnip",
+	"pumpkin": "pumpkin",
 	"corn": "corn",
+	"moonflower": "moonflowers",
 	"bear_trap": "bear trap",
+	"turnip_seeds": "turnip seeds",
+	"pumpkin_seeds": "pumpkin seeds",
+	"moonflower_seeds": "moonflower seeds",
 }
 
 var game: Game
 ## {kind, holder (peer id, 0 on the ground, -1 gone), position, charge}.
 var items: Array[Dictionary] = []
 var plots: Array[int] = []
+var crops: Array[String] = []  ## What each plot grows (or last grew).
 var corn: Array[int] = []  ## Each planted corn plot's Stage: RIPE, or EMPTY once cut.
 var _grow_left: Array[float] = []  ## Host only.
 var _hold_key := ""
@@ -47,15 +70,16 @@ func _process(delta: float) -> void:
 		_interact(player, delta)
 
 
-## Host only: watered plots grow.
+## Host only: watered plots grow; moonflowers only at night.
 func _physics_process(delta: float) -> void:
 	if not multiplayer.is_server() or game.in_lobby or game.ended:
 		return
+	var night := game.phase() == "night"
 	for i in plots.size():
-		if plots[i] == Stage.GROWING:
+		if plots[i] == Stage.GROWING and (night or crops[i] not in NIGHT_CROPS):
 			_grow_left[i] -= delta * game.clock_rate
 			if _grow_left[i] <= 0.0:
-				_set_plot.rpc(i, Stage.RIPE)
+				_set_plot.rpc(i, Stage.RIPE, crops[i])
 
 
 ## Asks the host to do action (to item, plot or trap index).
@@ -63,15 +87,54 @@ func request(action: String, index: int) -> void:
 	_request.rpc_id(1, action, index)
 
 
-## Host only (dev panel): every plot ripe.
+## Host only (dev panel): every plot that isn't overgrown ripe.
 func ripen_all() -> void:
 	game.log_event("dev: ripened every plot")
 	for i in plots.size():
-		_set_plot.rpc(i, Stage.RIPE)
+		if plots[i] != Stage.LOCKED:
+			_set_plot.rpc(i, Stage.RIPE, crops[i])
+
+
+## Host only: a new item of kind with charge, in peer's hands if they are
+## empty, else on the ground at at (a seed pack from the Store).
+func give(peer: int, kind: String, charge: int, at: Vector3) -> void:
+	var holder := peer if _held_index(peer) < 0 else 0
+	_sync_item(items.size(), holder, at, charge, kind)
+
+
+## Host only: the overgrown plots are cleared, ready to plant (Store).
+func unlock_plots() -> void:
+	for i in plots.size():
+		if plots[i] == Stage.LOCKED:
+			_set_plot.rpc(i, Stage.EMPTY, crops[i])
+
+
+## Host only, at dawn: moonflowers left unpicked wilt.
+func dawn() -> void:
+	var wilted := 0
+	for i in plots.size():
+		if crops[i] == "moonflower" and plots[i] in [Stage.RIPE, Stage.GROWING]:
+			_set_plot.rpc(i, Stage.EMPTY, crops[i])
+			wilted += 1
+	if wilted > 0:
+		game.log_event("%s wilted at dawn" % Game.counted(wilted, "moonflower plot"))
+
+
+## Plots a full watering can waters, with or without the bigger can (Store).
+static func can_size() -> int:
+	return BIG_CAN if Store.owns("big_can") else CAN_WATER
+
+
+## Seconds to hold E for action, with the upgrades the team owns (Store).
+static func hold_for(action: String) -> float:
+	var upgrade := {"disarm": "crowbar", "pry": "crowbar", "water": "quiet_can"}
+	if UPGRADED_HOLD.has(action) and Store.owns(upgrade[action]):
+		return UPGRADED_HOLD[action]
+	return HOLD.get(action, 0.0)
 
 
 func snapshot() -> Dictionary:
-	return {"items": items, "plots": plots, "corn": corn}
+	return {"items": items, "plots": plots, "crops": crops, "corn": corn}
 
 
 ## Client: takes the host's tools and crops on joining.
@@ -81,8 +144,9 @@ func apply_snapshot(data: Dictionary) -> void:
 		var item: Dictionary = host_items[i]
 		_set_item(i, item["kind"], item["holder"], item["position"], item["charge"])
 	var host_plots: Array = data["plots"]
+	var host_crops: Array = data["crops"]
 	for i in host_plots.size():
-		_set_plot(i, host_plots[i])
+		_set_plot(i, host_plots[i], host_crops[i])
 	var host_corn: Array = data["corn"]
 	for i in host_corn.size():
 		_set_corn(i, host_corn[i])
@@ -92,6 +156,8 @@ func _ready() -> void:
 	_build_world_state()
 
 
+## The tools where Farm puts them, the first four plots ripe, the rest of the
+## field dry and the new plots (Farm.LOCKED_PLOTS) overgrown.
 func _build_world_state() -> void:
 	for item in Farm.ITEMS:
 		var charge := CAN_WATER if item["kind"] == "watering_can" else 0
@@ -100,14 +166,17 @@ func _build_world_state() -> void:
 		)
 		_item_nodes.append(Looks.item(game, item["kind"]))
 	items[3]["charge"] = 1  # The fuel can starts full.
+	var first_locked := Farm.PLOTS.size() - Farm.LOCKED_PLOTS
 	for i in Farm.PLOTS.size():
-		plots.append(Stage.RIPE if i < 4 else Stage.DRY)
+		var stage := Stage.RIPE if i < 4 else Stage.DRY
+		plots.append(Stage.LOCKED if i >= first_locked else stage)
+		crops.append("turnip")
 		_grow_left.append(0.0)
 		var node := Node3D.new()
 		node.position = Farm.PLOTS[i]
 		game.add_child(node)
 		_plot_nodes.append(node)
-		Looks.plot(node, plots[i])
+		Looks.plot(node, plots[i], crops[i])
 	for i in Farm.CORN_PLOTS.size():
 		corn.append(Stage.RIPE)
 
@@ -138,7 +207,7 @@ func _pry_action(player: Player, me: int) -> Dictionary:
 		var trap := game.traps.traps[i]
 		if trap["state"] == TrapField.State.SPRUNG and trap["kind"] == "bear":
 			if trap["victim"] == me:
-				return _act("Hold E to pry the jaws open", "pry", i, HOLD["pry"])
+				return _act("Hold E to pry the jaws open", "pry", i, hold_for("pry"))
 			if (
 				trap["victim"] != 0
 				and Farm.near(player.global_position, trap["position"], USE_RANGE)
@@ -160,7 +229,7 @@ func _trap_action(player: Player, kind: String) -> Dictionary:
 			continue
 		var bear: bool = trap["kind"] == "bear"
 		if bear and kind == "crowbar":
-			return _act("Hold E to disarm the bear trap", "disarm", i, HOLD["disarm"])
+			return _act("Hold E to disarm the bear trap", "disarm", i, hold_for("disarm"))
 		if bear:
 			return _act("A bear trap. You need the crowbar from the shed.", "", i, 0.0)
 		if kind == "shovel":
@@ -182,23 +251,38 @@ func _plot_action(player: Player, kind: String, charge: int) -> Dictionary:
 			continue
 		var text := ""
 		var action := ""
+		var hold := 0.0
+		var crop: String = CROP_NAMES[crops[i]]
 		match plots[i]:
+			Stage.LOCKED:
+				text = "Overgrown. The store's new plots would clear it."
+			Stage.EMPTY:
+				text = "Bare soil. Buy seeds at the store (B by the shipping crate)."
+				if Store.SEEDS.has(kind):
+					text = "Hold E to plant the %s" % ITEM_NAMES[kind]
+					action = "plant"
+					hold = HOLD["plant"]
 			Stage.DRY:
-				text = "Dry. Needs the watering can."
+				text = "Dry %s. Needs the watering can." % crop
 				if kind == "watering_can":
 					text = (
-						"E: water the turnips"
+						"E: water the %s" % crop
 						if charge > 0
 						else "The can is empty. Fill it at the pump."
 					)
 					action = "water" if charge > 0 else ""
+					hold = hold_for("water")
+					if hold > 0.0:
+						text = "Hold E to water the %s quietly" % crop
 			Stage.GROWING:
 				text = "Growing..."
+				if crops[i] in NIGHT_CROPS and game.phase() != "night":
+					text = "Moonflowers. They only grow at night."
 			Stage.RIPE:
-				text = "E: pull the turnips" if kind == "" else "Ripe. Hands full (G to drop)."
+				text = "E: pick the %s" % crop if kind == "" else "Ripe. Hands full (G to drop)."
 				action = "harvest" if kind == "" else ""
 		if text != "":
-			return _act(text, action, i, 0.0)
+			return _act(text, action, i, hold)
 	for i in corn.size():
 		if corn[i] == Stage.RIPE and _looking_at(player, Farm.CORN_PLOTS[i]):
 			if kind != "":
@@ -221,9 +305,9 @@ func _place_action(player: Player, kind: String, charge: int) -> Dictionary:
 		text = "E: fill the watering can"
 		action = "pump"
 	elif _looking_at(player, Farm.CRATE):
-		text = "Shipping crate. Bring crops here."
+		text = "Shipping crate. Bring crops here. B: the store."
 		if kind in PRICES:
-			text = "E: sell the %s (+%d)" % [kind + ("s" if kind == "turnip" else ""), PRICES[kind]]
+			text = "E: sell the %s (+%d)" % [CROP_NAMES[kind], PRICES[kind]]
 			action = "sell"
 	elif _looking_at(player, Farm.FUEL_DRUM) and kind == "fuel_can" and charge == 0:
 		text = "E: fill the fuel can"
@@ -323,20 +407,29 @@ func _request(action: String, index: int) -> void:
 				return
 			drop_held(peer, items[index]["position"])
 			_sync_item(index, peer, items[index]["position"], items[index]["charge"])
+		"plant":
+			if Store.SEEDS.has(kind) and _plot_is(index, Stage.EMPTY):
+				var crop: String = Store.SEEDS[kind][0]
+				var left: int = items[held]["charge"] - 1
+				_sync_item(held, peer if left > 0 else -1, at, left)
+				_set_plot.rpc(index, Stage.DRY, crop)
+				game.make_noise("harvest", Farm.PLOTS[index], "step")
+				game.log_event("%s planted %s in plot %d" % [player.label(), crop, index + 1])
 		"water":
-			if kind == "watering_can" and items[held]["charge"] > 0 and plots[index] == Stage.DRY:
+			if kind == "watering_can" and items[held]["charge"] > 0 and _plot_is(index, Stage.DRY):
 				_sync_item(held, peer, at, items[held]["charge"] - 1)
-				_grow_left[index] = GROW_TIME * game.short_factor()
-				_set_plot.rpc(index, Stage.GROWING)
-				game.make_noise("water", Farm.PLOTS[index], "splash")
+				_grow_left[index] = GROW_TIME * GROWTH[crops[index]] * game.short_factor()
+				_set_plot.rpc(index, Stage.GROWING, crops[index])
+				var quiet := Store.owns("quiet_can")
+				game.make_noise("water_quiet" if quiet else "water", Farm.PLOTS[index], "splash")
 		"harvest":
-			if held < 0 and plots[index] == Stage.RIPE:
-				_set_plot.rpc(index, Stage.EMPTY)
-				_sync_item(items.size(), peer, at, 0, "turnip")
+			if held < 0 and _plot_is(index, Stage.RIPE):
+				_set_plot.rpc(index, Stage.EMPTY, crops[index])
+				_sync_item(items.size(), peer, at, 0, crops[index])
 				game.make_noise("harvest", Farm.PLOTS[index], "step")
 		"pump":
 			if kind == "watering_can":
-				_sync_item(held, peer, at, CAN_WATER)
+				_sync_item(held, peer, at, can_size())
 				game.make_noise("pump", Farm.PUMP, "splash")
 		"cut":
 			if held < 0 and index >= 0 and index < corn.size() and corn[index] == Stage.RIPE:
@@ -350,7 +443,7 @@ func _request(action: String, index: int) -> void:
 				game.coins += PRICES[kind]
 				game.sync_state()
 				game.make_noise("sell", Farm.CRATE, "coin")
-				var crop := "turnips" if kind == "turnip" else kind
+				var crop: String = CROP_NAMES[kind]
 				game.log_event("%s sold %s (coins %d)" % [player.label(), crop, game.coins])
 		"fuel":
 			if kind == "fuel_can":
@@ -449,9 +542,15 @@ func _set_item(index: int, kind: String, holder: int, at: Vector3, charge: int) 
 
 
 @rpc("authority", "call_local", "reliable")
-func _set_plot(index: int, stage: int) -> void:
+func _set_plot(index: int, stage: int, crop: String) -> void:
 	plots[index] = stage
-	Looks.plot(_plot_nodes[index], stage)
+	crops[index] = crop
+	Looks.plot(_plot_nodes[index], stage, crop)
+
+
+## Whether index is a plot at stage (a request may name any index).
+func _plot_is(index: int, stage: int) -> bool:
+	return index >= 0 and index < plots.size() and plots[index] == stage
 
 
 ## Cut corn is open ground for good: no cover, and the creature can't walk it by day.

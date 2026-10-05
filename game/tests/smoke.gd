@@ -45,6 +45,7 @@ func _ready() -> void:
 	Engine.time_scale = SPEEDUP
 	await _check_lure()
 	await _check_chores()
+	await _check_store()
 	await _check_traps()
 	_check(_left_corn == 0, "the creature stayed in the corn by day (%d frames out)" % _left_corn)
 	await _check_dusk()
@@ -283,6 +284,98 @@ func _check_chores() -> void:
 		_game.coins == Chores.PRICES["turnip"] + Chores.PRICES["corn"],
 		"sold the corn for %d" % Chores.PRICES["corn"]
 	)
+
+
+## The store at the crate: refuses the broke, sells seed packs into empty
+## hands (else onto the ground), and seeds plant a bare plot. Moonflowers grow
+## only at night and wilt at dawn. Upgrades: the new plots clear the overgrown
+## ones, the can grows, the crowbar quickens, lanterns brighten, the radios
+## come on, and the shed lock holds the creature off the pegboard until broken.
+func _check_store() -> void:
+	var store := _game.store
+	var chores := _game.chores
+	var spent := _game.coins
+	_put(_player, Farm.CRATE + Vector3(0, 0, -1.5))
+	_check(store.open_for(_player), "the store opens by the crate")
+	_game.coins = 0
+	store.buy("turnip_seeds")
+	await _frames(2)
+	_check(_held() == "" and _game.coins == 0, "the store turns away the broke")
+	_game.coins = 1000
+	store.buy("turnip_seeds")
+	await _frames(2)
+	var pack := chores.held_item(1)
+	_check(
+		_held() == "turnip_seeds" and pack["charge"] == 4 and _game.coins == 1000 - 16,
+		"bought turnip seeds into empty hands (coins %d)" % _game.coins
+	)
+	var on_ground := chores.items.size()
+	store.buy("pumpkin_seeds")
+	await _frames(2)
+	_check(
+		chores.items.size() == on_ground + 1 and chores.items[-1]["holder"] == 0,
+		"with full hands, a seed pack is left at the crate"
+	)
+	_check(chores.plots[0] == Chores.Stage.EMPTY, "a harvested plot is bare")
+	_put(_player, Farm.PLOTS[0] + Vector3(0, 0, -1.5))
+	await _ask("plant", 0)
+	_check(
+		chores.plots[0] == Chores.Stage.DRY and chores.held_item(1)["charge"] == 3,
+		"planted turnip seeds in the bare plot"
+	)
+	chores.call("_set_plot", 0, Chores.Stage.GROWING, "moonflower")
+	chores.get("_grow_left")[0] = 0.05
+	await _frames(5)
+	_check(chores.plots[0] == Chores.Stage.GROWING, "moonflowers don't grow by day")
+	chores.dawn()
+	await _frames(2)
+	_check(chores.plots[0] == Chores.Stage.EMPTY, "unpicked moonflowers wilt at dawn")
+
+	var locked := Farm.PLOTS.size() - Farm.LOCKED_PLOTS
+	_check(chores.plots[locked] == Chores.Stage.LOCKED, "the new plots start overgrown")
+	var clear := true
+	for i in range(locked, Farm.PLOTS.size()):
+		clear = clear and not Farm.in_corn(Farm.PLOTS[i])
+	_check(clear, "no corn grows on the new plots")
+	_put(_player, Farm.CRATE + Vector3(0, 0, -1.5))
+	for id: String in Store.UPGRADES:
+		store.buy(id)
+	await _frames(3)
+	_check(store.owned.size() == Store.UPGRADES.size(), "bought every upgrade")
+	_check(chores.plots[locked] == Chores.Stage.EMPTY, "the new plots are cleared")
+	_check(Chores.can_size() == Chores.BIG_CAN, "the watering can holds more")
+	_check(Chores.hold_for("disarm") == 2.0, "the oiled crowbar disarms faster")
+	_check(VoiceChat.radio_enabled, "the walkie-talkies are on")
+	await _frames(2)
+	var lantern := _player.get("_light") as OmniLight3D
+	_check(lantern.omni_range == Player.BRIGHT_LANTERN.y, "lanterns are brighter")
+	store.buy("radios")
+	await _frames(2)
+	_check(_game.coins == 1000 - 16 - 40 - _upgrades_cost(), "an upgrade is bought only once")
+
+	var creature := _game.creature
+	var board := _game.traps.board
+	creature.set("_errand", "take")
+	creature.set("_lock_left", Creature.LOCK_TIME)
+	creature.call("_do_errand", 1.0)
+	_check(_game.traps.board == board and not store.lock_broken, "the shed lock holds the creature")
+	creature.set("_errand", "take")
+	creature.call("_do_errand", Creature.LOCK_TIME)
+	_check(store.lock_broken, "the creature breaks the shed lock in time")
+	store.dawn()
+	_check(not store.lock_broken, "the lock is mended at dawn")
+	_game.traps.set_board(board)
+	creature.place(Vector3(0, 0, Farm.CORN_IN + 10.0))
+	chores.drop_held(1, _player.global_position)
+	_game.coins = spent
+	_game.sync_state()
+
+
+func _upgrades_cost() -> int:
+	var total := 0
+	for id: String in Store.UPGRADES:
+		total += Store.price(id)
+	return total
 
 
 func _check_traps() -> void:

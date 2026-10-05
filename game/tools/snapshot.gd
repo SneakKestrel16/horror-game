@@ -3,6 +3,7 @@ extends Node
 ## farm can be checked without playing. Opens a window briefly:
 ##   godot --path game res://tools/snapshot.tscn -- --clock=430 --from=0,1.6,-3
 ##       --look=0,1,20 --out=shot.png [--creature=0,0,8] [--dev --panel] [--lobby] [--board=2]
+##       [--store]
 ## --clock is seconds into the day (day 0-360, dusk -420, night -720).
 
 var _game: Game
@@ -46,6 +47,10 @@ func _ready() -> void:
 		_game.creature.set_physics_process(false)
 		_game.creature.global_position = creature
 		_game.creature.look_at(Vector3(from.x, 0, from.z))
+	if "--store" in OS.get_cmdline_user_args():  # Open the store panel (by the crate).
+		for panel in _game.find_children("*", "CanvasLayer", false, false):
+			if panel is StorePanel:
+				panel.call("_open", true)
 	if "--panel" in OS.get_cmdline_user_args():  # With --dev: show the developer panel.
 		for dev in _game.find_children("*", "CanvasLayer", false, false):
 			if dev is Dev:

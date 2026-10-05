@@ -32,6 +32,7 @@ const GRAVITY := 14.0
 const CATCH_RANGE := 1.3
 const SIGHT := 10.0  ## Metres it sees a player in the open.
 const LANTERN_SIGHT := 24.0
+const BRIGHT_LANTERN_SIGHT := 30.0  ## With brighter lanterns (Store). Guess.
 const CROUCH_SIGHT := 5.0
 const CORN_COVER := 3.0  ## Metres of corn in the way that hide a player beyond arm's reach.
 const LOSE_TIME := 4.0  ## Seconds out of sight before a chase is given up.
@@ -57,6 +58,7 @@ const LEAD_CLOSER := 3.0  ## Metres closer that count as coming.
 ## Chance a night lurk goes to the fuel run while every living player is in the lit barn.
 const AMBUSH := 0.6
 const DIG_TIME := 3.0  ## Seconds to dig a pit.
+const LOCK_TIME := 15.0  ## Seconds to break the shed lock (Store). Guess.
 ## Seconds an errand may take before it does the job where it stands (a spot
 ## against a wall can be impossible to step onto exactly).
 const ERRAND_GIVE_UP := 40.0
@@ -92,6 +94,7 @@ var _stuck_for := 0.0
 var _rng := RandomNumberGenerator.new()
 var _errand := ""  ## "take" (from the pegboard) or "set", while in ERRAND.
 var _dig_left := 0.0
+var _lock_left := 0.0  ## Seconds of work left on the shed lock.
 var _voices: Array[AudioStream] = []
 var _voice: AudioStreamPlayer3D
 var _rustle: AudioStreamPlayer3D
@@ -258,6 +261,7 @@ func _start_errand() -> bool:
 		return false
 	_set_state(State.ERRAND)
 	_dig_left = DIG_TIME
+	_lock_left = LOCK_TIME
 	if traps.needs_board():
 		_errand = "take"
 		_route = _path(Farm.SHED_DOOR_OUT)
@@ -278,6 +282,11 @@ func _do_errand(delta: float) -> void:
 		_dig_left -= delta
 		if _dig_left > 0.0:
 			return
+	if _errand == "take" and Store.owns("shed_lock") and not game.store.lock_broken:
+		_lock_left -= delta  # A locked shed: it wrenches at the door first, loudly.
+		if _lock_left > 0.0:
+			return
+		game.store.break_lock()
 	if _errand == "take":
 		game.traps.take_from_board()
 	else:
@@ -712,7 +721,7 @@ func _can_see(player: Player) -> bool:
 	var distance := global_position.distance_to(player.global_position)
 	var reach := SIGHT
 	if player.lantern:
-		reach = LANTERN_SIGHT
+		reach = BRIGHT_LANTERN_SIGHT if Store.owns("lanterns") else LANTERN_SIGHT
 	elif player.crouching:
 		reach = CROUCH_SIGHT
 	if distance > reach:

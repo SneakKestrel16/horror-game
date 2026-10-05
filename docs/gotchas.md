@@ -66,6 +66,10 @@ Traps hit while building the game, with what fixed them.
 
 - **Non-ASCII text piped into Python through a Bash heredoc gets mangled.** A `·` in a pattern
   stopped matching. Write the editing script to a file with the Write tool and run that.
+- **`sed -i "${n}a ..."` with an empty `$n` appends after every line.** A `grep` that found
+  nothing left `n` empty and copied four lines all through `farm.gd` (2,700 lines added). Use the
+  Edit tool for insertions, or check `n` first. `git checkout -- <file>` put it back, since the file
+  had no other changes.
 - **A very long Bash heredoc failed to parse** ("unexpected EOF while looking for matching `'`")
   and nothing past it ran. The 600-line half of `models.py` went in through the Write tool and
   `cat >>` instead. A `cat > file` with no heredoc waits on stdin until the tool's timeout.

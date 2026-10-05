@@ -60,7 +60,8 @@ const FUEL_DRUM := Vector3(-19.8, 0, -2.6)
 const PUMP := Vector3(-6.0, 0, 7.0)
 const CRATE := Vector3(18.0, 0, 6.0)
 const PLOT_SIZE := 2.2
-## The small field: four columns by three rows of turnip plots.
+## The small field: four columns by three rows of plots, and a fifth column
+## to the west, overgrown (the last LOCKED_PLOTS) until the team buys it (Store).
 const PLOTS: Array[Vector3] = [
 	Vector3(-4.5, 0, 10),
 	Vector3(-1.5, 0, 10),
@@ -74,7 +75,12 @@ const PLOTS: Array[Vector3] = [
 	Vector3(-1.5, 0, 16),
 	Vector3(1.5, 0, 16),
 	Vector3(4.5, 0, 16),
+	Vector3(-7.5, 0, 10),
+	Vector3(-7.5, 0, 13),
+	Vector3(-7.5, 0, 16),
+	Vector3(-7.5, 0, 19),
 ]
+const LOCKED_PLOTS := 4
 ## Where the tools start. Kinds are game.gd's item kinds.
 const ITEMS: Array[Dictionary] = [
 	{"kind": "watering_can", "position": Vector3(-5.0, 0, 8.0)},

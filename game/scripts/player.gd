@@ -33,6 +33,8 @@ const WOUND_STAMINA := 0.6  ## 40% less sprint.
 const WOUND_NOISE := 1.5  ## Footsteps heard 50% further.
 const KNOCKDOWN_TIME := 1.6
 const LANTERN_LIGHT := 1.4
+const LANTERN_RANGE := 10.0
+const BRIGHT_LANTERN := Vector2(2.0, 16.0)  ## Energy and range with brighter lanterns (Store).
 
 # Replicated from the owning peer.
 var pitch := 0.0
@@ -100,7 +102,7 @@ func _ready() -> void:
 	_light = OmniLight3D.new()
 	_light.light_color = Color(1.0, 0.75, 0.45)
 	_light.light_energy = LANTERN_LIGHT
-	_light.omni_range = 10.0
+	_light.omni_range = LANTERN_RANGE
 	_light.shadow_enabled = true
 	_light.position = Vector3(-0.3, -0.3, -0.3)
 	_light.visible = false
@@ -148,6 +150,10 @@ func _process(delta: float) -> void:
 	_flicker_left = maxf(0.0, _flicker_left - delta)
 	var blink := _flicker_left > 0.0 and fmod(_flicker_left, 0.2) < 0.1
 	_light.visible = lantern and not dead and not blink
+	var reach := BRIGHT_LANTERN.y if Store.owns("lanterns") else LANTERN_RANGE
+	if _light.omni_range != reach:  # Only on a change: see the flicker note above.
+		_light.omni_range = reach
+		_light.light_energy = BRIGHT_LANTERN.x if reach > LANTERN_RANGE else LANTERN_LIGHT
 	_body.visible = not dead and not is_multiplayer_authority()
 	_footsteps()
 	_walk_cycle(delta)
