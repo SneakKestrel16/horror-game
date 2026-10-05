@@ -38,6 +38,12 @@ const ITEM_PARTS := {
 		["cylinder", Vector3(0.07, 0.18, 0), Vector3(0.09, 0.18, 0.09), Color(0.9, 0.78, 0.3)],
 		["box", Vector3(0, 0.2, 0.04), Vector3(0.24, 0.3, 0.03), Color(0.55, 0.6, 0.3)],
 	],
+	"crow":  # Body and two spread wings; it only flaps past (Director fake-out).
+	[
+		["sphere", Vector3.ZERO, Vector3(0.22, 0.18, 0.4), Color(0.04, 0.04, 0.05)],
+		["box", Vector3(-0.3, 0.05, 0), Vector3(0.45, 0.03, 0.2), Color(0.04, 0.04, 0.05)],
+		["box", Vector3(0.3, 0.05, 0), Vector3(0.45, 0.03, 0.2), Color(0.04, 0.04, 0.05)],
+	],
 }
 const METAL := Color(0.32, 0.3, 0.28)
 

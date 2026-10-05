@@ -99,6 +99,7 @@ var corn_grid := AStarGrid2D.new()  ## Only the corn: how it moves by day.
 var barn_lights: Array[OmniLight3D] = []
 var corn_patches: Array[Node3D] = []  ## Each planted corn plot's stalks.
 var _barn_lit := false
+var _haunted_until := {}  ## Barn lamp index -> msec a ghost's flicker lasts until.
 
 
 func _init() -> void:
@@ -223,10 +224,20 @@ func set_barn_lit(lit: bool) -> void:
 	_block_walls()  # Clearing the inside cleared the wall cells it overlaps.
 
 
-## Low fuel: the barn lights stutter now and then (cosmetic, per peer).
+## Low fuel: the barn lights stutter now and then (cosmetic, per peer). A lamp
+## a ghost is flickering (haunt) stutters hard whatever the fuel.
 func flicker(on: bool) -> void:
-	for light in barn_lights:
-		light.light_energy = BARN_LIGHT * (randf_range(0.05, 0.4) if on and randf() < 0.1 else 1.0)
+	var now := Time.get_ticks_msec()
+	for i in barn_lights.size():
+		var haunted: bool = _haunted_until.get(i, 0) > now
+		var chance := 0.5 if haunted else (0.1 if on else 0.0)
+		var low := randf_range(0.0, 0.3) if haunted else randf_range(0.05, 0.4)
+		barn_lights[i].light_energy = BARN_LIGHT * (low if randf() < chance else 1.0)
+
+
+## Every peer: a ghost flickers barn lamp index for a moment.
+func haunt(index: int, seconds: float) -> void:
+	_haunted_until[index] = Time.get_ticks_msec() + roundi(seconds * 1000.0)
 
 
 func barn_lit() -> bool:

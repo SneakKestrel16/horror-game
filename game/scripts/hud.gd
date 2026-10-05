@@ -99,6 +99,8 @@ func update(game: Game) -> void:
 			lines.append("Limping: %ds" % ceili(player.slowed_left))
 		if player.dead:
 			lines.append("DEAD until dawn")
+		elif player.wounded:
+			lines.append("Hurt until dawn: short of breath, loud on your feet, easy to track")
 	_info.text = "\n".join(lines)
 
 

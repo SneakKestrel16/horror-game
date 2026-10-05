@@ -26,6 +26,19 @@ Traps hit while building the game, with what fixed them.
   waiting 3 frames without stopping them still leaked now and then.
 - **The VoiceChat autoload's microphone player leaks if it is playing at quit.** The smoke test
   stops every sound player in the whole tree, not just the game scene, before quitting.
+- **A segfault after `SMOKE PASS` still fails the hook** (exit 139), and grepping the output for
+  `FAIL` misses it: check the exit code. Phase 3's test crashed Godot on quit in most runs once a
+  test-only player (a peer that never connected) had had its lantern flickered by a ghost. Not
+  the light: turning the lantern off, or flickering by visibility instead of energy, still
+  crashed. Freeing every player 10 frames before the game stopped it (8 clean runs of 8).
+  Inference: whether a real game can crash the same way on quit is untested.
+- **Bisect a flaky crash with 8 runs a variant, not 3.** At a 40% crash rate, 0 of 3 happens one
+  time in five, and two 3-run "clean" variants here were wrong. And cut a test short with
+  `if _game != null: return`: a bare `return` makes the rest unreachable, a compile error that
+  hangs each run until the 240 s timeout.
+- **`timeout` doesn't always kill Godot on Windows.** A killed bisect left two headless runs
+  holding the test port, and later runs hung. Stop them with
+  `Get-Process Godot_v4*_console | Stop-Process` before rerunning.
 - **gdlint allows 20 public methods a class.** `game.gd` passed it in Phase 2, so the farm work
   moved to `chores.gd` and the dev-only helpers to `dev.gd`. Split by job when it trips, rather
   than raising the limit.

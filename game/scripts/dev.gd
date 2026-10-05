@@ -3,11 +3,11 @@ extends CanvasLayer
 ## Developer panel, for playtesting without playing a whole day. Speed up the
 ## clock or jump to any phase; make the creature call, lure, chase, come over
 ## or back off; fill or drain the generator; arm or clear the traps; ripen the
-## field; die and come back.
+## field; spring the Director's scares on yourself; die and come back.
 ##
 ## Only with `-- --dev`, and only on the host, which owns everything it changes.
 ## F2 shows or hides it and frees the mouse; Esc hides it. Later phases add
-## their triggers (jumpscares, recorded voices, marks...) under "Events".
+## their triggers (marks...) under "Events".
 
 const SPEEDS: Array[float] = [1.0, 2.0, 5.0, 10.0, 30.0]
 
@@ -70,12 +70,13 @@ func _ready() -> void:
 		func() -> void: _creature().lure_now(_me())
 	)
 	_button(column, "Skip to the next morning", _next_morning)
-	var later := Label.new()
-	later.text = "Jumpscares and marks arrive in Phase 3."
-	later.add_theme_font_size_override("font_size", 12)
-	later.modulate = Color(1, 1, 1, 0.6)
-	later.autowrap_mode = TextServer.AUTOWRAP_WORD
-	column.add_child(later)
+
+	_heading(column, "Scares (Director)")
+	_button(column, "Fill the tension meter (a scare is due)", _fill_tension)
+	_button(column, "Lunge at me (knockdown, wound)", func() -> void: _scare("lunge"))
+	_button(column, "Stare at me from the rows", func() -> void: _scare("stare"))
+	_button(column, "Whisper a friend's voice behind me", func() -> void: _scare("whisper"))
+	_button(column, "Crow fake-out near me", func() -> void: _scare("crow"))
 
 	_heading(column, "Farm")
 	var fuel := HBoxContainer.new()
@@ -119,6 +120,7 @@ func _process(delta: float) -> void:
 			" (in the corn)" if Farm.in_corn(creature.global_position) else "",
 		]
 	)
+	_status.text += "\ntension %d%%" % roundi(game.director.tension * 100)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -191,6 +193,29 @@ func _bring() -> void:
 	var me := _me()
 	var behind := me.global_position - me.look_direction() * Vector3(15, 0, 15)
 	_creature().place(behind)
+
+
+func _fill_tension() -> void:
+	game.director.tension = 1.0
+	game.log_event("dev: tension full")
+
+
+func _scare(kind: String) -> void:
+	var me := _me()
+	if me.dead:
+		return
+	game.log_event("dev: scare %s" % kind)
+	match kind:
+		"lunge":
+			game.director.lunge(me)
+		"stare":
+			game.director.stare(me)
+		"whisper":
+			if not game.director.whisper(me):
+				_status.text = "Nobody else has a recording to whisper with."
+				_status_left = 3.0
+		"crow":
+			game.director.crow(me)
 
 
 func _die() -> void:

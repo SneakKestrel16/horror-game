@@ -10,7 +10,7 @@ static var _cache := {}
 
 
 ## The named sound: "step", "rustle", "snap", "thud", "splash", "clank",
-## "coin", "screech", "hum" (loops), "crickets" (loops), "wind" (loops),
+## "coin", "screech", "caw", "hum" (loops), "crickets" (loops), "wind" (loops),
 ## "heartbeat" (loops).
 static func get_sound(sound: String) -> AudioStreamWAV:
 	if not _cache.has(sound):
@@ -83,6 +83,14 @@ static func _build(sound: String) -> AudioStreamWAV:
 				phase += TAU * lerpf(900.0, 260.0, t / 1.4) / RATE
 				samples[i] += 0.5 * (sin(phase) + 0.4 * sin(phase * 2.03) + 0.25 * sin(phase * 3.1))
 			_envelope(samples, 0.08, 0.6)
+		"caw":  # Two harsh croaks: a buzzing tone through a rough envelope.
+			samples.resize(roundi(RATE * 0.75))
+			for i in samples.size():
+				var t := float(i) / RATE
+				var croak := fmod(t, 0.38)
+				var shape := sin(PI * minf(croak / 0.26, 1.0)) * float(croak < 0.26)
+				var buzz := sin(TAU * 620.0 * t + 3.0 * sin(TAU * 90.0 * t))
+				samples[i] = 0.55 * shape * (buzz + rng.randf_range(-0.35, 0.35))
 		"hum":
 			loop = true
 			samples.resize(RATE)  # One second: 60 Hz harmonics fit it exactly.

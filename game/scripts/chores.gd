@@ -244,7 +244,9 @@ static func _act(text: String, action: String, index: int, hold: float) -> Dicti
 ## The local player's E key: instant actions on press, held ones once held long enough.
 func _interact(player: Player, delta: float) -> void:
 	if player.dead:
-		game.hud.prompt("You are dead. Drift until dawn. (WASD, Space up, Ctrl down)")
+		game.hud.prompt(
+			"Dead until dawn. F: flicker a light near a teammate · E in the corn: rustle it"
+		)
 		return
 	if game.in_lobby:
 		game.hud.prompt("")

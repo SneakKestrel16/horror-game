@@ -21,7 +21,8 @@ extends CharacterBody3D
 ## tells: listener peer -> its tell ("echo", "pitch +6%" or "no tell"), for the log.
 signal spoke(at: Vector3, heard: Dictionary, tells: Dictionary)
 
-enum State { LURK, INVESTIGATE, LURE, CHASE, RETREAT, ERRAND }  ## ERRAND: trap work.
+## ERRAND: trap work. STARE: watching a player from the rows (Director).
+enum State { LURK, INVESTIGATE, LURE, CHASE, RETREAT, ERRAND, STARE }
 
 const LURK_SPEED := 1.6
 const INVESTIGATE_SPEED := {"day": 2.4, "night": 3.4}
@@ -37,6 +38,10 @@ const LOSE_TIME := 4.0  ## Seconds out of sight before a chase is given up.
 const RETREAT_TIME := 25.0
 const SWITCH_MARGIN := 2.0  ## Metres nearer another player must be to turn on them.
 const PROWL := 8.0  ## How near a player a night prowl takes it (m).
+const TRAIL_FOLLOW := 0.7  ## Chance a night lurk follows a wounded player's trail. Guess.
+const STARE_TIME := 3.0
+const STARE_DISTANCE := 12.0  ## How far ahead of the player it stands to stare.
+const STARE_DEPTH := 4.0  ## Metres into the corn, along the line of sight.
 const LURE_SPEED := {"day": 4.0, "night": 3.4}  ## Moving to a calling spot, unseen in the corn.
 const LURE_WAIT := 6.0  ## Seconds it stands still after calling, to see if anyone comes.
 const LURE_GIVE_UP := 30.0  ## Calls from wherever it is if the lure spot takes longer.
@@ -81,6 +86,7 @@ var _lure_left := 20.0
 var _replan_left := 0.0
 var _switch_left := 0.0  ## Until it next looks for a nearer player mid-chase.
 var _direct := false  ## Chasing straight at the target, nothing in the way.
+var _stare_target: Player
 var _best_distance := INF
 var _stuck_for := 0.0
 var _rng := RandomNumberGenerator.new()
@@ -207,6 +213,15 @@ func _physics_process(delta: float) -> void:
 				_lurk()
 			elif _route.is_empty():
 				_route = _path(Farm.random_corn_point(_rng))
+		State.STARE:
+			speed = 0.0
+			if _stare_target and is_instance_valid(_stare_target):
+				var to := _stare_target.global_position - global_position
+				to.y = 0.0
+				if to.length() > 0.1:
+					look_at(global_position + to)
+			if _state_time > STARE_TIME:
+				_retreat()  # Gone back into the rows.
 	if state == State.CHASE and _target and _direct:
 		_walk_toward(_target.global_position, speed, delta)
 	elif not _route.is_empty():
@@ -297,6 +312,38 @@ func drive_off() -> void:
 	_retreat()
 
 
+## Host only (Director): the stalks part beside player and it lunges, then
+## pulls back into the rows. The victim's screen has already cut to black.
+func lunge_at(player: Player) -> void:
+	var spot := Farm.corn_edge_near(player.global_position, 0.5)
+	global_position = Vector3(spot.x, 0.0, spot.z)
+	var to := player.global_position - global_position
+	to.y = 0.0
+	if to.length() > 0.1:
+		look_at(global_position + to)
+	Sfx.play_at(get_parent(), "rustle", global_position, 6.0)
+	_retreat()
+
+
+## Host only (Director): stands in the rows ahead of player, watching, for a
+## few seconds, then is gone (design doc, Scare Moments: the trap).
+func stare_at(player: Player) -> void:
+	var look := player.look_direction() * Vector3(1, 0, 1)
+	look = look.normalized() if look.length() > 0.1 else Vector3.FORWARD
+	# Where the corn starts along their line of sight, then deeper in, so the
+	# stalks hide most of it (design doc, The Creature: by day only parts).
+	var spot := Farm.corn_edge_near(player.global_position + look * STARE_DISTANCE, STARE_DEPTH)
+	for step in range(1, 40):
+		var at := player.global_position + look * step
+		if Farm.in_corn(at):
+			spot = at + look * STARE_DEPTH
+			break
+	global_position = Vector3(spot.x, 0.0, spot.z)
+	_set_state(State.STARE)
+	_stare_target = player
+	_route.clear()
+
+
 ## Host only (dev panel): puts it at a point and has it lurk from there.
 func place(at: Vector3) -> void:
 	game.log_event("dev: creature moved to %s" % Game._where(at))
@@ -331,14 +378,17 @@ func _lurk() -> void:
 		func(player: Player) -> bool:
 			return not farm.barn_lit() and Farm.in_barn(player.global_position)
 	)
+	var trail := game.director.trail_point() if night else Vector3.INF
 	if night and not in_the_dark.is_empty():
 		# The lights are out: the barn is where they hide.
 		goal = (in_the_dark[_rng.randi() % in_the_dark.size()] as Player).global_position
+	elif trail.is_finite() and _rng.randf() < TRAIL_FOLLOW:
+		goal = trail  # A wounded player's trail (design doc, Wounds).
 	elif night and hiding and _rng.randf() < AMBUSH:
 		# Somebody will have to fetch fuel: wait in the dark along the way.
 		var along := Farm.FUEL_DRUM.lerp(Farm.GENERATOR, _rng.randf())
 		goal = along + Vector3(_rng.randf_range(-6, 6), 0, _rng.randf_range(2, 8))
-	elif night and not living.is_empty() and _rng.randf() < 0.5:
+	elif night and not living.is_empty() and _rng.randf() < game.director.prowl_chance():
 		# Prowls near someone: a quiet player isn't safe, only harder to find.
 		var near: Player = living[_rng.randi() % living.size()]
 		var off := Vector3.FORWARD.rotated(Vector3.UP, _rng.randf() * TAU) * _rng.randf() * PROWL
@@ -357,6 +407,7 @@ func _chase(player: Player) -> void:
 	_target = player
 	_unseen_for = 0.0
 	_route.clear()
+	game.director.calm("chase")
 	game.log_event("creature chases %s" % player.label())
 
 
@@ -409,6 +460,7 @@ func _turn_on_nearest() -> void:
 func _plan_lure(night: bool, target: Player = null) -> void:
 	var timing: Vector2 = LURE_EVERY["night" if night else "day"]
 	var factor := game.short_factor()
+	factor *= game.director.lure_scale()
 	_lure_left = maxf(12.0, _rng.randf_range(timing.x, timing.y) * factor)
 	var players := game.living_players()
 	if players.is_empty():
@@ -549,9 +601,14 @@ func _speak() -> void:
 			_say_to(listener, &"_say", [generic, echo, pitch])
 			heard[listener] = "a generic '%s'" % _generic_name(generic)
 		else:
-			_say_to(listener, &"_say_clip", [pick["data"], echo, pitch])
+			# A dead player's voice comes through static, as their real one does
+			# (design doc, The Dead-Voice Twist): only the flicker tells them apart.
+			var hiss := VoiceChat.is_dead(pick["source"]) and not VoiceChat.is_dead(listener)
+			_say_to(listener, &"_say_clip", [pick["data"], echo, pitch, hiss])
 			var who: String = game.voices.names.get(pick["source"], "someone")
 			heard[listener] = "%s's '%s'" % [who, game.voices.line_text(pick["key"])]
+			if hiss:
+				tells[listener] += ", through static"
 	if _lure_alive():
 		_spoke_distance = global_position.distance_to(_lure_target.global_position)
 	spoke.emit(global_position, heard, tells)
@@ -575,9 +632,12 @@ func _say(index: int, echo: bool, pitch: float) -> void:
 
 
 @rpc("authority", "call_remote", "reliable")
-func _say_clip(data: PackedByteArray, echo: bool, pitch: float) -> void:
+func _say_clip(data: PackedByteArray, echo: bool, pitch: float, hiss: bool) -> void:
 	if data.size() <= VoiceBank.TAKE_MAX * VoiceCodec.RATE * 1.2:
-		_play(Sfx.from_samples(VoiceCodec.decode(data), VoiceCodec.RATE), echo, pitch)
+		var samples := VoiceCodec.decode(data)
+		if hiss:
+			samples = VoiceCodec.add_static(samples, VoiceChat.dead_static)
+		_play(Sfx.from_samples(samples, VoiceCodec.RATE), echo, pitch)
 
 
 func _play(stream: AudioStream, echo: bool, pitch: float) -> void:

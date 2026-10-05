@@ -39,6 +39,9 @@ const TAKE_GAIN_MAX := 16.0
 const NAME_CHANCE := 0.5  ## How often it calls the listener's own name when it has it.
 ## Your own voice is rarely used on you (design doc, How It Works).
 const OWN_WEIGHT := 0.05
+## A dead player's voice is this much likelier (design doc, The Dead-Voice Twist).
+## Guess.
+const DEAD_WEIGHT := 3.0
 ## How often a speaker with chat clips is played from them rather than their
 ## lobby lines. Chat is said in the moment, scared or not, where lobby lines
 ## came out calm (2026-10-04 playtest). Guess.
@@ -208,6 +211,8 @@ func pick(listener: int) -> Dictionary:
 		if _usable_keys(peer, listener).is_empty() and _live(peer).is_empty():
 			continue
 		var weight := OWN_WEIGHT if peer == listener else 1.0
+		if VoiceChat.is_dead(peer):
+			weight *= DEAD_WEIGHT  # The dead-voice twist (Phase 3).
 		speakers.append(peer)
 		weights.append(weight)
 		total += weight

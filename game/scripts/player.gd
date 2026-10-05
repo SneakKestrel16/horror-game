@@ -27,6 +27,12 @@ const STRIDE := 0.75  ## Metres per footstep.
 ## How far the creature hears a footstep (m), and how much further in the corn.
 const STEP_NOISE := {"crouch": 2.0, "walk": 7.0, "sprint": 16.0}
 const CORN_NOISE := 1.5
+## Wounded by a day scare until dawn (design doc, Wounds): sprint runs out
+## sooner and footsteps carry further. The night trail is the Director's.
+const WOUND_STAMINA := 0.6  ## 40% less sprint.
+const WOUND_NOISE := 1.5  ## Footsteps heard 50% further.
+const KNOCKDOWN_TIME := 1.6
+const LANTERN_LIGHT := 1.4
 
 # Replicated from the owning peer.
 var pitch := 0.0
@@ -35,6 +41,7 @@ var sprinting := false
 var kneeling := false  ## Holding still over a trap; game.gd sets it.
 var lantern := false
 var dead := false
+var wounded := false  ## A day scare got them; until dawn.
 
 var number := 0  ## Farmer 1 hosts; set from the spawn data on every peer.
 var player_name := ""  ## From the main menu; also set from the spawn data.
@@ -45,6 +52,7 @@ var stumble_left := 0.0
 var hand: Node3D  ## Where a carried item sits.
 
 var _rest_left := 0.0
+var _flicker_left := 0.0  ## A ghost is flickering this lantern (every peer).
 var _stride := 0.0
 var _last_position := Vector3.ZERO
 var _head: Node3D
@@ -79,7 +87,7 @@ func _ready() -> void:
 	_head.add_child(hand)
 	_light = OmniLight3D.new()
 	_light.light_color = Color(1.0, 0.75, 0.45)
-	_light.light_energy = 1.4
+	_light.light_energy = LANTERN_LIGHT
 	_light.omni_range = 10.0
 	_light.shadow_enabled = true
 	_light.position = Vector3(-0.3, -0.3, -0.3)
@@ -123,7 +131,11 @@ func _process(delta: float) -> void:
 	if stumble_left > 0.0:
 		eye = 0.6
 	_head.position.y = move_toward(_head.position.y, eye, delta * 4.0)
-	_light.visible = lantern and not dead
+	# A ghost's flicker blinks it off and on. Not by light_energy: setting that
+	# every frame crashed Godot on quit (see docs/gotchas.md).
+	_flicker_left = maxf(0.0, _flicker_left - delta)
+	var blink := _flicker_left > 0.0 and fmod(_flicker_left, 0.2) < 0.1
+	_light.visible = lantern and not dead and not blink
 	_body.visible = not dead and not is_multiplayer_authority()
 	_footsteps()
 
@@ -145,7 +157,7 @@ func _physics_process(delta: float) -> void:
 	)
 	sprinting = wants_sprint and stamina > 0.0
 	if sprinting:
-		stamina = maxf(0.0, stamina - delta)
+		stamina = maxf(0.0, stamina - delta / (WOUND_STAMINA if wounded else 1.0))
 		_rest_left = STAMINA_REST
 	else:
 		_rest_left -= delta
@@ -192,6 +204,7 @@ func _footsteps() -> void:
 	Sfx.play_at(get_parent(), "rustle" if in_corn else "step", global_position, volume)
 	if is_multiplayer_authority():
 		var radius: float = STEP_NOISE[gait] * (CORN_NOISE if in_corn else 1.0)
+		radius *= WOUND_NOISE if wounded else 1.0
 		stepped.emit(global_position, radius)
 
 
@@ -234,6 +247,26 @@ func released() -> void:
 @rpc("any_peer", "call_local", "reliable")
 func stumbled() -> void:
 	stumble_left = STUMBLE_TIME
+
+
+## Sent by the host: a day scare knocked this player down and wounded them
+## until dawn (Director). Wounded is replicated from here.
+@rpc("any_peer", "call_local", "reliable")
+func knocked_down() -> void:
+	stumble_left = KNOCKDOWN_TIME
+	kneeling = false
+	wounded = true
+
+
+## Sent by the host at dawn: the wound has healed.
+@rpc("any_peer", "call_local", "reliable")
+func healed() -> void:
+	wounded = false
+
+
+## Every peer: a ghost flickers this player's lantern for a moment.
+func flicker_lantern(seconds: float) -> void:
+	_flicker_left = seconds
 
 
 ## Sent by the host: the creature got this player. A ghost until dawn.

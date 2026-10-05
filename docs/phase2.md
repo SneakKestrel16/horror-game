@@ -243,11 +243,13 @@ the art and sound the prototype fakes.
 ### Phase 3
 
 - [x] Live clips from proximity chat (brought into Phase 2)
-- [ ] The creature favours dead players' voices
-- [ ] The Director (pacing)
-- [ ] Jumpscares (disarm lunge, shed, whisper, own voice, crow fake-outs)
-- [ ] Wounds after a day scare (less sprint, louder steps, a night trail)
-- [ ] Ghost abilities, including the lantern flicker
+Built ahead of Review 2; see [Phase 3](phase3.md) and its checklist.
+
+- [x] The creature favours dead players' voices
+- [x] The Director (pacing)
+- [x] Jumpscares: lunge, stare, whisper, crow fake-out (the shed scare waits for a door)
+- [x] Wounds after a day scare (less sprint, louder steps, a night trail)
+- [x] Ghost abilities, including the lantern flicker
 
 ### Phase 4
 

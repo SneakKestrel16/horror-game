@@ -25,9 +25,9 @@ const BILL_EACH := 50
 const BILL_CAP := 120
 const BILL_FLOOR := 4
 ## By day the creature kills only a player stuck in a bear trap with nobody
-## within ALONE_RANGE for ALONE_TIME seconds (design doc, Day Deaths).
+## within ALONE_RANGE for a while (design doc, Day Deaths); how long, the
+## Director decides each time (Director.ALONE_TIME).
 const ALONE_RANGE := 20.0
-const ALONE_TIME := 15.0
 const FUEL_START := 0.4
 ## A full tank lasts this share of the night (2 of its 5 minutes), and the lights
 ## burn from dusk, so even a tank filled at dusk runs dry early in the night:
@@ -84,6 +84,7 @@ var traps := TrapField.new()
 var chores := Chores.new()
 var voices := VoiceBank.new()
 var creature: Creature  ## Host only.
+var director: Director  ## Tension and scares (Phase 3); the host drives it.
 var hud := Hud.new()
 var alone_for := {}  ## Host: trapped peer -> seconds with nobody near.
 var fuel_warned := false  ## The low-fuel warning was given.
@@ -125,6 +126,9 @@ func _ready() -> void:
 	chores.game = self
 	add_child(chores)
 	add_child(ClipList.new(self))
+	director = Director.new(self)
+	add_child(director)
+	add_child(Ghosts.new(self))
 	_daylight = Looks.Daylight.new(self)
 	_ambience = Sfx.Ambience.new(self)
 	add_child(hud)
@@ -316,7 +320,7 @@ func living_players() -> Array[Player]:
 ## one player the creature may kill by day (design doc, Day Deaths), or null.
 func day_prey() -> Player:
 	for player in living_players():
-		if alone_for.get(player.get_multiplayer_authority(), 0.0) >= ALONE_TIME:
+		if alone_for.get(player.get_multiplayer_authority(), 0.0) >= director.alone_needed(player):
 			return player
 	return null
 
@@ -341,6 +345,7 @@ func creature_caught(player: Player) -> void:
 	if player.dead or (phase() != "night" and player != day_prey()):
 		return
 	_stats["deaths"] += 1
+	director.calm("kill")
 	_night_deaths += 1
 	VoiceChat.set_peer_dead(player.get_multiplayer_authority(), true)
 	log_event("creature killed %s at %s" % [player.label(), _where(player.global_position)])
@@ -411,6 +416,7 @@ func _enter_phase(current: String, key: String) -> void:
 ## At the last dawn the run is over, so it sets nothing.
 func _morning() -> void:
 	var wiped := _night_deaths > 0 and living_players().is_empty()
+	director.dawn()
 	if phase() != "dawn":
 		traps.finish_night()
 		if wiped:
@@ -549,6 +555,7 @@ func trap_sprung(index: int, player: Player) -> void:
 ## heard: what each listener heard, peer -> description ("Ana's 'help_me'").
 func _on_creature_spoke(at: Vector3, heard: Dictionary, tells: Dictionary) -> void:
 	_stats["lures"] += 1
+	director.called()
 	var distances := {}
 	var lines: Array[String] = []
 	for player in living_players():
@@ -637,7 +644,17 @@ func _spawn_player(data: Dictionary) -> Node:
 	player.player_name = data["name"]
 	Net.replicate(
 		player,
-		["position", "rotation", "pitch", "crouching", "sprinting", "kneeling", "lantern", "dead"]
+		[
+			"position",
+			"rotation",
+			"pitch",
+			"crouching",
+			"sprinting",
+			"kneeling",
+			"lantern",
+			"dead",
+			"wounded"
+		]
 	)
 	player.set_multiplayer_authority(id)
 	if id == multiplayer.get_unique_id():

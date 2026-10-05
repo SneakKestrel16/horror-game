@@ -51,6 +51,7 @@ func _ready() -> void:
 	await _check_morning()
 	await _check_day_prey()
 	await _check_dev()
+	await _check_phase3()
 	Engine.time_scale = 1.0
 	_finish()
 
@@ -334,7 +335,7 @@ func _check_day_prey() -> void:
 	_game.creature.place(Vector3(0, 0, 36))
 	var traps_before := _game.traps.traps.size()
 	var killed := false
-	for i in roundi((Game.ALONE_TIME + 20.0) * 60 / SPEEDUP):
+	for i in roundi((Director.ALONE_TIME.y + 20.0) * 60 / SPEEDUP):
 		await get_tree().physics_frame
 		if _player.dead:
 			killed = true
@@ -427,7 +428,8 @@ func _check_night() -> void:
 	var chasing: Player = _game.creature.get("_target")
 	_check(chasing == other, "mid-chase it turns on the nearer player")
 	_game.creature.place(Vector3(0, 0, 40))
-	other.free()
+	other.queue_free()
+	await _frames(2)
 	# In the open with a lantern: it should come.
 	_armed_before_wipe = traps.armed_positions().size()
 	_game.coins = 10  # Less than the bill, so the morning tests the floor.
@@ -539,7 +541,84 @@ func _finish() -> void:
 		for sound in get_tree().root.find_children("*", kind, true, false):
 			sound.call("stop")
 	if _game:
+		# Players first: test-only ones stand for peers that never connected, and
+		# freeing them with the game crashed Godot on quit now and then.
+		for player in get_tree().get_nodes_in_group("players"):
+			player.queue_free()
+		await _frames(10)
 		_game.queue_free()
 	await _frames(10)
 	Sfx.clear_cache()
 	get_tree().quit(1 if _failed else 0)
+
+
+## Phase 3: the Director's scares and wounds, the night trail, the dead-voice
+## twist and the ghosts' lantern flicker.
+func _check_phase3() -> void:
+	var director := _game.director
+	var creature := _game.creature
+	# A full meter springs a scare (a lunge or a whisper here, picked at random).
+	var edge := Farm.corn_edge_near(Vector3(0, 0, 20), 1.0)
+	_put(_player, edge - Vector3(0, 0, 2.5))
+	_player.kneeling = true
+	director.tension = 1.0
+	director.call("_try_scare")  # Not by waiting: a call meanwhile takes some tension off.
+	_check(director.tension < 0.5, "a full meter sprang a scare (%.2f left)" % director.tension)
+	# A lunge at a player kneeling by the corn: knocked down, wounded, it pulls back.
+	director.lunge(_player)
+	_player.kneeling = false
+	await _frames(2)
+	_check(_player.wounded and _player.stumble_left > 0.0, "the lunge knocked down and wounded")
+	_check(creature.state == Creature.State.RETREAT, "after the lunge it pulled back")
+	# Wounded at night: it leaves a trail the creature can follow; dawn heals it.
+	_dev.jump_to("night")
+	await _game_seconds(Director.TRAIL_BEHIND + Director.TRAIL_EVERY * 2.0)
+	_check(director.trail_point().is_finite(), "a wounded player leaves a trail at night")
+	director.dawn()
+	await _frames(2)
+	_check(not _player.wounded, "dawn heals the wound")
+	_dev.jump_to("day")
+	await _frames(3)
+	# The stare: it stands in the rows watching, then is gone.
+	director.stare(_player)
+	_check(creature.state == Creature.State.STARE, "it stares from the rows")
+	await _game_seconds(Creature.STARE_TIME + 0.5)
+	_check(creature.state == Creature.State.RETREAT, "then pulls back into the corn")
+	_check(director.whisper(_player), "a friend's voice can whisper behind a player")
+	director.crow(_player)
+	_check(director.tension == 0.0, "the crow fake-out left the tension down")
+	# The dead-voice twist: a dead friend's voice is played through static.
+	var tells := {}
+	var on_spoke := func(_at: Vector3, _heard: Dictionary, told: Dictionary) -> void:
+		tells.merge(told, true)
+	creature.spoke.connect(on_spoke)
+	VoiceChat.get("_dead")[FRIEND] = true
+	for i in 10:
+		creature.speak_now()
+	VoiceChat.get("_dead")[FRIEND] = false
+	creature.spoke.disconnect(on_spoke)
+	_check(
+		str(tells.get(1, "")).ends_with("through static"),
+		"a dead friend's voice comes through static"
+	)
+	# The lantern flicker: a ghost flickers a living teammate's lantern.
+	var players: MultiplayerSpawner = _game.get("_players")
+	var other := players.spawn(_game.call("_player_data", FRIEND, "Bea")) as Player
+	other.set_physics_process(false)
+	await _frames(2)
+	_put(other, Vector3(-10, 0, 0))
+	other.lantern = true
+	_player.killed()
+	_put(_player, Vector3(-14, 0, 0))
+	var ghosts := _game.get_node("Ghosts") as Ghosts
+	var light := ghosts.light_for(_player.global_position)
+	_check(light.get("kind", "") == "lantern", "a ghost near a teammate's lantern can flicker it")
+	ghosts.rpc_id(1, "_ask_flicker")  # From the host's own player, the ghost.
+	await _frames(2)
+	_check(other.get("_flicker_left") > 0.0, "the lantern flickered")
+	_put(_player, Vector3(-40, 0, 0))
+	_check(ghosts.light_for(_player.global_position).is_empty(), "but not from far away")
+	await _game_seconds(Ghosts.FLICKER_TIME + 0.5)  # Let the flicker end first.
+	other.queue_free()
+	await _frames(2)
+	_dev.revive(_player)
