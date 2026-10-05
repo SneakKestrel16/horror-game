@@ -537,11 +537,13 @@ func _corn() -> Node3D:
 	while z <= CORN_OUT:
 		var x := -CORN_OUT
 		while x <= CORN_OUT:
-			var at := Vector3(x + rng.randf_range(-0.15, 0.15), 0, z + rng.randf_range(-0.1, 0.1))
+			# Jittered about half a step each way, so the rows read as wild, not planted.
+			var at := Vector3(x + rng.randf_range(-0.22, 0.22), 0, z + rng.randf_range(-0.3, 0.3))
 			if in_corn(at) and _corn_plot_at(at) < 0:
-				var scale := rng.randf_range(0.85, 1.15)
+				var scale := rng.randf_range(0.8, 1.2)
 				var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(1, scale, 1))
-				basis = basis.rotated(Vector3.RIGHT, rng.randf_range(-0.06, 0.06))
+				basis = basis.rotated(Vector3.RIGHT, rng.randf_range(-0.1, 0.1))
+				basis = basis.rotated(Vector3.FORWARD, rng.randf_range(-0.1, 0.1))
 				var dry := rng.randf()
 				var colour := Color(0.4, 0.55, 0.2).lerp(Color(0.66, 0.6, 0.32), dry * 0.6)
 				var key := Vector2i(floori(at.x / CORN_CHUNK), floori(at.z / CORN_CHUNK))
@@ -550,8 +552,8 @@ func _corn() -> Node3D:
 				)
 				chunk[0].append(Transform3D(basis, at))
 				chunk[1].append(colour)
-			x += 0.55
-		z += 0.9  # Rows run along x.
+			x += 0.45
+		z += 0.7  # Rows run along x.
 	var corn := Node3D.new()
 	corn.name = "Corn"
 	var close := Dress.mesh("corn", true)
