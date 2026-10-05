@@ -87,6 +87,14 @@ Traps hit while building the game, with what fixed them.
 - **By day the creature must route through the corn only.** A plain route between two points on
   the corn ring cuts across the farm. `Farm.route(..., corn_only = true)` uses a second grid with
   only corn cells open.
+- **A stuck check must reset with each waypoint.** The creature counted itself stuck while it got
+  no closer than its best distance so far, which carried over from the last waypoint (0.5 m), so
+  it "stuck" on every long walk and re-planned every 2 s. It now checks whether it has moved half
+  a metre lately. A re-plan by day is corn-only, so a bench that walks open-grid routes outside
+  the night phase sends it off course when it re-plans; set the phase or bench corn-only routes.
+- **A straightened route must check the body's width, not just its centre line,** or it cuts
+  wall corners the capsule (0.4 m) catches on. `Farm._clear_strip` checks the line and two
+  lines `STRIP_HALF_WIDTH` either side of it.
 
 ## Audio
 

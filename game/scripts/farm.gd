@@ -93,6 +93,9 @@ const GRID := Rect2i(-54, -54, 108, 108)  ## The walking grid, one cell per metr
 ## Grid cells this close to a wall count as blocked. More would close the 3.2 m barn
 ## doorway on a one-metre grid.
 const CLEARANCE := 0.3
+## Half the strip a straightened route keeps clear: the creature's capsule radius
+## (0.4) less a little, since blocked cells already keep CLEARANCE off the walls.
+const STRIP_HALF_WIDTH := 0.35
 
 static var _trap_spots := {}
 # The corn map, shared by every user of the static helpers below. One farm
@@ -428,6 +431,9 @@ static func random_corn_point(rng: RandomNumberGenerator) -> Vector3:
 
 ## Waypoints from one point to another round the buildings, empty if there
 ## is no way (a lit barn's inside is blocked). corn_only keeps to the corn.
+## The grid path is pulled straight: a waypoint is dropped while the one after
+## it can be walked to directly, so it doesn't zig-zag from cell to cell. It
+## ends on to itself when that is open and in reach, not on its cell's centre.
 func route(from: Vector3, to: Vector3, corn_only := false) -> Array[Vector3]:
 	var path: Array[Vector3] = []
 	var walk := corn_grid if corn_only else grid
@@ -435,11 +441,35 @@ func route(from: Vector3, to: Vector3, corn_only := false) -> Array[Vector3]:
 	var goal := _open_cell_near(walk, _cell(to))
 	if start == Vector2i.MAX or goal == Vector2i.MAX:
 		return path
+	var cells: Array[Vector3] = []
 	for point in walk.get_point_path(start, goal):
-		path.append(Vector3(point.x + 0.5, 0, point.y + 0.5))
-	if not path.is_empty():
-		path.pop_front()  # The cell it stands in.
+		cells.append(Vector3(point.x + 0.5, 0, point.y + 0.5))
+	cells.pop_front()  # The cell it stands in.
+	if goal == _cell(to) and not cells.is_empty():
+		cells[-1] = Vector3(to.x, 0, to.z)
+	var at := Vector3(from.x, 0, from.z)
+	var next := 0
+	while next < cells.size():
+		var reach := next
+		while reach + 1 < cells.size() and _clear_strip(walk, at, cells[reach + 1]):
+			reach += 1
+		path.append(cells[reach])
+		at = cells[reach]
+		next = reach + 1
 	return path
+
+
+## Whether a body of the creature's width walks from a to b on open cells only.
+func _clear_strip(walk: AStarGrid2D, a: Vector3, b: Vector3) -> bool:
+	var along := Vector3(b.x - a.x, 0, b.z - a.z)
+	var side := Vector3(-along.z, 0, along.x).normalized() * STRIP_HALF_WIDTH
+	var steps := maxi(1, ceili(along.length() / 0.25))
+	for i in steps + 1:
+		var at := a.lerp(b, float(i) / steps)
+		for offset: Vector3 in [Vector3.ZERO, side, -side]:
+			if walk.is_point_solid(_cell(at + offset)):
+				return false
+	return true
 
 
 func _cell(point: Vector3) -> Vector2i:

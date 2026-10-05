@@ -29,6 +29,7 @@ const INVESTIGATE_SPEED := {"day": 2.4, "night": 3.4}
 const CHASE_SPEED := 5.4  ## Below sprint (6.3), above walking (3.6): run while stamina lasts.
 const RETREAT_SPEED := 3.6
 const GRAVITY := 14.0
+const STUCK_TIME := 1.5  ## Seconds held in place on a route before it re-plans.
 const CATCH_RANGE := 1.3
 const SIGHT := 10.0  ## Metres it sees a player in the open.
 const LANTERN_SIGHT := 24.0
@@ -89,7 +90,7 @@ var _replan_left := 0.0
 var _switch_left := 0.0  ## Until it next looks for a nearer player mid-chase.
 var _direct := false  ## Chasing straight at the target, nothing in the way.
 var _stare_target: Player
-var _best_distance := INF
+var _stuck_from := Vector3.INF  ## Where it last got somewhere; it is stuck if it stays near.
 var _stuck_for := 0.0
 var _rng := RandomNumberGenerator.new()
 var _errand := ""  ## "take" (from the pegboard) or "set", while in ERRAND.
@@ -658,7 +659,7 @@ func _play(stream: AudioStream, echo: bool, pitch: float) -> void:
 func _set_state(new_state: State) -> void:
 	state = new_state
 	_state_time = 0.0
-	_best_distance = INF
+	_stuck_from = Vector3.INF
 	_stuck_for = 0.0
 
 
@@ -678,21 +679,23 @@ func _path(point: Vector3) -> Array[Vector3]:
 	return out
 
 
-## Steps toward point; true once there. Re-plans if it stops getting closer.
+## Steps toward point; true once there. Re-plans if it stops getting anywhere:
+## held under half a metre from where it was for STUCK_TIME. (It measured how
+## close it got to each waypoint once, never reset for the next, so on every
+## long walk it "stuck" and re-planned every 2 s; 2026-10-05.)
 func _walk_toward(point: Vector3, speed: float, delta: float) -> bool:
 	var to_point := point - global_position
 	to_point.y = 0.0
 	var distance := to_point.length()
 	if distance < 0.5:
 		return true
-	if distance < _best_distance - 0.3:
-		_best_distance = distance
+	if global_position.distance_to(_stuck_from) > 0.5:
+		_stuck_from = global_position
 		_stuck_for = 0.0
-	else:
+	elif speed > 0.0:
 		_stuck_for += delta
-	if _stuck_for > 2.0 and not _route.is_empty():
+	if _stuck_for > STUCK_TIME and not _route.is_empty():
 		_route = _path(_route[-1])
-		_best_distance = INF
 		_stuck_for = 0.0
 	var direction := to_point / distance
 	velocity.x = direction.x * speed

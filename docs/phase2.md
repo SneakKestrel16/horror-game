@@ -208,6 +208,14 @@ corn strips and the C list were new.
 - **It got stuck on things.** The hay, generator, pump and crate are solid but were missing from
   its walking grid, and a chase ran straight at the target through anything not tall enough to
   hide them. Routes now go round them, and a chase goes straight only with nothing in the way.
+- **Its walking still looked wrong** (2026-10-05): it zig-zagged from one grid cell to the next,
+  and on any walk longer than a couple of waypoints it re-planned every 2 s, because its stuck
+  check never reset between waypoints. Routes are now pulled straight wherever a creature-wide
+  strip is open on the grid, and end on the goal rather than its cell's centre; it re-plans only
+  after 1.5 s without moving half a metre. In a headless bench of six trips (three over the
+  open grid, three corn-only) it went from 22–120 waypoints a trip and 115 re-plans, with two
+  trips ending 9–13 m off and one never arriving, to 1–5 waypoints, no re-plans, and every
+  trip ending at its goal. The smoke test's stays-in-the-corn check still passes.
 - **The in-game copy sounded off at the start,** next to the recording. Every call has a tell
   (an echo, or pitch 6% off) two times in three, by design, but the log didn't say which this
   was; it does now. Inference: the start also carries the push-to-talk key's click and can begin
