@@ -1,7 +1,8 @@
 class_name Looks
 extends RefCounted
 ## Placeholder models for the things game.gd keeps track of: tools, crops
-## and traps, built from primitive meshes. Also the sky, sun and moon.
+## and traps, built from primitive meshes. Also the sun and moon, and the sky
+## (drawn by assets/shaders/sky.gdshader).
 
 ## Each item kind's parts: [mesh class, position, size, colour].
 const ITEM_PARTS := {
@@ -218,19 +219,200 @@ static func _clear(node: Node3D) -> void:
 
 ## The sky, a sun and a moon, added under parent. apply() sets them for the time of day.
 class Daylight:
+	## The sky through a game day, on a timeline s: 0..1 is the day, 1..2 dusk, 2..3
+	## the night and 3..4 the last dawn. Each key is [s, zenith, horizon, glow round
+	## the sun, the earth's shadow opposite it, sun, lit cloud, shaded cloud, cloud
+	## cover, stars], in sRGB. Between keys the colours blend.
+	const KEYS := [
+		[
+			0.0,
+			Color(0.32, 0.48, 0.75),
+			Color(0.98, 0.78, 0.62),
+			Color(1.0, 0.7, 0.4),
+			Color(0.55, 0.6, 0.78),
+			Color(1.0, 0.75, 0.5),
+			Color(1.0, 0.86, 0.72),
+			Color(0.55, 0.55, 0.65),
+			0.45,
+			0.0
+		],  # Morning
+		[
+			0.12,
+			Color(0.25, 0.5, 0.85),
+			Color(0.78, 0.86, 0.93),
+			Color(1.0, 0.9, 0.75),
+			Color(0.6, 0.7, 0.85),
+			Color(1.0, 0.92, 0.8),
+			Color(1.0, 0.98, 0.95),
+			Color(0.6, 0.64, 0.72),
+			0.4,
+			0.0
+		],  # Late morning
+		[
+			0.45,
+			Color(0.18, 0.42, 0.82),
+			Color(0.72, 0.82, 0.92),
+			Color(0.95, 0.95, 0.9),
+			Color(0.6, 0.7, 0.88),
+			Color(1.0, 0.97, 0.9),
+			Color(1.0, 1.0, 1.0),
+			Color(0.62, 0.66, 0.74),
+			0.35,
+			0.0
+		],  # Midday
+		[
+			0.8,
+			Color(0.22, 0.42, 0.75),
+			Color(0.88, 0.82, 0.7),
+			Color(1.0, 0.85, 0.6),
+			Color(0.6, 0.65, 0.8),
+			Color(1.0, 0.85, 0.65),
+			Color(1.0, 0.93, 0.82),
+			Color(0.6, 0.6, 0.68),
+			0.4,
+			0.0
+		],  # Afternoon
+		[
+			1.0,
+			Color(0.3, 0.38, 0.62),
+			Color(0.98, 0.68, 0.4),
+			Color(1.0, 0.6, 0.25),
+			Color(0.55, 0.5, 0.65),
+			Color(1.0, 0.6, 0.3),
+			Color(1.0, 0.75, 0.5),
+			Color(0.5, 0.45, 0.55),
+			0.45,
+			0.0
+		],  # Golden hour
+		[
+			1.45,
+			Color(0.2, 0.2, 0.4),
+			Color(0.95, 0.42, 0.22),
+			Color(1.0, 0.35, 0.12),
+			Color(0.55, 0.35, 0.5),
+			Color(1.0, 0.4, 0.15),
+			Color(1.0, 0.45, 0.3),
+			Color(0.35, 0.25, 0.35),
+			0.45,
+			0.0
+		],  # Sunset
+		[
+			1.75,
+			Color(0.07, 0.08, 0.2),
+			Color(0.45, 0.18, 0.18),
+			Color(0.6, 0.2, 0.12),
+			Color(0.2, 0.15, 0.28),
+			Color(0.8, 0.25, 0.1),
+			Color(0.5, 0.2, 0.2),
+			Color(0.12, 0.1, 0.15),
+			0.45,
+			0.3
+		],  # Afterglow
+		[
+			2.0,
+			Color(0.02, 0.025, 0.06),
+			Color(0.06, 0.06, 0.1),
+			Color(0.08, 0.06, 0.1),
+			Color(0.04, 0.04, 0.08),
+			Color(0.3, 0.1, 0.05),
+			Color(0.12, 0.13, 0.18),
+			Color(0.03, 0.03, 0.05),
+			0.45,
+			0.8
+		],  # Nightfall
+		[
+			2.5,
+			Color(0.008, 0.01, 0.025),
+			Color(0.035, 0.04, 0.06),
+			Color(0.035, 0.04, 0.06),
+			Color(0.035, 0.04, 0.06),
+			Color(0.2, 0.1, 0.05),
+			Color(0.09, 0.1, 0.14),
+			Color(0.02, 0.02, 0.035),
+			0.5,
+			1.0
+		],  # Midnight
+		[
+			2.85,
+			Color(0.01, 0.012, 0.03),
+			Color(0.05, 0.05, 0.08),
+			Color(0.08, 0.06, 0.09),
+			Color(0.04, 0.045, 0.07),
+			Color(0.3, 0.15, 0.1),
+			Color(0.1, 0.1, 0.14),
+			Color(0.025, 0.025, 0.04),
+			0.65,
+			0.9
+		],  # Small hours, clouding over
+		[
+			3.0,
+			Color(0.02, 0.03, 0.08),
+			Color(0.12, 0.12, 0.2),
+			Color(0.3, 0.18, 0.18),
+			Color(0.06, 0.07, 0.12),
+			Color(0.8, 0.4, 0.3),
+			Color(0.2, 0.18, 0.24),
+			Color(0.05, 0.05, 0.08),
+			0.55,
+			0.5
+		],  # Before dawn
+		[
+			3.5,
+			Color(0.2, 0.3, 0.55),
+			Color(0.95, 0.6, 0.55),
+			Color(1.0, 0.55, 0.4),
+			Color(0.45, 0.45, 0.65),
+			Color(1.0, 0.6, 0.4),
+			Color(1.0, 0.7, 0.6),
+			Color(0.45, 0.42, 0.55),
+			0.45,
+			0.05
+		],  # Sunrise
+		[
+			4.0,
+			Color(0.32, 0.48, 0.75),
+			Color(0.98, 0.78, 0.62),
+			Color(1.0, 0.7, 0.4),
+			Color(0.55, 0.6, 0.78),
+			Color(1.0, 0.75, 0.5),
+			Color(1.0, 0.86, 0.72),
+			Color(0.55, 0.55, 0.65),
+			0.45,
+			0.0
+		],  # Morning again
+	]
+	const UNIFORMS := [
+		"zenith_color",
+		"horizon_color",
+		"glow_color",
+		"shadow_color",
+		"sun_color",
+		"cloud_lit",
+		"cloud_shade",
+		"cloud_cover",
+		"stars"
+	]
+	const DAWN_SECONDS := 8.0  ## How long the last dawn takes to break once the game ends.
+
 	var _sun := DirectionalLight3D.new()
 	var _moon := DirectionalLight3D.new()
 	var _environment := Environment.new()
-	var _sky := ProceduralSkyMaterial.new()
+	var _sky := ShaderMaterial.new()
+	var _dawn := 0.0
 
 	func _init(parent: Node3D) -> void:
+		_sky.shader = load("res://assets/shaders/sky.gdshader")
 		var sky := Sky.new()
 		sky.sky_material = _sky
+		# Spread each redraw of the sky's light over a few frames: it changes slowly.
+		sky.process_mode = Sky.PROCESS_MODE_INCREMENTAL
 		_environment.background_mode = Environment.BG_SKY
 		_environment.sky = sky
 		_environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 		_environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 		_environment.fog_enabled = true
+		# The sky fades to the fog colour at its own horizon; fogging it hid the stars.
+		_environment.fog_sky_affect = 0.0
 		var world := WorldEnvironment.new()
 		world.environment = _environment
 		parent.add_child(world)
@@ -238,30 +420,84 @@ class Daylight:
 		_sun.directional_shadow_max_distance = 80.0
 		parent.add_child(_sun)
 		_moon.light_color = Color(0.55, 0.62, 0.85)
-		_moon.rotation = Vector3(deg_to_rad(-50), deg_to_rad(140), 0)
 		_moon.shadow_enabled = true
 		parent.add_child(_moon)
 
-	## Bright afternoon through the day (0..1), an orange dusk (0..1), then
-	## dark with a weak moon and fog that closes in.
-	func apply(day: float, dusk: float, night: bool) -> void:
-		var dark := clampf(dusk + (1.0 if night else 0.0), 0.0, 1.0)
-		_sun.rotation = Vector3(
-			deg_to_rad(lerpf(-55.0, -12.0, day) + 10.0 * dusk), deg_to_rad(-35), 0
-		)
-		var evening := clampf(day * 1.4 - 0.4, 0.0, 1.0)
-		_sun.light_color = Color(1.0, 0.95, 0.85).lerp(Color(1.0, 0.5, 0.25), evening)
-		_sun.light_energy = lerpf(lerpf(1.3, 0.7, day), 0.0, dusk)
+	## How far through the day, dusk and night (each 0..1); ending is the last dawn,
+	## which breaks over DAWN_SECONDS. clock (seconds) turns the stars and moves
+	## the clouds. Through dusk it gets dark, with a weak moon and fog closing in.
+	func apply(
+		day: float, dusk: float, night: float, ending: bool, clock: float, delta: float
+	) -> void:
+		if ending:
+			_dawn = minf(_dawn + delta / DAWN_SECONDS, 1.0)
+		var s := day
+		var sun_up := _path([4.0, 20.0, 58.0, 10.0], [0.0, 0.1, 0.4, 1.0], day)
+		var sun_yaw := lerpf(60.0, -35.0, day)
+		var moon_up := -10.0
+		var moon_yaw := 135.0
+		if ending:
+			s = 3.0 + _dawn
+			sun_up = lerpf(-6.0, 8.0, _dawn)
+			sun_yaw = 60.0
+			moon_up = lerpf(15.0, 5.0, _dawn)
+			moon_yaw = 260.0
+		elif night > 0.0:
+			s = 2.0 + night
+			sun_up = _path([-12.0, -40.0, -6.0], [0.0, 0.5, 1.0], night)
+			sun_yaw = lerpf(-45.0, -300.0, night)  # Round under the farm to the east.
+			moon_up = _path([8.0, 55.0, 15.0], [0.0, 0.5, 1.0], night)
+			moon_yaw = lerpf(135.0, 260.0, night)
+		elif dusk > 0.0:
+			s = 1.0 + dusk
+			sun_up = _path([10.0, 0.0, -12.0], [0.0, 0.55, 1.0], dusk)
+			sun_yaw = lerpf(-35.0, -45.0, dusk)
+			moon_up = lerpf(-5.0, 8.0, dusk)  # Rising opposite the sunset.
+		var dark := clampf(dusk + (1.0 if night > 0.0 else 0.0), 0.0, 1.0) - _dawn
+
+		var palette := _palette(s)
+		for i in UNIFORMS.size():
+			_sky.set_shader_parameter(UNIFORMS[i], palette[i])
+		_sky.set_shader_parameter("sun_dir", _toward(sun_up, sun_yaw))
+		_sky.set_shader_parameter("moon_dir", _toward(moon_up, moon_yaw))
+		_sky.set_shader_parameter("moon_visible", dark)
+		_sky.set_shader_parameter("star_turn", clock * 0.0006)
+		_sky.set_shader_parameter("twinkle", clock)
+		_sky.set_shader_parameter("cloud_drift", Vector2(clock * 0.004, clock * 0.0015))
+
+		_sun.rotation = Vector3(deg_to_rad(-sun_up), deg_to_rad(sun_yaw), 0)
+		_sun.light_color = palette[4]
+		var strength := 1.0 if s >= 3.0 else lerpf(1.3, 0.75, clampf(s, 0.0, 1.0))
+		_sun.light_energy = strength * smoothstep(-2.0, 8.0, sun_up)
 		_sun.visible = _sun.light_energy > 0.01
+		# Kept above 10 degrees so a low moon doesn't throw shadows across the whole farm.
+		_moon.rotation = Vector3(deg_to_rad(-maxf(moon_up, 10.0)), deg_to_rad(moon_yaw), 0)
 		_moon.light_energy = 0.07 * dark
 		_moon.visible = dark > 0.0
-		var top := Color(0.3, 0.5, 0.8).lerp(Color(0.35, 0.3, 0.45), day)
-		var horizon := Color(0.75, 0.8, 0.85).lerp(Color(0.95, 0.55, 0.3), day)
-		_sky.sky_top_color = top.lerp(Color(0.01, 0.012, 0.025), dark)
-		_sky.sky_horizon_color = horizon.lerp(Color(0.03, 0.035, 0.05), dark)
-		_sky.ground_horizon_color = _sky.sky_horizon_color
-		_sky.ground_bottom_color = Color(0.1, 0.1, 0.08).lerp(Color.BLACK, dark)
 		_environment.ambient_light_energy = lerpf(1.0, 0.12, dark)
-		_environment.fog_light_color = _sky.sky_horizon_color
+		_environment.fog_light_color = palette[1]
 		_environment.fog_density = lerpf(0.004, 0.045, dark)
-		_environment.fog_sky_affect = dark  # Day fog greyed out the whole sky.
+
+	## The colours and amounts in KEYS at s, in UNIFORMS order.
+	func _palette(s: float) -> Array:
+		var after := 1
+		while after < KEYS.size() - 1 and KEYS[after][0] < s:
+			after += 1
+		var a: Array = KEYS[after - 1]
+		var b: Array = KEYS[after]
+		var t := clampf((s - a[0]) / (b[0] - a[0]), 0.0, 1.0)
+		var blended := []
+		for i in range(1, a.size()):
+			blended.append(lerp(a[i], b[i], t))
+		return blended
+
+	## A value along a path through values at the given points (0..1).
+	static func _path(values: Array, points: Array, t: float) -> float:
+		for i in range(1, points.size()):
+			if t <= points[i]:
+				return lerpf(values[i - 1], values[i], inverse_lerp(points[i - 1], points[i], t))
+		return values[-1]
+
+	## The direction toward a light raised up degrees, turned yaw degrees.
+	static func _toward(up: float, yaw: float) -> Vector3:
+		return Basis.from_euler(Vector3(deg_to_rad(-up), deg_to_rad(yaw), 0)).z

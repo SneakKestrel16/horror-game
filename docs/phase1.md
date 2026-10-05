@@ -69,7 +69,8 @@ the mouse and a second Esc leaves.
   they walk toward the call it backs off 6-10 m deeper and calls again, up to twice. A faint
   reverb on its voice is the tell. The lines are Windows text-to-speech placeholders (voices David and Zira) in
   `game/assets/voices/`; replace them with real recordings.
-- **Atmosphere:** a sun that lowers into an orange dusk, a dark night with fog and a weak moon,
+- **Atmosphere:** a sky that runs from a pink morning through golden hour and sunset to a starry
+  night with a rising moon and fog, and on to dawn,
   wind by day, crickets by night that fall silent when the creature is within 18 m of you, a
   heartbeat when it chases near you, and the generator's hum. Sound effects are synthesised in
   code (`scripts/sfx.gd`) as placeholders.

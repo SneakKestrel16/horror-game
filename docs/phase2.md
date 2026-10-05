@@ -305,7 +305,8 @@ Baked in Blender and put on models built there (2026-10-04); see [Models and tex
 - [ ] Metal: bear traps, pegboard tools (still primitives in `looks.gd`)
 - [ ] Crops at each growth stage
 - [x] The creature's skin, and player models
-- [ ] Night sky and moon
+- [x] Night sky and moon: a sky shader (`assets/shaders/sky.gdshader`) with a palette for each
+  time of day, from morning through sunset and night to the last dawn, driven by `Looks.Daylight`
 
 ## Not in Phase 2
 

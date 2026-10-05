@@ -188,7 +188,8 @@ func _process(delta: float) -> void:
 	var into := _into_day()
 	var day := clampf(into / (DAY * factor), 0.0, 1.0)
 	var dusk := clampf((into - DAY * factor) / (DUSK * factor), 0.0, 1.0)
-	_daylight.apply(day, dusk, phase() == "night" or phase() == "dawn")
+	var night := clampf((into - (DAY + DUSK) * factor) / (NIGHT * factor), 0.0, 1.0)
+	_daylight.apply(day, dusk, night, phase() == "dawn", clock, delta)
 	_update_sounds(delta)
 	hud.update(self)
 

@@ -125,5 +125,12 @@ Traps hit while building the game, with what fixed them.
 
 ## Lighting
 
-- **Fog greys out the day sky.** With `fog_sky_affect` at its default of 1, even light day fog
-  turned the sky white-grey. It now follows the darkness: 0 by day, 1 at night.
+- **Fog greys out the sky.** With `fog_sky_affect` at its default of 1, even light day fog
+  turned the sky white-grey, and night fog hid the stars and moon. It is now 0: the sky shader
+  fades to the horizon colour, which is also the fog colour, so far ground still meets the sky.
+- **A sky shader that reads `TIME` redraws its radiance every frame.** `sky.gdshader` takes twinkle,
+  star turn and cloud drift as uniforms from the clock instead, and the sky uses
+  `PROCESS_MODE_INCREMENTAL` to spread each redraw. Draw the sun disc and stars only when
+  `AT_CUBEMAP_PASS` is false, or they leak into the farm's ambient light.
+- **The last dawn has no clock.** The host stops the clock when the game ends, so `Daylight`
+  counts the final dawn itself from `delta`.
