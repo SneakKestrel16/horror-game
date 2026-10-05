@@ -52,7 +52,6 @@ const NOISE := {
 	"sell": 6.0,
 	"hang": 6.0,
 	"take": 4.0,
-	"cut": 8.0,  # Cutting corn: stalks crack and fall. Guess.
 	"lights_out": 80.0,  # The generator dying at night: the whole farm hears it.
 	"lock": 40.0,  # The creature breaking the shed lock (Store). Guess.
 }
@@ -161,7 +160,7 @@ func _ready() -> void:
 		_open_log()
 		log_event("host started (short: %s)" % Net.short)
 		var look := _creature_look()
-		log_event("the creature is the %s" % look)
+		log_event("creature look: %s" % look)
 		_creatures.spawn({"position": Vector3(0, 0, Farm.CORN_IN + 10.0), "look": look})
 		var host := _player_data(1, Net.player_name)
 		_players.spawn(host)

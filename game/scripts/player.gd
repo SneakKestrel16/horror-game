@@ -23,7 +23,9 @@ const STAMINA_REST := 1.0  ## Seconds after sprinting before it refills, at 1 s 
 const SLOW := 0.6  ## Speed while hurt from a bear trap: 40% slower (design doc, Night Traps).
 const SLOW_TIME := 60.0
 const STUMBLE_TIME := 0.9
-const STRIDE := 0.75  ## Metres per footstep.
+## Metres per footstep for each gait: about two steps a second walking, a little
+## quicker sprinting and slower crouched.
+const STRIDE := {"crouch": 1.1, "walk": 1.6, "sprint": 2.4}
 ## How far the creature hears a footstep (m), and how much further in the corn.
 const STEP_NOISE := {"crouch": 2.0, "walk": 7.0, "sprint": 16.0}
 const CORN_NOISE := 1.5
@@ -231,10 +233,10 @@ func _footsteps() -> void:
 	if dead or moved.length() > 3.0:  # A teleport is not a step.
 		return
 	_stride += moved.length()
-	if _stride < STRIDE:
+	var gait := "crouch" if crouching else ("sprint" if sprinting else "walk")
+	if _stride < STRIDE[gait]:
 		return
 	_stride = 0.0
-	var gait := "crouch" if crouching else ("sprint" if sprinting else "walk")
 	var in_corn := Farm.in_corn(global_position)
 	var volume := {"crouch": -14.0, "walk": -6.0, "sprint": 0.0}[gait] as float
 	Sfx.play_at(get_parent(), "corn_step" if in_corn else "step", global_position, volume)

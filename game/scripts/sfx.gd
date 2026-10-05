@@ -188,14 +188,8 @@ static func _build(sound: String, variant: int) -> AudioStreamWAV:
 				phase += TAU * lerpf(900.0, 260.0, t / 1.4) / RATE
 				samples[i] += 0.5 * (sin(phase) + 0.4 * sin(phase * 2.03) + 0.25 * sin(phase * 3.1))
 			_envelope(samples, 0.08, 0.6)
-		"caw":  # Two harsh croaks: a buzzing tone through a rough envelope.
-			samples.resize(roundi(RATE * 0.75))
-			for i in samples.size():
-				var t := float(i) / RATE
-				var croak := fmod(t, 0.38)
-				var shape := sin(PI * minf(croak / 0.26, 1.0)) * float(croak < 0.26)
-				var buzz := sin(TAU * 620.0 * t + 3.0 * sin(TAU * 90.0 * t))
-				samples[i] = 0.55 * shape * (buzz + rng.randf_range(-0.35, 0.35))
+		"caw":
+			samples = _caw(rng)
 		"hum":
 			loop = true
 			samples.resize(RATE)  # One second: 60 Hz harmonics fit it exactly.
@@ -304,6 +298,63 @@ static func _footstep(rng: RandomNumberGenerator) -> PackedFloat32Array:
 	for i in mini(toe.size(), samples.size() - toe_at):
 		samples[toe_at + i] += toe[i]
 	return samples
+
+
+## A crow: three harsh "kaaw"s, each a buzzy sawtooth sliding down in pitch,
+## with every other cycle louder (the rasp of a crow's voice is that doubled
+## period) and breath noise, through two nasal formants. Shaped from what a
+## crow's caw is described as, not from a recording; settle by listening.
+static func _caw(rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var calls := [0.0, 0.42, 0.86]
+	var length := 0.3
+	var source := PackedFloat32Array()
+	source.resize(roundi(RATE * (calls[-1] + length + 0.05)))
+	for k in calls.size():
+		var start := roundi(RATE * float(calls[k]))
+		var phase := 0.0
+		var drift := 0.0
+		var high := 780.0 - 40.0 * k  # Each call a little lower and wearier.
+		for i in roundi(RATE * length):
+			var u := float(i) / (RATE * length)
+			drift = clampf(drift + rng.randf_range(-6.0, 6.0), -40.0, 40.0)
+			phase += (lerpf(high, high * 0.7, u) + drift) / RATE
+			var saw := 2.0 * fposmod(phase, 1.0) - 1.0
+			var rasp := 1.0 if int(phase) % 2 == 0 else 0.55
+			var shape := minf(1.0, u / 0.06) * pow(1.0 - u, 0.7)
+			source[start + i] = shape * (saw * rasp + rng.randf_range(-0.4, 0.4))
+	var samples := _bandpass(source, 1400.0, 1.8)
+	var upper := _bandpass(source, 2500.0, 2.5)
+	var peak := 0.0
+	for i in samples.size():
+		samples[i] += 0.7 * upper[i]
+		peak = maxf(peak, absf(samples[i]))
+	for i in samples.size():
+		samples[i] *= 0.7 / peak
+	return samples
+
+
+## A resonant band-pass (the RBJ cookbook biquad, 0 dB at the centre).
+static func _bandpass(samples: PackedFloat32Array, centre: float, q: float) -> PackedFloat32Array:
+	var w := TAU * centre / RATE
+	var alpha := sin(w) / (2.0 * q)
+	var a0 := 1.0 + alpha
+	var b0 := alpha / a0
+	var a1 := -2.0 * cos(w) / a0
+	var a2 := (1.0 - alpha) / a0
+	var out := PackedFloat32Array()
+	out.resize(samples.size())
+	var x1 := 0.0
+	var x2 := 0.0
+	var y1 := 0.0
+	var y2 := 0.0
+	for i in samples.size():
+		var y := b0 * samples[i] - b0 * x2 - a1 * y1 - a2 * y2
+		x2 = x1
+		x1 = samples[i]
+		y2 = y1
+		y1 = y
+		out[i] = y
+	return out
 
 
 ## Breaks steady noise into crackles: rate short grains a second at random,

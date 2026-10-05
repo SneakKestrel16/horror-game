@@ -71,14 +71,22 @@ check that recording and proximity chat work before anything else.
   `scripts/chores.gd`; the developer panel's helpers moved to `scripts/dev.gd`, which also gains
   "Start the day", "Creature takes and sets tonight's traps now", "Call me with a recorded
   voice" and "Skip to the next morning".
-- **Corn that reaches in, and corn worth cutting** (`scripts/farm.gd`, added after the solo
-  playtest): the wild corn is a map of one-metre cells, not a square ring. Ragged strips reach
-  in from the ring toward the generator, behind the barn, west of the field and behind it, and
-  east of the field into a patch of four planted corn plots. A band between the barn and the
-  field, and a screen between the barn and the shed, put corn across every way out of the barn. The planted corn starts ripe (it
-  takes 3 days to grow, longer than Phase 2 lasts), is cut with a 3 s hold that the creature
-  can hear, and sells for 45 against a turnip plot's 10. Bear traps hide in it like any corn.
-  Cut corn is open ground for good: no cover, and no way through for the creature by day.
+- **Corn that reaches in** (`scripts/farm.gd`, added after the solo playtest): the wild corn
+  is a map of one-metre cells, not a square ring. Ragged strips reach in from the ring toward
+  the generator and behind the barn, a band between the barn and the fields and a screen
+  between the barn and the shed put corn across every way out of the barn, and rows fill the
+  middle of the farm. Bear traps hide in it like any corn.
+- **Two fields, and corn is not a crop** (2026-10-05, `scripts/farm.gd`, `scripts/chores.gd`):
+  the plots are split into two fields of eight, one far out in front of the barn on the right
+  leaving it (west, with the pump and watering can) and one on the left by the crate (east),
+  with the corn rows standing where the one field was. Corn can no longer be planted, cut or
+  sold; the planted corn patch is gone, and the ground within `Farm.FIELD_MARGIN` of each field
+  is kept clear of corn.
+- **Slower footsteps and a crow that caws** (2026-10-05, `scripts/player.gd`, `scripts/sfx.gd`):
+  a step now plays every `Player.STRIDE` metres for the gait (1.1 crouching, 1.6 walking, 2.4
+  sprinting), and the crow is a synthesised three-call caw instead of a screech. The host's log
+  names the creature's look as "creature look: scarecrow" (it read "the creature is the
+  creature").
 
 ## Numbers
 
@@ -97,9 +105,9 @@ Phase 1's numbers still hold ([Numbers](phase1.md#numbers)); new ones:
 | Own voice weight | 5% of a teammate's | Guess |
 | Off-board trap vanishes | no living player within 15 m | Guess |
 | Trap on a path instead of its usual place | bear trap 15%, pit 40% | Guess; bear traps were 40% until the solo playtest |
-| Planted corn | 4 plots of 3 × 3 m, ripe at the start, 45 coins each | Price: doc, Crops; the rest a guess |
-| Cutting corn | 3 s hold, heard 8 m away | Guess (doc: harvesting is "a hold of a few seconds") |
-| Corn strips | 7 strips, 4-6 m wide; edges moved up to 2.5 m by noise | Guess |
+| Corn strips | 8 strips, 4-15 m wide; edges moved up to 2.5 m by noise | Guess |
+| Clear ground round each field | 2 m (`Farm.FIELD_MARGIN`) | Guess |
+| Footstep stride | 1.1 m crouching, 1.6 walking, 2.4 sprinting | Guess, slowed after the 2026-10-05 playtest |
 
 ## Playtesting
 

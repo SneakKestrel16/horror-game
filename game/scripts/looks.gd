@@ -33,12 +33,6 @@ const ITEM_PARTS := {
 		["sphere", Vector3(0, 0.12, 0.1), Vector3(0.2, 0.18, 0.2), Color(0.75, 0.45, 0.75)],
 		["box", Vector3(0, 0.3, 0), Vector3(0.05, 0.2, 0.05), Color(0.3, 0.55, 0.2)],
 	],
-	"corn":  # A bundle of ears in their husks.
-	[
-		["cylinder", Vector3(-0.07, 0.18, 0), Vector3(0.09, 0.18, 0.09), Color(0.9, 0.78, 0.3)],
-		["cylinder", Vector3(0.07, 0.18, 0), Vector3(0.09, 0.18, 0.09), Color(0.9, 0.78, 0.3)],
-		["box", Vector3(0, 0.2, 0.04), Vector3(0.24, 0.3, 0.03), Color(0.55, 0.6, 0.3)],
-	],
 	"pumpkin":
 	[
 		["sphere", Vector3(0, 0.16, 0), Vector3(0.36, 0.28, 0.36), Color(0.9, 0.45, 0.08)],

@@ -39,7 +39,7 @@ Each upgrade is for the whole team, for the rest of the run, and is bought once 
 
 | Upgrade | Price | Effect |
 | --- | --- | --- |
-| Four new plots | 60 | Clears the four overgrown plots west of the field (`Farm.LOCKED_PLOTS`). |
+| Four new plots | 60 | Clears the four overgrown plots at the far end of each field (`Farm.LOCKED_PLOTS`). |
 | Bigger watering can | 20 | A fill waters 8 plots instead of 4. |
 | Quiet watering can | 30 | Watering carries 3 m instead of 9 (`Game.NOISE`), but takes a 1.5 s hold: the doc's "slower, but the creature can't hear it as far". |
 | Oiled crowbar | 20 | Disarming a bear trap takes 2 s instead of 4, and prying yourself free 2 s instead of 3. |

@@ -20,7 +20,7 @@ The contrast between peaceful daytime farming and terrifying nights is the hook.
 
 ## The Creature: Something in the Corn
 
-You never see it clearly. It lives in the wild corn that rings the farm, a field players can’t cut down, so it always has somewhere to hide. Corn the players plant extends its hunting ground: tall crops block your view, so the crops you plant literally shape where it can hunt. Corn is the best-paying day crop and the harvest festival demands it, so the team can’t simply refuse to grow it (see Crops). It hunts with two tools: players’ own voices and the traps it sets at night.
+You never see it clearly. It lives in the wild corn that rings the farm, a field players can’t cut down or farm, so it always has somewhere to hide. Rows of it stand between the barn and the two fields, so every errand is a walk through its hunting ground (see Crops). It hunts with two tools: players’ own voices and the traps it sets at night.
 
 **What it looks like changes each run.** The host picks one of four bodies at random, so nobody knows what they are looking for: a gaunt, hunched thing in dark hide; a scarecrow in a ragged coat with a stitched sack head and ember eyes; a chained boar brute with tusks and an iron collar; or a walking corn husk, all stalks and peeled leaves round a glowing heart, that all but vanishes in the corn. The look is only skin: they all hunt the same way.
 
@@ -214,13 +214,11 @@ Prices are in coins per plot. All values are starting numbers to tune from playt
 |---|---|---|---|---|
 | Turnips | 1 day | 4 | 10 | Short and safe. Low value, steady money. |
 | Pumpkins | 2 days | 10 | 25 | Low and sprawling. Unlocks on day 2. |
-| Corn | 3 days | 15 | 45 | Tall from day 2, giving the creature cover. Needed for the festival. |
 | Moonflowers | 1 night | 25 | 70 | Night harvest only, and they glow. Unlocks on day 3. |
 
-- **Plots and labor:** The farm starts with 16 plots, and upgrades add up to 24. Planting, watering and harvesting are each a hold of a few seconds, so one player tends about 6 plots a day and nobody can work the whole farm alone. Moonflowers only grow in a 4-plot moonflower bed. Plots are the bottleneck, which makes corn the best crop per plot.
-- **The wild corn ring:** It’s always there and can’t be cleared, so growing no corn never removes the creature’s home. Ragged strips of it reach in toward the buildings and the fields, so planted corn joins it and brings its cover closer to the house, and corn stands across the ways from the barn to the field and the shed, so every errand starts with a walk through it; planted corn cut off from every strip would be an island the creature can’t reach by day (Phase 2 playtest).
-- **The festival quota:** The harvest festival buys corn, and delivering 8 plots of corn by the end of the season is part of winning.
-- **Harvesting opens the field:** Cutting a corn patch removes that cover, so when to harvest is a choice too.
+- **Plots and labor:** The farm starts with 16 plots, and upgrades add up to 24. Planting, watering and harvesting are each a hold of a few seconds, so one player tends about 6 plots a day and nobody can work the whole farm alone. Moonflowers only grow in a 4-plot moonflower bed. Plots are the bottleneck. The plots are split into two fields far apart, one out in front of the barn on the right leaving it and one on the left by the crate, with corn rows between them (2026-10-05).
+- **Corn is not a crop:** It can’t be planted, cut or sold (the player's call, 2026-10-05). The wild corn ring is always there, and ragged strips of it reach in toward the buildings and both fields, with rows filling the middle of the farm, so corn stands across every way from the barn to a field or the shed and every errand starts with a walk through it.
+- **The festival quota:** The harvest festival buys pumpkins, and delivering 8 plots of pumpkins by the end of the season is part of winning. It was corn until corn stopped being a crop; pumpkins are a stand-in until the quota is settled (Open Issues).
 
 ## Season and Numbers
 
@@ -231,7 +229,7 @@ A season is 7 days. Night 7 is the Harvest Moon, the final night. All numbers he
 - **The debt:** The farm owes the bank 1,200 coins. The team starts with 60 coins.
 - **First payment:** 400 coins due at dawn after night 3.
 - **Final payment:** The remaining 800 coins, due at dawn after the Harvest Moon.
-- **The festival cart:** On the Harvest Moon the corn quota leaves by cart. The team loads 8 plots of corn onto the festival cart and gets it out the farm gate before dawn, under attack all night.
+- **The festival cart:** On the Harvest Moon the festival quota leaves by cart. The team loads 8 plots of pumpkins onto the festival cart and gets it out the farm gate before dawn, under attack all night.
 - **Win:** Make both payments and get the festival cart out the gate, with at least one player alive at dawn after the Harvest Moon.
 - **Lose:** Miss a payment and the bank takes the farm, ending the season. If everyone dies during the Harvest Moon, the season is also lost. A full wipe on any earlier night isn’t a loss, it just costs medical bills and farm damage.
 - **Player count:** With 2 or 3 players, payments, trap counts and the disturbance budget scale down (starting point: 70% for 2 players, 85% for 3).
@@ -246,7 +244,7 @@ A season is 7 days. Night 7 is the Harvest Moon, the final night. All numbers he
 
 | Day | Daytime disturbances | Traps set that night | Voice | New this day |
 |---|---|---|---|---|
-| 1 | 1 | 2 bear traps, 1 pit | Exact clips | Turnips and corn |
+| 1 | 1 | 2 bear traps, 1 pit | Exact clips | Turnips |
 | 2 | 1 | 2 bear traps, 2 pits | Exact clips | Pumpkins |
 | 3 | 2 | 3 bear traps, 2 pits | Exact clips | Moonflowers; marks start; first payment at dawn |
 | 4 | 2 | 3 bear traps, 3 pits | Spliced clips | Mimicry gets more convincing |
@@ -257,7 +255,7 @@ A season is 7 days. Night 7 is the Harvest Moon, the final night. All numbers he
 ### Length and Saving
 
 - **Dawn saves:** The host’s game saves at every dawn, so a season can be played over several evenings.
-- **Short season:** A 3-day option for a single sitting, with the debt and corn quota scaled down.
+- **Short season:** A 3-day option for a single sitting, with the debt and festival quota scaled down.
 
 ### The Next Season
 
@@ -265,7 +263,7 @@ Upgrades and plots carry into the next season. The debt grows, and each new seas
 
 ### Economy Check
 
-The [Farm Economy Simulator](Farm_Economy_Simulator.xlsx) spreadsheet tests the money side of this doc: crops, plots, labor, payments, the medical bill and the corn quota. Its sheets are **Inputs** (every number here, to change), **Season Plan** (plan seven days of planting and deaths; it flags broken rules and says whether the season is won), **Crop Value** and **Player Scaling**.
+The [Farm Economy Simulator](Farm_Economy_Simulator.xlsx) spreadsheet tests the money side of this doc: crops, plots, labor, payments, the medical bill and the festival quota (it still models corn as a crop and the quota as corn; it predates corn leaving the crops). Its sheets are **Inputs** (every number here, to change), **Season Plan** (plan seven days of planting and deaths; it flags broken rules and says whether the season is won), **Crop Value** and **Player Scaling**.
 
 It has to assume what this doc doesn’t pin down:
 
@@ -305,7 +303,7 @@ A first set is built ahead of Phase 4: a store at the shipping crate selling see
 
 - **Noise:** Tractors, watering cans, and the barn door all make sound. Fast tools are loud; quiet tools are slow.
 - **Light:** Lanterns help you work at night but make you visible from far away.
-- **Crop risk vs. reward:** Moonflowers pay the most but have to be picked in the dark, and corn pays well but gives the creature cover.
+- **Crop risk vs. reward:** Moonflowers pay the most but have to be picked in the dark, and the far field means a long walk through the corn.
 - **Fences and scarecrows as defense:** You build up your farm’s protection over time, like a light tower-defense layer.
 - **Splitting up:** One player waters the far field, one checks the traps, one sells at the stand. The farm is too big for a group to stay together.
 
@@ -332,11 +330,11 @@ A review sits between each phase and the next. It starts once the phase passes i
 
 - **Phase 1 (prototype):** One small field and the shed, one day and one night, 2 players, the creature wandering and chasing by sound, bear traps and small pits in scripted spots, the generator, and the creature playing generic pre-recorded voice lines. Done when: the day feels safe, the night feels tense, and a generic voice from the corn makes a playtester walk toward it at least once. Passed after two playtests, which led to reworked lures, fuel runs and a more spread-out farm; it uses a 6-minute day because it has only one small field (see [Phase 1 prototype](phase1.md)).
 - **Review 1 (done):** Before Phase 2 adds recorded voices, the pegboard and the medical bill, it settled mimicry as a supporting hook, lobby recording, voice tells, bear trap hoarding and the cost of death (see Resolved Issues).
-- **Phase 2:** Lobby voice-line recording and live clips from proximity chat (brought forward from Phase 3 after its first solo playtest), the creature stealing bear traps from the shed and the pegboard, death with respawn at dawn and the medical bill, and up to 4 players. Done when: hearing a friend’s recorded voice from the corn fools someone, and trap sweeps feel worth doing. Built in `game/` over two days and two nights. Solo playtests added corn strips reaching into the farm and a planted corn patch (see Resolved Issues); it still needs a playtest with 2-4 people on their own machines, and what is left before Review 2 is the checklist in [Phase 2](phase2.md#checklist).
+- **Phase 2:** Lobby voice-line recording and live clips from proximity chat (brought forward from Phase 3 after its first solo playtest), the creature stealing bear traps from the shed and the pegboard, death with respawn at dawn and the medical bill, and up to 4 players. Done when: hearing a friend’s recorded voice from the corn fools someone, and trap sweeps feel worth doing. Built in `game/` over two days and two nights. Solo playtests added corn strips reaching into the farm, then split the plots into two fields with corn rows between them (see Resolved Issues); it still needs a playtest with 2-4 people on their own machines, and what is left before Review 2 is the checklist in [Phase 2](phase2.md#checklist).
 - **Review 2:** Before Phase 3 adds ghosts and jumpscares, settle what Phase 2 turned up, check whether players could place a teammate well enough to use the position tell (see How Players Fight Back), the lantern flicker’s light (issue 5), one tracked state (6) and fuzzier day-death rules (7), and check from its playtest whether ghosts without trap sight will have enough to do. Not yet held: Phase 3 was built first on default answers to these (see [Phase 3](phase3.md#review-2-defaults)), so the review checks those defaults instead.
 - **Phase 3:** The creature favoring dead players’ voices, the Director and jumpscares, and dead players’ ghost abilities including the lantern flicker. Done when: dead players stay engaged, and the living argue over whether to trust a static voice. Built in `game/` ahead of Phase 2’s group playtest, at the player’s request; one group session can test both (see [Phase 3](phase3.md)).
 - **Review 3:** Before Phase 4 builds the season, settle what Phase 3 turned up, what “grows in” means and the first payment (issue 2), moonflowers’ share (3), player scaling (4) and the Harvest Moon’s length (8), testing each in the Farm Economy Simulator.
-- **Phase 4:** The full 7-day season with crops, the economy, upgrades, roles, payments and the corn quota. Done when: teams sometimes win and sometimes lose, and the logs show the numbers are close.
+- **Phase 4:** The full 7-day season with crops, the economy, upgrades, roles, payments and the festival quota. Done when: teams sometimes win and sometimes lose, and the logs show the numbers are close.
 - **Review 4:** Tune the numbers from the Phase 4 logs (issue 9), pick the fourth role once teams have tried both (10), and settle whatever is still open before calling the game feature-complete.
 - **Fake it first:** Scripted trap spots and simple timers can stand in for smart AI until the core loop is proven.
 
@@ -365,12 +363,12 @@ How the earlier open issues were settled, and where to find each answer.
 
 - **Players might not use in-game voice chat:** Lobby voice lines, sound mimicry, and giving in-game voice jobs Discord can’t do. Discord groups weaken mimicry but don’t break the game. See Keeping Players on In-Game Voice.
 - **The day was getting crowded:** Daytime Threats was cut down to a small pool with a daily budget, and the shed check is now a one-glance pegboard. See Daytime Threats.
-- **Players could just not plant corn:** A permanent wild corn ring, corn as the best day crop, and a festival corn quota. See Crops.
+- **Players could just not plant corn:** Corn is no longer a crop at all: the permanent wild corn ring and its rows through the farm keep the creature's cover. See Crops.
 - **Nights needed a reason to go out:** The generator, farm damage when nobody is outside, Moonflowers, and the creature testing the barn doors late in the season. See Nights.
 - **Dead players’ help might be useless:** The lantern flicker, a signal the creature can never fake. See Death and Respawning.
 - **The medical bill could cause a death spiral:** A cheaper first death, a per-night cap, and a floor that always leaves seed money. See Season and Numbers.
 - **A trapped player alone was stuck:** Players can now free themselves from bear traps at the cost of a slow, and pits are now small and only make you drop items. See Night Traps.
-- **The win and lose conditions were vague:** A 7-day season, two debt payments and a corn quota. See Season and Numbers.
+- **The win and lose conditions were vague:** A 7-day season, two debt payments and a festival quota. See Season and Numbers.
 - **Death cost too little** (Review 1): a bill of 50 per death (first 25, cap 120 a night) and, after a full wipe, double farm damage and extra traps. See Medical Bill and The Core Loop.
 - **Bear traps could be hoarded** (Review 1): any trap off the pegboard at nightfall is the creature’s, wherever it is. See The Tool Shed.
 - **Voice tells could be learned** (Review 1): random, subtle tells, some fakes with none, and radios that jam near the creature. See How Players Fight Back.
@@ -388,7 +386,7 @@ How the earlier open issues were settled, and where to find each answer.
 - **Lures repeated from one spot** (Phase 1 playtest): calls now move with the target, avoid recent spots and lead on whoever approaches. See [Phase 1 prototype](phase1.md).
 - **The lit barn was a sure refuge** (Phase 1 playtest): fuel lasts too little to hide all night, and the creature waits along the fuel run. See Nights and [Phase 1 prototype](phase1.md).
 - **Lobby lines came out calm** (Phase 2 solo playtest): people read them in a neutral voice whatever the prompt. The creature now mostly calls with live clips of what players said over voice chat, brought forward from Phase 3; lobby lines are optional. See Build Notes and [Phase 2](phase2.md).
-- **Nothing drew players into the corn** (Phase 2 solo playtest): the wild corn was a plain ring, and planted corn in the field would have been an island the creature couldn't reach by day. Ragged strips now join the ring to the buildings and the planted corn, which sells for far more than turnips. See Crops and [Phase 2](phase2.md).
+- **Nothing drew players into the corn** (Phase 2 solo playtest): the wild corn was a plain ring. Ragged strips now join the ring to the buildings, and the two fields sit on either side of corn rows in the middle of the farm. See Crops and [Phase 2](phase2.md).
 - **The creature ignored the lights going out** (Phase 2 solo playtest): it kept digging a pit 10 m away. The generator dying is now a noise the whole farm hears, and it comes to look. See Nights and [Phase 2](phase2.md).
 
 ## Open Issues
@@ -405,7 +403,7 @@ The doc never says whether “grows in 1 day” means plant today and sell tomor
 
 ### 3. Moonflowers carry the whole economy
 
-Moonflowers earn about 45 per plot per night, against 10 for corn and 6 for turnips, and over a season they can cover about three-quarters of a 4-player debt on their own. Daytime farming, the cozy part meant to build stakes, then matters little for money. That may be intended, as a strong push to go out at night; if not, cut moonflower profit or raise day-crop value. Needs settling before Phase 4.
+Moonflowers earn about 45 per plot per night, against 6 for turnips (figures from the simulator, which still has corn at 10), and over a season they can cover about three-quarters of a 4-player debt on their own. Daytime farming, the cozy part meant to build stakes, then matters little for money. That may be intended, as a strong push to go out at night; if not, cut moonflower profit or raise day-crop value. Needs settling before Phase 4.
 
 ### 4. Player-count scaling runs backwards
 

@@ -1,18 +1,18 @@
 class_name Farm
 extends RefCounted
-## The farm: one small field of turnips, a planted corn patch, the barn, the
-## tool shed, the generator, and the wild corn ring around it all with ragged
-## strips reaching in. The layout is fixed, so every peer builds the same farm
-## without being told anything; only harvesting the planted corn changes it.
+## The farm: two small fields far apart, the barn, the tool shed, the
+## generator, and the wild corn ring around it all with ragged strips reaching
+## in. The layout is fixed, so every peer builds the same farm without being
+## told anything.
 ## Also answers questions about it for the creature: where the corn is, how
 ## much corn lies between two points, and a walking grid around the buildings.
 ##
 ## The corn is a map of one-metre cells. A plain ring left nothing in the corn
-## worth going in for, and planted corn in the field would have been an island
-## the creature could not reach by day (2026-10-04 playtest), so the strips
-## join the ring to the planted patch and bring cover near the barn, the
-## generator and the field. Two more stand across the ways out of the barn, so
-## reaching the field or the shed means walking through corn.
+## worth going in for (2026-10-04 playtest), so the strips bring cover near the
+## barn, the generator and the fields. Two more stand across the ways out of
+## the barn, so reaching a field or the shed means walking through corn, and
+## corn fills the middle of the farm where the one field was (2026-10-05), with
+## a field on either side of it.
 
 ## The farm is spread out so every errand is a walk in the open: the second
 ## Phase 1 playtest found everything so close together that the night was easy.
@@ -25,11 +25,12 @@ const CORN_NEAR := 30.0  ## Detailed stalks within this; plain ones past it.
 ## Strips of wild corn reaching in from the ring (x, z, width, depth), clear of
 ## the buildings, the barn door and the paths' ends.
 const CORN_STRIPS: Array[Rect2] = [
-	Rect2(11, 10, 19, 6),  # East of the field, through the planted corn.
+	Rect2(-9, 8, 15, 13),  # Rows in the middle of the farm, where the old field was.
+	Rect2(6, 17, 24, 5),  # From the middle out east, behind the east field.
 	Rect2(13, -19, 17, 5),  # Toward the generator.
 	Rect2(-16, -30, 6, 6),  # Behind the barn's west corner.
-	Rect2(-30, 10, 14, 5),  # West of the field and the pump.
-	Rect2(-3, 21, 6, 9),  # Behind the field.
+	Rect2(-30, 7, 12, 4),  # In front of the west field.
+	Rect2(-3, 21, 6, 9),  # From the middle back to the ring.
 	# Across every way out of the barn, so each errand starts with a walk through
 	# corn (2026-10-05): a band between the barn and the field, joined to the ring
 	# in the east, and a screen between the barn and the shed and fuel drum.
@@ -37,13 +38,6 @@ const CORN_STRIPS: Array[Rect2] = [
 	Rect2(-18, -20, 4, 20),
 ]
 const CORN_RAGGED := 2.5  ## Metres noise moves the strips' and the ring's edges in or out.
-## The planted corn: four ripe plots east of the field, joined to the ring by
-## the east strip. Corn takes 3 days to grow (design doc, Crops), longer than
-## Phase 2's two days, so it starts ripe and does not come back once cut.
-const CORN_PLOTS: Array[Vector3] = [
-	Vector3(9.5, 0, 11.5), Vector3(12.5, 0, 11.5), Vector3(9.5, 0, 14.5), Vector3(12.5, 0, 14.5)
-]
-const CORN_PLOT_SIZE := 3.0
 const EDGE_DEPTHS := 6  ## Corn cells this many steps in or fewer count as near the edge.
 
 const BARN := Rect2(-6.0, -22.0, 12.0, 10.0)  ## x, z, width, depth; door on the +z side.
@@ -63,33 +57,39 @@ const SHED_DOOR_OUT := Vector3(-23.0, 0, 0.6)
 const PEGBOARD := Vector3(-23.0, 1.3, -3.66)
 const GENERATOR := Vector3(7.4, 0, -13.4)
 const FUEL_DRUM := Vector3(-19.8, 0, -2.6)
-const PUMP := Vector3(-6.0, 0, 7.0)
+const PUMP := Vector3(-18.5, 0, 16.6)  ## By the west field; the east one is a long carry.
 const CRATE := Vector3(18.0, 0, 6.0)
 const PLOT_SIZE := 2.2
-## The small field: four columns by three rows of plots, and a fifth column
-## to the west, overgrown (the last LOCKED_PLOTS) until the team buys it (Store).
+## Two fields of four columns by two rows, one on each side of the corn in the
+## middle (2026-10-05): the west one far out in front of the barn (on the right
+## leaving it), the east one by the crate (on the left). The first four start
+## ripe (Chores), two in each; each field's outer column is overgrown (the last
+## LOCKED_PLOTS) until the team buys it (Store).
 const PLOTS: Array[Vector3] = [
-	Vector3(-4.5, 0, 10),
-	Vector3(-1.5, 0, 10),
-	Vector3(1.5, 0, 10),
-	Vector3(4.5, 0, 10),
-	Vector3(-4.5, 0, 13),
-	Vector3(-1.5, 0, 13),
-	Vector3(1.5, 0, 13),
-	Vector3(4.5, 0, 13),
-	Vector3(-4.5, 0, 16),
-	Vector3(-1.5, 0, 16),
-	Vector3(1.5, 0, 16),
-	Vector3(4.5, 0, 16),
-	Vector3(-7.5, 0, 10),
-	Vector3(-7.5, 0, 13),
-	Vector3(-7.5, 0, 16),
-	Vector3(-7.5, 0, 19),
+	Vector3(-14, 0, 19),
+	Vector3(-14, 0, 22),
+	Vector3(13, 0, 10),
+	Vector3(13, 0, 13),
+	Vector3(-17, 0, 19),
+	Vector3(-17, 0, 22),
+	Vector3(-20, 0, 19),
+	Vector3(-20, 0, 22),
+	Vector3(16, 0, 10),
+	Vector3(16, 0, 13),
+	Vector3(19, 0, 10),
+	Vector3(19, 0, 13),
+	Vector3(-23, 0, 19),
+	Vector3(-23, 0, 22),
+	Vector3(22, 0, 10),
+	Vector3(22, 0, 13),
 ]
 const LOCKED_PLOTS := 4
+## Ground kept clear of corn round each field, so the strips' ragged edges never
+## grow over a plot.
+const FIELD_MARGIN := 2.0
 ## Where the tools start. Kinds are game.gd's item kinds.
 const ITEMS: Array[Dictionary] = [
-	{"kind": "watering_can", "position": Vector3(-5.0, 0, 8.0)},
+	{"kind": "watering_can", "position": Vector3(-17.5, 0, 16.3)},
 	{"kind": "shovel", "position": Vector3(-24.2, 0, -3.1)},
 	{"kind": "crowbar", "position": Vector3(-22.0, 0, -3.3)},
 	{"kind": "fuel_can", "position": Vector3(-20.0, 0, -1.2)},
@@ -114,14 +114,13 @@ static var _deep: Array[Vector2i] = []  ## Corn cells at least 2 steps in.
 var grid := AStarGrid2D.new()
 var corn_grid := AStarGrid2D.new()  ## Only the corn: how it moves by day.
 var barn_lights: Array[OmniLight3D] = []
-var corn_patches: Array[Node3D] = []  ## Each planted corn plot's stalks.
 var _barn_lit := false
 var _haunted_until := {}  ## Barn lamp index -> msec a ghost's flicker lasts until.
 
 
 func _init() -> void:
 	_grow_corn()
-	trap_spots()  # Cached from the corn as it starts, before any is cut.
+	trap_spots()
 	grid.region = GRID
 	grid.cell_size = Vector2.ONE
 	grid.diagonal_mode = AStarGrid2D.DIAGONAL_MODE_ONLY_IF_NO_OBSTACLES
@@ -207,16 +206,6 @@ func build(parent: Node3D) -> void:
 		wall.position = Vector3(0, 3, HALF + 0.5).rotated(Vector3.UP, side * PI / 2.0)
 		root.add_child(wall)
 	root.add_child(_corn())
-	for i in CORN_PLOTS.size():
-		var rect := corn_plot_rect(i)
-		_add_ground(
-			root,
-			Vector3(rect.get_center().x, -0.03, rect.get_center().y),
-			Vector3(rect.size.x, 0.1, rect.size.y),
-			"soil"
-		)
-		corn_patches.append(_corn_patch(i))
-		root.add_child(corn_patches[i])
 	root.add_child(_trees())
 
 
@@ -267,25 +256,18 @@ static func in_corn(point: Vector3) -> bool:
 	return _corn_cells[_index(cell)] == 1
 
 
-## Host and peers: a planted corn plot was cut; it is open ground from now on.
-func cut_corn(index: int) -> void:
-	var rect := corn_plot_rect(index)
-	for x in range(floori(rect.position.x), ceili(rect.end.x)):
-		for z in range(floori(rect.position.y), ceili(rect.end.y)):
-			var cell := Vector2i(x, z)
-			if rect.has_point(Vector2(x + 0.5, z + 0.5)):
-				_corn_cells[_index(cell)] = 0
-				corn_grid.set_point_solid(cell)
-	_measure_corn()
-	if index < corn_patches.size():
-		corn_patches[index].visible = false
-
-
-## A planted corn plot's ground (x, z).
-static func corn_plot_rect(index: int) -> Rect2:
-	var at := CORN_PLOTS[index]
-	var half := CORN_PLOT_SIZE / 2.0
-	return Rect2(at.x - half, at.z - half, CORN_PLOT_SIZE, CORN_PLOT_SIZE)
+## The ground each field's plots cover (x, z): the west field, then the east.
+static func fields() -> Array[Rect2]:
+	var rects: Array[Rect2] = []
+	var half := PLOT_SIZE / 2.0
+	for west: bool in [true, false]:
+		var rect := Rect2()
+		for plot in PLOTS:
+			if (plot.x < 0.0) == west:
+				var ground := Rect2(plot.x - half, plot.z - half, PLOT_SIZE, PLOT_SIZE)
+				rect = ground if rect.size == Vector2.ZERO else rect.merge(ground)
+		rects.append(rect)
+	return rects
 
 
 static func _index(cell: Vector2i) -> int:
@@ -293,12 +275,15 @@ static func _index(cell: Vector2i) -> int:
 
 
 ## Fills the corn map: the ring and the strips, their edges roughened by
-## noise, and the planted plots.
+## noise, and none on the fields.
 static func _grow_corn() -> void:
 	var noise := FastNoiseLite.new()
 	noise.seed = 3  # Fixed, so every peer grows the same corn.
 	noise.frequency = 0.12
 	_corn_cells.resize(GRID.size.x * GRID.size.y)
+	var clearings: Array[Rect2] = []
+	for field in fields():
+		clearings.append(field.grow(FIELD_MARGIN))
 	for x in range(GRID.position.x, GRID.end.x):
 		for z in range(GRID.position.y, GRID.end.y):
 			var at := Vector2(x + 0.5, z + 0.5)
@@ -307,8 +292,8 @@ static func _grow_corn() -> void:
 			var corn := ring >= CORN_IN + rough and ring <= CORN_OUT
 			for strip in CORN_STRIPS:
 				corn = corn or _signed_distance(strip, at) <= rough
-			for i in CORN_PLOTS.size():
-				corn = corn or corn_plot_rect(i).has_point(at)
+			for clearing in clearings:
+				corn = corn and not clearing.has_point(at)
 			_corn_cells[_index(Vector2i(x, z))] = 1 if corn else 0
 	_measure_corn()
 
@@ -393,13 +378,17 @@ static func corn_edge_near(point: Vector3, depth := 1.5) -> Vector3:
 
 
 ## Candidate trap spots, built once: {"corn": just inside the wild corn on the
-## farm side, "path": along the ways between the barn, shed, field, generator
-## and crate, "rows": between the field's plots}. None near a landmark.
+## farm side, "path": along the ways between the barn, shed, fields, generator
+## and crate, "rows": between the fields' plots}. None near a landmark.
 static func trap_spots() -> Dictionary:
 	if not _trap_spots.is_empty():
 		return _trap_spots
 	var door := Vector3(0, 0, BARN.end.y + 1.5)
-	var field := Vector3(0, 0, 13)
+	var centres: Array[Vector3] = []
+	for rect in fields():
+		centres.append(Vector3(rect.get_center().x, 0, rect.get_center().y))
+	var west := centres[0]
+	var east := centres[1]
 	var corn: Array[Vector3] = []
 	for cell in _edge:
 		# One or two steps in, about one cell in three.
@@ -408,8 +397,9 @@ static func trap_spots() -> Dictionary:
 	var path: Array[Vector3] = []
 	for way: Array in [
 		[door, SHED_DOOR_OUT],
-		[door, field],
-		[field, CRATE],
+		[door, west],
+		[door, east],
+		[east, CRATE],
 		[door, GENERATOR],
 		[SHED_DOOR_OUT, PUMP]
 	]:
@@ -419,9 +409,11 @@ static func trap_spots() -> Dictionary:
 		for i in range(1, steps):
 			path.append(from.lerp(to, float(i) / steps))
 	var rows: Array[Vector3] = []
-	for x: float in [-3.0, 0.0, 3.0]:
-		for z: float in [10.0, 11.5, 13.0, 14.5, 16.0]:
-			rows.append(Vector3(x, 0, z))
+	for centre in centres:  # In the gaps between the columns and between the rows.
+		for column in range(-3, 4):
+			for row in range(-1, 2):
+				if row == 0 or column % 2 == 0:
+					rows.append(centre + Vector3(column * 1.5, 0, row * 1.5))
 	var landmarks: Array[Vector3] = [door, SHED_DOOR_OUT, GENERATOR, FUEL_DRUM, PUMP, CRATE, SPAWN]
 	var clear := func(at: Vector3) -> bool:
 		return landmarks.all(func(mark: Vector3) -> bool: return mark.distance_to(at) > 3.0)
@@ -575,7 +567,7 @@ func _corn() -> Node3D:
 		while x <= CORN_OUT:
 			# Jittered about half a step each way, so the rows read as wild, not planted.
 			var at := Vector3(x + rng.randf_range(-0.22, 0.22), 0, z + rng.randf_range(-0.3, 0.3))
-			if in_corn(at) and _corn_plot_at(at) < 0:
+			if in_corn(at):
 				var scale := rng.randf_range(0.8, 1.2)
 				var basis := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(1, scale, 1))
 				basis = basis.rotated(Vector3.RIGHT, rng.randf_range(-0.1, 0.1))
@@ -608,31 +600,6 @@ func _corn() -> Node3D:
 				instance.visibility_range_begin_margin = 2.0
 			corn.add_child(instance)
 	return corn
-
-
-## One planted plot's corn: straight, even rows, greener than the wild corn.
-func _corn_patch(index: int) -> MultiMeshInstance3D:
-	var rect := corn_plot_rect(index).grow(-0.2)
-	var spots: Array[Transform3D] = []
-	var colours: Array[Color] = []
-	var z := rect.position.y
-	while z <= rect.end.y:
-		var x := rect.position.x
-		while x <= rect.end.x:
-			spots.append(Transform3D(Basis(Vector3.UP, (x + z) * 2.0), Vector3(x, 0, z)))
-			colours.append(Color(0.36, 0.6, 0.2))
-			x += 0.5
-		z += 0.75
-	var centre := Vector3(rect.get_center().x, 0, rect.get_center().y)
-	return _stalks(spots, colours, Dress.mesh("corn", true), centre)
-
-
-## Which planted corn plot point is in, or -1.
-static func _corn_plot_at(point: Vector3) -> int:
-	for i in CORN_PLOTS.size():
-		if corn_plot_rect(i).has_point(Vector2(point.x, point.z)):
-			return i
-	return -1
 
 
 ## Stalks at spots (world positions) as one MultiMesh placed at centre, each

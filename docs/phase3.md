@@ -30,7 +30,7 @@ shows the meter.
   picked at random so the pattern can't be learned. The fuller it is, the shorter the gaps
   between calls and, at night, the more the creature prowls near players.
 - **Jumpscares** (design doc, Scare Moments), each logged:
-  - *The lunge*: at a player kneeling within 4 m of the corn (disarming a trap, cutting corn),
+  - *The lunge*: at a player kneeling within 4 m of the corn (disarming a trap),
     the stalks part beside them. Their screen cuts to black before the creature is in full view,
     they are knocked down, drop what they carry, and are wounded until dawn; it pulls back.
   - *The stare*: a player caught in a bear trap looks up to see it standing in the rows ahead,

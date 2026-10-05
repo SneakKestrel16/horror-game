@@ -182,13 +182,13 @@ func _check_lobby() -> void:
 
 func _check_routes() -> void:
 	var farm := _game.farm
-	var across := farm.route(Vector3(0, 0, 40), Vector3(0, 0, 13))
+	var across := farm.route(Vector3(0, 0, 40), Farm.PLOTS[0])
 	_check(not across.is_empty(), "a route leads from the corn to the field")
 	var around := farm.route(Vector3(0, 0, 40), Vector3(40, 0, 0), true)
 	var in_corn := around.all(func(point: Vector3) -> bool: return Farm.in_corn(point))
 	_check(not around.is_empty() and in_corn, "a corn-only route goes round the ring")
-	# By day the creature can reach the planted corn and the generator unseen.
-	for goal: Vector3 in [Farm.CORN_PLOTS[0], Vector3(14, 0, -16)]:
+	# By day the creature can reach the middle rows and the generator unseen.
+	for goal: Vector3 in [Vector3(-2, 0, 14), Vector3(14, 0, -16)]:
 		var covered := farm.route(Vector3(40, 0, 0), goal, true)
 		var ends_there := not covered.is_empty() and covered[-1].distance_to(goal) < 1.5
 		_check(
@@ -290,18 +290,10 @@ func _check_chores() -> void:
 	_check(
 		_game.coins == Chores.PRICES["turnip"] and _held() == "", "sold them for %d" % _game.coins
 	)
-	# The planted corn: cut a plot, carry it out, sell it. Cut corn is open ground.
-	var plot := Farm.CORN_PLOTS[0]
-	_check(Farm.in_corn(plot), "the planted corn is corn")
-	_put(_player, plot + Vector3(0, 0, 1))
-	await _ask("cut", 0)
-	_check(_held() == "corn", "cut the corn")
-	_check(not Farm.in_corn(plot), "cut corn is open ground")
-	await _ask("sell", -1)
-	_check(
-		_game.coins == Chores.PRICES["turnip"] + Chores.PRICES["corn"],
-		"sold the corn for %d" % Chores.PRICES["corn"]
-	)
+	# Corn is cover, not a crop: none grows on the fields, and rows fill the middle.
+	for plot in Farm.PLOTS:
+		_check(not Farm.in_corn(plot), "no corn on plot %s" % plot)
+	_check(Farm.in_corn(Vector3(-2, 0, 14)), "corn rows where the old field was")
 
 
 ## The store at the crate: refuses the broke, sells seed packs into empty

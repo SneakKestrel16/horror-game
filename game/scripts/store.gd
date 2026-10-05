@@ -20,7 +20,7 @@ const SEEDS := {
 const SEEDS_PER_PACK := {"turnip_seeds": 4, "pumpkin_seeds": 4, "moonflower_seeds": 2}
 ## Upgrades: id -> [price, name, what it does].
 const UPGRADES := {
-	"plots": [60, "Four new plots", "Clears the overgrown plots west of the field."],
+	"plots": [60, "Four new plots", "Clears the overgrown plots at the far end of each field."],
 	"big_can": [20, "Bigger watering can", "Waters 8 plots a fill instead of 4."],
 	"quiet_can":
 	[

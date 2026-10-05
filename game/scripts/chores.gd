@@ -21,18 +21,14 @@ const NIGHT_CROPS: Array[String] = ["moonflower"]
 const CAN_WATER := 4  ## Plots one watering can full waters.
 const BIG_CAN := 8  ## With the bigger watering can (Store).
 ## Per plot. Design doc, Crops.
-const PRICES := {"turnip": 10, "pumpkin": 25, "corn": 45, "moonflower": 70}
-const CROP_NAMES := {
-	"turnip": "turnips", "pumpkin": "pumpkin", "corn": "corn", "moonflower": "moonflowers"
-}
+const PRICES := {"turnip": 10, "pumpkin": 25, "moonflower": 70}
+const CROP_NAMES := {"turnip": "turnips", "pumpkin": "pumpkin", "moonflower": "moonflowers"}
 const USE_RANGE := 2.0
 const LOOK_ANGLE := 0.7  ## Radians (40°) either side of where a player faces.
 const TRAP_LOOK_ANGLE := 0.45  ## Traps are only found by looking right at them (26°).
 ## Seconds to hold E. Prying is quicker with a friend (design doc, Night Traps).
-## Cutting corn and planting are guesses: the doc's "a hold of a few seconds".
-const HOLD := {
-	"disarm": 4.0, "fill": 3.0, "pry": 3.0, "help": 1.5, "refuel": 3.0, "cut": 3.0, "plant": 1.5
-}
+## Planting is a guess: the doc's "a hold of a few seconds".
+const HOLD := {"disarm": 4.0, "fill": 3.0, "pry": 3.0, "help": 1.5, "refuel": 3.0, "plant": 1.5}
 ## Holds the upgrades change (Store): the oiled crowbar, the quiet watering can.
 const UPGRADED_HOLD := {"disarm": 2.0, "pry": 2.0, "water": 1.5}
 const ITEM_NAMES := {
@@ -42,7 +38,6 @@ const ITEM_NAMES := {
 	"fuel_can": "fuel can",
 	"turnip": "turnip",
 	"pumpkin": "pumpkin",
-	"corn": "corn",
 	"moonflower": "moonflowers",
 	"bear_trap": "bear trap",
 	"turnip_seeds": "turnip seeds",
@@ -55,7 +50,6 @@ var game: Game
 var items: Array[Dictionary] = []
 var plots: Array[int] = []
 var crops: Array[String] = []  ## What each plot grows (or last grew).
-var corn: Array[int] = []  ## Each planted corn plot's Stage: RIPE, or EMPTY once cut.
 var _grow_left: Array[float] = []  ## Host only.
 var _hold_key := ""
 var _hold_time := 0.0
@@ -134,7 +128,7 @@ static func hold_for(action: String) -> float:
 
 
 func snapshot() -> Dictionary:
-	return {"items": items, "plots": plots, "crops": crops, "corn": corn}
+	return {"items": items, "plots": plots, "crops": crops}
 
 
 ## Client: takes the host's tools and crops on joining.
@@ -147,9 +141,6 @@ func apply_snapshot(data: Dictionary) -> void:
 	var host_crops: Array = data["crops"]
 	for i in host_plots.size():
 		_set_plot(i, host_plots[i], host_crops[i])
-	var host_corn: Array = data["corn"]
-	for i in host_corn.size():
-		_set_corn(i, host_corn[i])
 
 
 func _ready() -> void:
@@ -177,8 +168,6 @@ func _build_world_state() -> void:
 		game.add_child(node)
 		_plot_nodes.append(node)
 		Looks.plot(node, plots[i], crops[i])
-	for i in Farm.CORN_PLOTS.size():
-		corn.append(Stage.RIPE)
 
 
 ## What E would do for player right now: {text, action, index, hold}, or an
@@ -283,11 +272,6 @@ func _plot_action(player: Player, kind: String, charge: int) -> Dictionary:
 				action = "harvest" if kind == "" else ""
 		if text != "":
 			return _act(text, action, i, hold)
-	for i in corn.size():
-		if corn[i] == Stage.RIPE and _looking_at(player, Farm.CORN_PLOTS[i]):
-			if kind != "":
-				return _act("Ripe corn. Hands full (G to drop).", "", i, 0.0)
-			return _act("Hold E to cut the corn", "cut", i, HOLD["cut"])
 	return _act("", "", -1, 0.0)
 
 
@@ -431,12 +415,6 @@ func _request(action: String, index: int) -> void:
 			if kind == "watering_can":
 				_sync_item(held, peer, at, can_size())
 				game.make_noise("pump", Farm.PUMP, "splash")
-		"cut":
-			if held < 0 and index >= 0 and index < corn.size() and corn[index] == Stage.RIPE:
-				_set_corn.rpc(index, Stage.EMPTY)
-				_sync_item(items.size(), peer, at, 0, "corn")
-				game.make_noise("cut", Farm.CORN_PLOTS[index], "rustle")
-				game.log_event("%s cut corn plot %d" % [player.label(), index + 1])
 		"sell":
 			if kind in PRICES:
 				_sync_item(held, -1, at, 0)
@@ -551,14 +529,6 @@ func _set_plot(index: int, stage: int, crop: String) -> void:
 ## Whether index is a plot at stage (a request may name any index).
 func _plot_is(index: int, stage: int) -> bool:
 	return index >= 0 and index < plots.size() and plots[index] == stage
-
-
-## Cut corn is open ground for good: no cover, and the creature can't walk it by day.
-@rpc("authority", "call_local", "reliable")
-func _set_corn(index: int, stage: int) -> void:
-	if corn[index] != stage and stage == Stage.EMPTY:
-		game.farm.cut_corn(index)
-	corn[index] = stage
 
 
 func _place_items() -> void:

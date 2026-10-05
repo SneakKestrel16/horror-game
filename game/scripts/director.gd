@@ -4,7 +4,7 @@ extends Node
 ## that fills through quiet stretches and drops after a scare, a chase, a kill
 ## or a call. When it is full by day, it springs a scare on someone it can
 ## reach, picked at random so players can't learn the pattern:
-## - a lunge at a player kneeling by the corn (disarming, cutting corn): the
+## - a lunge at a player kneeling by the corn (disarming a trap): the
 ##   screen cuts to black before the creature is in full view, they drop what
 ##   they carry and are wounded until dawn;
 ## - a stare at a player in a bear trap: it stands in the rows, watching;

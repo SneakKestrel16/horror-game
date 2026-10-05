@@ -19,8 +19,7 @@ Traps hit while building the game, with what fixed them.
   broken class reports it, and the real error is not among them. A static var and a function
   with the same name (`_corn`) did it; `--check-only -s` on the broken script names the cause.
 - **The corn map is static,** shared by everything that asks `Farm.in_corn`. Each new `Farm`
-  regrows it, and cutting planted corn changes it, so a test that cuts corn changes the map for
-  the rest of the run.
+  regrows it, so a test that changes the cells changes the map for the rest of the run.
 - **Quitting while sounds play leaks their playbacks**, and `check.sh` fails on the `WARNING`.
   The smoke test stops every sound player, frees the game and waits 10 frames before quitting;
   waiting 3 frames without stopping them still leaked now and then.
@@ -114,6 +113,9 @@ Traps hit while building the game, with what fixed them.
   host relays every voice to everyone else, so with four people talking at once the host sends
   about 0.45 MB/s (its own voice to three, each other voice to two). Fine on a LAN; inference:
   may be tight on a slow home upload. Lower `VoiceCodec.RATE` before going back to mu-law.
+- **Footstep rate is set by distance, not time.** `Player._footsteps` plays a step every
+  `STRIDE[gait]` metres walked, so slowing the steps means lengthening the stride; a timer
+  would put steps out of time with the walk when the speed changes.
 
 ## Models and textures
 
