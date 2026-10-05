@@ -226,7 +226,7 @@ func _place_action(player: Player, kind: String, charge: int) -> Dictionary:
 			text = "E: sell the %s (+%d)" % [kind + ("s" if kind == "turnip" else ""), PRICES[kind]]
 			action = "sell"
 	elif _looking_at(player, Farm.FUEL_DRUM) and kind == "fuel_can" and charge == 0:
-		text = "E: fill the game.fuel can"
+		text = "E: fill the fuel can"
 		action = "fuel"
 	elif _looking_at(player, Farm.GENERATOR):
 		text = "Generator: %d%% fuel" % roundi(game.fuel * 100)

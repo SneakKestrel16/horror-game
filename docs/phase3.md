@@ -99,6 +99,22 @@ static voice.**
    the living whether they trusted one, and whether a flicker settled it.
 5. Ask whether the day scares were spaced well, and whether being wounded changed the night.
 
+### Solo dev session (4 October 2026)
+
+One person on two `--dev` windows on one machine, with the dev panel's skips (host log
+`2026-10-04T21-26-19.log`).
+
+- Every scare fired from the dev panel and logged: whisper, stare, crow, and a lunge that wounded
+  Farmer 1 until dawn. The wounded farmer was caught 22 s into the first night.
+- The ghost flickered a barn lamp and rustled the corn; both were logged.
+- Both days and the dawn screen ran without an error; the medical bill (25) was counted.
+- No call came "through static": nobody recorded a clip, so the creature had only the generic
+  voices. Dead voices still need a session with recordings.
+- Found: the fuel drum prompt read "E: fill the game.fuel can", a bad rename in Phase 2. Fixed.
+
+Inference: one person on two windows can't test the Build Plan's question (do the living trust a
+static voice?); that still needs the group playtest.
+
 ## Not in Phase 3
 
 The shed scare (the creature inside the shed, or the door slamming) waits for a shed door; the
