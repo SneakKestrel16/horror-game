@@ -238,10 +238,20 @@ func _check_lure() -> void:
 	_check(heard, "the creature called from the corn")
 	var voice := _game.creature.global_position
 	_check(Farm.in_corn(voice), "it called from inside the corn %s" % voice)
+	# The creature can use the player's own voice (5% of a friend's weight), which
+	# does not count as a friend's, so check whichever voice it picked.
+	var checks: Array = _game.get("_lure_checks")
+	var me := _player.get_multiplayer_authority()
+	var heard_as: String = checks[0]["heard"].get(me, "") if checks else ""
+	var own := heard_as.begins_with("%s's '" % _player.label())
 	_put(_player, _player.global_position.move_toward(voice, 7.0))
 	await _game_seconds(Game.LURE_CHECK + 1.0)
 	_check(_game.get("_stats")["followed"] > 0, "walking toward the voice was logged")
-	_check(_game.get("_stats")["friend"] > 0, "it was a friend's recorded voice")
+	var friend: int = _game.get("_stats")["friend"]
+	if own:
+		_check(friend == 0, "the player's own voice did not count as a friend's")
+	else:
+		_check(friend > 0, "it was a friend's recorded voice (%s)" % heard_as)
 	var calls: int = _game.get("_stats")["lures"]
 	_check(calls >= 2, "it backed off and called again (%d calls)" % calls)
 	# Spots for calls in a row, all from the same player, should spread out.

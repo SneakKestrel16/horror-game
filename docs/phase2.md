@@ -73,7 +73,8 @@ check that recording and proximity chat work before anything else.
 - **Corn that reaches in, and corn worth cutting** (`scripts/farm.gd`, added after the solo
   playtest): the wild corn is a map of one-metre cells, not a square ring. Ragged strips reach
   in from the ring toward the generator, behind the barn, west of the field and behind it, and
-  east of the field into a patch of four planted corn plots. The planted corn starts ripe (it
+  east of the field into a patch of four planted corn plots. A band between the barn and the
+  field, and a screen between the barn and the shed, put corn across every way out of the barn. The planted corn starts ripe (it
   takes 3 days to grow, longer than Phase 2 lasts), is cut with a 3 s hold that the creature
   can hear, and sells for 45 against a turnip plot's 10. Bear traps hide in it like any corn.
   Cut corn is open ground for good: no cover, and no way through for the creature by day.
@@ -97,7 +98,7 @@ Phase 1's numbers still hold ([Numbers](phase1.md#numbers)); new ones:
 | Trap on a path instead of its usual place | bear trap 15%, pit 40% | Guess; bear traps were 40% until the solo playtest |
 | Planted corn | 4 plots of 3 × 3 m, ripe at the start, 45 coins each | Price: doc, Crops; the rest a guess |
 | Cutting corn | 3 s hold, heard 8 m away | Guess (doc: harvesting is "a hold of a few seconds") |
-| Corn strips | 5 strips, 5-6 m wide; edges moved up to 2.5 m by noise | Guess |
+| Corn strips | 7 strips, 4-6 m wide; edges moved up to 2.5 m by noise | Guess |
 
 ## Playtesting
 
@@ -216,6 +217,11 @@ corn strips and the C list were new.
   open grid, three corn-only) it went from 22–120 waypoints a trip and 115 re-plans, with two
   trips ending 9–13 m off and one never arriving, to 1–5 waypoints, no re-plans, and every
   trip ending at its goal. The smoke test's stays-in-the-corn check still passes.
+- **The walk to the field and the shed was all open ground** (2026-10-05, the player's request):
+  the creature only felt close at the corn's edge. A 5 m band of corn now runs from x = -18 to
+  the ring in the east between the barn door and the field, and a 4 m screen from z = -20 to the
+  band stands between the barn and the shed and fuel drum, so leaving the barn for either means
+  crossing corn, where the creature can be by day. Fuel runs now cross it too.
 - **The in-game copy sounded off at the start,** next to the recording. Every call has a tell
   (an echo, or pitch 6% off) two times in three, by design, but the log didn't say which this
   was; it does now. Inference: the start also carries the push-to-talk key's click and can begin

@@ -61,6 +61,9 @@ Traps hit while building the game, with what fixed them.
 - **The last living player dying ends the night, or the day.** By day too: alone, a day death
   skips to the next morning, and on the last day it ends the run. Tests that kill the only
   player must expect that.
+- **A lure can use the listener's own voice** (5% of a friend's weight), which doesn't count as
+  a friend's. The smoke test asserted a friend's voice every time and failed about one run in
+  twenty; it now reads which voice the call used from `_lure_checks` and checks that case.
 
 ## Tooling
 

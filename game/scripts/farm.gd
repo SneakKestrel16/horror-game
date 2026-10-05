@@ -11,7 +11,8 @@ extends RefCounted
 ## worth going in for, and planted corn in the field would have been an island
 ## the creature could not reach by day (2026-10-04 playtest), so the strips
 ## join the ring to the planted patch and bring cover near the barn, the
-## generator and the field.
+## generator and the field. Two more stand across the ways out of the barn, so
+## reaching the field or the shed means walking through corn.
 
 ## The farm is spread out so every errand is a walk in the open: the second
 ## Phase 1 playtest found everything so close together that the night was easy.
@@ -29,6 +30,11 @@ const CORN_STRIPS: Array[Rect2] = [
 	Rect2(-16, -30, 6, 6),  # Behind the barn's west corner.
 	Rect2(-30, 10, 14, 5),  # West of the field and the pump.
 	Rect2(-3, 21, 6, 9),  # Behind the field.
+	# Across every way out of the barn, so each errand starts with a walk through
+	# corn (2026-10-05): a band between the barn and the field, joined to the ring
+	# in the east, and a screen between the barn and the shed and fuel drum.
+	Rect2(-18, -3, 48, 5),
+	Rect2(-18, -20, 4, 20),
 ]
 const CORN_RAGGED := 2.5  ## Metres noise moves the strips' and the ring's edges in or out.
 ## The planted corn: four ripe plots east of the field, joined to the ring by
@@ -43,7 +49,7 @@ const EDGE_DEPTHS := 6  ## Corn cells this many steps in or fewer count as near 
 const BARN := Rect2(-6.0, -22.0, 12.0, 10.0)  ## x, z, width, depth; door on the +z side.
 const BARN_DOOR := 3.2
 const BARN_HEIGHT := 5.0
-## Door on the +z side. Far west, with the fuel drum, so fuel runs cross open ground.
+## Door on the +z side. Far west, with the fuel drum, behind a screen of corn.
 const SHED := Rect2(-25.0, -4.0, 4.0, 3.0)
 const SHED_DOOR := 1.4
 const SHED_HEIGHT := 2.6
