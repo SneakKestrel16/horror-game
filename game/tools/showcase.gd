@@ -9,8 +9,10 @@ const SETS := {
 	"characters": [["farmer", 0.0], ["farmer", PI], ["creature", 0.0], ["creature", PI]],
 	"props": [["generator", 0.4], ["drum", 0.0], ["pump", -0.6], ["crate", 0.3]],
 	"plants": [["corn", 0.0], ["corn_far", 0.0], ["pine", 0.0]],
+	"monsters": [["creature", PI], ["scarecrow", PI], ["boar", PI], ["husk", PI]],
+	"monsters_back": [["creature", 0.0], ["scarecrow", 0.0], ["boar", 0.0], ["husk", 0.0]],
 }
-const GAP := {"characters": 1.4, "props": 1.8, "plants": 4.0}
+const GAP := {"characters": 1.4, "props": 1.8, "plants": 4.0, "monsters": 1.7, "monsters_back": 1.7}
 
 
 func _ready() -> void:

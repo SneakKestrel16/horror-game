@@ -130,6 +130,8 @@ Traps hit while building the game, with what fixed them.
 - **A metaball chain is fatter than its radii.** `models._taper` lays balls 3 cm apart and their
   fields add, so limbs come out thicker than the numbers say. Judge them in the showcase, not by
   the radii.
+- **A ray cast at a metaball's edge misses.** `models._surface` asserts a hit, and the boar's bristle ridge
+  started exactly at the body's back radius and stopped the build. Keep surface rays well inside the blob.
 - **Blender's Math node has no smootherstep;** Map Range does (`Graph.band`).
 - **A light inside a mesh is shadowed by it.** The barn lamps' bulbs sat round Farm's lights at
   first. The lamps are now raised 0.12 m so the light is below the bulb and the shade.

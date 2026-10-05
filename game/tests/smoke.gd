@@ -32,6 +32,13 @@ func _ready() -> void:
 	_player = _game.get_node_or_null("Players/1") as Player
 	_check(_player != null, "host spawned a player")
 	_check(_game.creature != null, "host spawned the creature")
+	for look: String in Creature.LOOKS:
+		var model := Dress.model(look)
+		var joints := ["leg_0", "leg_1", "arm_0", "arm_1", "head"].filter(
+			func(joint: String) -> bool: return model.find_child(joint) != null
+		)
+		_check(joints.size() == 5, "the %s model has all five joints" % look)
+		model.free()
 	if _failed:
 		_finish()
 		return

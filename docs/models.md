@@ -52,7 +52,7 @@ to two maps:
 | `leaf` | 1 | Corn, by UV: veins along the leaf, a midrib |
 | `bark`, `needles` | 1.5, 1 | The pines |
 | `denim`, `flannel`, `skin`, `leather`, `straw_weave` | 0.12 to 0.3 | The farmer |
-| `hide`, `bone` | 0.5, 0.2 | The creature |
+| `hide`, `bone` | 0.5, 0.2 | The creature, the boar |
 
 How a texture tiles:
 
@@ -81,11 +81,16 @@ Godot's -Z (a Godot point (x, y, z) is Blender's (x, -z, y)).
 | --- | --- |
 | `farmer` | Overalls over a flannel shirt with rolled sleeves, boots with laces, a straw hat; joints `leg_N`, `arm_N`, `head`. The overalls are pale and tinted each player's colour in `player.gd`. |
 | `creature` | 2.5 m, hunched: digitigrade legs, ribs and spine under creased dark hide, arms to its shins, four long clawed fingers and a thumb, a long toothed skull with small pale eyes. Joints `leg_N`, `arm_N`, `head` (and `torso`), where the old primitive body had them, so `creature.gd`'s animation is unchanged. |
+| `scarecrow` | 2.8 m, another look for the creature: denim trousers over wooden stake shins, a flannel shirt and a ragged double-sided coat, a crossbar through the shoulders, a stitched sack head tilted to one side with mismatched ember eyes, a grin and a hat; twig fingers. |
+| `boar` | 2.3 m, broad and hunched: digitigrade legs on split hooves, a bristled spine, an iron collar and chain, a shackle on one wrist, a low head with snout, ring, tusks, a torn ear and red eyes. |
+| `husk` | 3.2 m, a walking corn plant: stalk bundles for limbs and spine, braced roots for feet, husk bands open over a glowing heart, a head like a split ear of corn with kernel teeth and silk. |
 | `barn` | Where it stands: board-and-batten walls (red outside, grey inside), white trim, gable roof of tin over rafters, sliding doors run open on a rail, loft hatch and hay hook, four windows, posts and beams, hay stacked over Farm's hay colliders, three lamps where Farm hangs its lights. |
 | `shed` | Where it stands: grey board-and-batten, a lean-to tin roof, a window, the door open flat against the front wall. |
 | `generator`, `drum`, `pump`, `crate` | The props, each about its collider in `farm.gd`. |
 | `corn`, `corn_far` | A stalk with ten arching leaves, a tassel and an ear, UV-mapped for `leaf`; the far one has four leaves. |
 | `pine` | Trunk and twelve drooping tiers. |
+
+Each creature look needs the joints `leg_0`, `leg_1`, `arm_0`, `arm_1` and `head` (the smoke test checks it) and faces +Y, and a head lean is baked into the mesh: `creature.gd` sets the head's rotation outright. `--set=monsters` (and `monsters_back`) in the showcase lines them up. Eyes, stitches and bristles sit where a ray meets the metaball surface (`models._surface`), since the radii don't say where that is.
 
 The models are visual only. The colliders stay the boxes `farm.gd` always made: walls, hay,
 generator, pump, crate. So the barn and shed are built exactly over `Farm.BARN` and `Farm.SHED`.

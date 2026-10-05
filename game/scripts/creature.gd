@@ -69,10 +69,13 @@ const VOICES := [
 ]
 const SPEAKERS := ["david", "zira"]
 const HEIGHT := 2.6
+## Its bodies (tools/blender/models.py); the host picks one each run.
+const LOOKS := ["creature", "scarecrow", "boar", "husk"]
 
 var game: Game  ## Set by the host: phase, players, traps, catches.
 var farm: Farm
 var state := State.LURK  ## Replicated, so clients can animate and play sounds.
+var body := "creature"  ## One of LOOKS, from the spawn data; set before it enters the tree.
 
 var _route: Array[Vector3] = []
 var _lure_after := false  ## Call out at the end of the route.
@@ -738,11 +741,11 @@ func _can_see(player: Player) -> bool:
 	return get_world_3d().direct_space_state.intersect_ray(query).get("collider") == player
 
 
-## A gaunt, hunched thing in dark hide (tools/blender/models.py). You are not
-## meant to see it clearly. Its joints are empties named leg_N, arm_N and head,
-## where the old primitive body had them; it is modelled hunched over.
+## One of LOOKS (tools/blender/models.py): a gaunt thing in dark hide, a
+## scarecrow, a chained boar brute or a walking corn husk. You are not meant to
+## see it clearly. Each has empties named leg_N, arm_N and head for its joints.
 func _build_model() -> void:
-	var model := Dress.model("creature")
+	var model := Dress.model(body)
 	add_child(model)
 	for i in 2:
 		_legs.append(model.find_child("leg_%d" % i) as Node3D)

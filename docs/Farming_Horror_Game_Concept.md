@@ -22,6 +22,8 @@ The contrast between peaceful daytime farming and terrifying nights is the hook.
 
 You never see it clearly. It lives in the wild corn that rings the farm, a field players can’t cut down, so it always has somewhere to hide. Corn the players plant extends its hunting ground: tall crops block your view, so the crops you plant literally shape where it can hunt. Corn is the best-paying day crop and the harvest festival demands it, so the team can’t simply refuse to grow it (see Crops). It hunts with two tools: players’ own voices and the traps it sets at night.
 
+**What it looks like changes each run.** The host picks one of four bodies at random, so nobody knows what they are looking for: a gaunt, hunched thing in dark hide; a scarecrow in a ragged coat with a stitched sack head and ember eyes; a chained boar brute with tusks and an iron collar; or a walking corn husk, all stalks and peeled leaves round a glowing heart, that all but vanishes in the corn. The look is only skin: they all hunt the same way.
+
 **What players see of it:** by day only parts and motion: a head above the corn, an arm, stalks parting. A clear full view comes only at night during a chase, in the dark, and never for more than a second. Lunges cut to black or a knockdown before it is in full view, and the stare and hallucinations are distant silhouettes.
 
 ### How It Hunts

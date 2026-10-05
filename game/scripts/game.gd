@@ -160,7 +160,9 @@ func _ready() -> void:
 	if multiplayer.is_server():
 		_open_log()
 		log_event("host started (short: %s)" % Net.short)
-		_creatures.spawn({"position": Vector3(0, 0, Farm.CORN_IN + 10.0)})
+		var look := _creature_look()
+		log_event("the creature is the %s" % look)
+		_creatures.spawn({"position": Vector3(0, 0, Farm.CORN_IN + 10.0), "look": look})
 		var host := _player_data(1, Net.player_name)
 		_players.spawn(host)
 		voices.register(1, host["name"])
@@ -677,10 +679,22 @@ func _spawn_player(data: Dictionary) -> Node:
 	return player
 
 
+## A random body for the creature, or --monster=<look> (testing).
+static func _creature_look() -> String:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--monster="):
+			var asked := arg.trim_prefix("--monster=")
+			if asked in Creature.LOOKS:
+				return asked
+			push_warning("No monster look '%s'; picking one at random." % asked)
+	return Creature.LOOKS.pick_random()
+
+
 func _spawn_creature(data: Dictionary) -> Node:
 	var spawned := Creature.new()
 	spawned.name = "Creature"
 	spawned.position = data["position"]
+	spawned.body = data.get("look", "creature")
 	spawned.farm = farm
 	Net.replicate(spawned, ["position", "rotation", "state"])
 	if multiplayer.is_server():

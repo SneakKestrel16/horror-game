@@ -22,7 +22,7 @@ import bmesh
 import bpy
 import lib
 from lib import blob, box, cyl, lathe, mat, parent, pivot, sphere, torus, tube
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 OUT = lib.MODELS
 Vec = Sequence[float]
@@ -523,6 +523,504 @@ def creature() -> list[bpy.types.Object]:
     return [root]
 
 
+
+
+# --- The other monster looks ---------------------------------------------------------
+#
+# Each run the creature wears one of four looks (creature.gd LOOKS). All share its joints:
+# legs swing from the hip, arms hang down and reach forward from the shoulder, the head turns.
+
+
+def _spike(base: Vec, direction: Vec, length: float, radius: float, material, sides: int = 5):
+    """A cone from base toward direction: straw tufts, bristles."""
+    d = Vector(direction).normalized()
+    rot = Vector((0, 0, 1)).rotation_difference(d).to_euler()
+    centre = Vector(base) + d * (length / 2)
+    return cyl(radius, 0.0, length, centre.to_tuple(), material, tuple(rot), sides, name="spike")
+
+
+def _turn(parts: Sequence[bpy.types.Object], centre: Vec, angle: float, axis: str) -> None:
+    """Turns parts angle radians round axis through centre, before they are parented: a
+    lean that creature.gd's absolute head rotation would otherwise undo."""
+    lib._refresh()
+    c = Vector(centre)
+    m = Matrix.Translation(c) @ Matrix.Rotation(angle, 4, axis) @ Matrix.Translation(-c)
+    for part in parts:
+        part.matrix_world = m @ part.matrix_world
+    lib._refresh()
+
+
+def _rag(name: str, lefts: Sequence[Vec], rights: Sequence[Vec], material) -> list:
+    """Cloth seen from both sides: a strip and its reverse, since only leaves draw two-sided."""
+    return [_quad_strip(name, lefts, rights, material), _quad_strip(name, rights, lefts, material)]
+
+
+def _surface(obj: bpy.types.Object, origin: Vec, direction: Vec) -> tuple[Vector, Vector]:
+    """Where a ray from origin first meets obj's mesh, and the normal there: to set eyes and
+    stitches on a metaball surface whose exact shape the radii don't give."""
+    lib._refresh()
+    hit, location, normal, _ = obj.ray_cast(Vector(origin), Vector(direction).normalized())
+    assert hit, f"no surface on {obj.name} from {origin}"
+    return location, normal
+
+
+def _bundle(
+    path: Sequence[Vec],
+    count: int,
+    spread: float | Sequence[float],
+    radius: float,
+    material,
+    twist: float = 1.5,
+) -> list:
+    """Stalks twisted round a path, like a rope of corn stems: the husk's limbs."""
+    pts = [Vector(p) for p in path]
+    spreads = [spread] * len(pts) if isinstance(spread, (int, float)) else list(spread)
+    strands = []
+    for k in range(count):
+        a0 = 2 * math.pi * k / count
+        strand = []
+        for i, p in enumerate(pts):
+            ahead = pts[min(i + 1, len(pts) - 1)] - pts[max(i - 1, 0)]
+            ahead.normalize()
+            side = lib._cross(ahead, Vector((0, 0, 1)) if abs(ahead.z) < 0.9 else Vector((1, 0, 0)))
+            side.normalize()
+            normal = lib._cross(side, ahead)
+            a = a0 + twist * i / (len(pts) - 1)
+            strand.append((p + (side * math.cos(a) + normal * math.sin(a)) * spreads[i]).to_tuple())
+        radii = [radius * (1.0 - 0.35 * i / (len(pts) - 1)) for i in range(len(pts))]
+        strands.append(_uv_tube("stalk", strand, radii, material, 5))
+    return strands
+
+
+def scarecrow() -> list[bpy.types.Object]:
+    """A scarecrow come down off its pole, 2.7 m to the hat: a burlap sack head lolling to
+    one side with mismatched ember eyes and a stitched grin, a long ragged coat open over
+    flannel, twig fingers poking from straw-stuffed cuffs, and wooden stakes for shins."""
+    denim = mat("denim+scarecrow", (0.55, 0.6, 0.68), 0.95)
+    flannel = mat("flannel+scarecrow", (0.6, 0.25, 0.22), 0.95)
+    coat = mat("leather+coat", (0.42, 0.36, 0.3), 0.85)
+    sack = mat("straw_weave+sack", (0.7, 0.58, 0.42), 0.95)
+    hay = mat("hay", (1.0, 1.0, 1.0), 0.9)
+    stake = mat("wood+stake", (0.75, 0.68, 0.58), 0.9)
+    twig = mat("bark+twig", (0.6, 0.55, 0.5), 0.9)
+    stitch = mat("plain+stitch", (0.08, 0.06, 0.05), 0.9)
+    socket = mat("plain+socket", (0.01, 0.008, 0.008), 0.9)
+    ember = mat("glow+ember", (1.0, 0.55, 0.15), 0.3, emission=0.6)
+    hat = mat("leather+hat", (0.3, 0.25, 0.2), 0.8)
+    rng = random.Random(11)
+    root = pivot("scarecrow")
+
+    for i, side in enumerate((-1, 1)):
+        x = side * 0.12
+        hip = pivot(f"leg_{i}", (x, 0, 1.35))
+        trouser = blob(
+            _taper([(x, 0, 1.4), (x * 1.2, 0.03, 0.85), (x * 1.3, 0.0, 0.32)], [0.1, 0.08, 0.095]),
+            denim,
+            resolution=0.03,
+            name=f"trouser_{i}",
+        )
+        ankle = Vector((x * 1.3, 0.0, 0.3))
+        shin = cyl(0.04, 0.025, 0.34, (ankle.x, 0.0, 0.17), stake, (0.04 * side, 0, 0), 7)
+        tufts = []
+        for k in range(9):
+            a = 2 * math.pi * k / 9 + rng.random() * 0.4
+            out = (math.cos(a) * 0.6, math.sin(a) * 0.6, -1.0)
+            base = ankle + Vector((math.cos(a) * 0.06, math.sin(a) * 0.06, 0.03))
+            tufts.append(_spike(base.to_tuple(), out, 0.1 + rng.random() * 0.08, 0.018, hay))
+        _under(hip, trouser, shin, *tufts)
+        parent(hip, root)
+
+    torso = pivot("torso", (0, 0, 1.35))
+    body = blob(
+        [((0, 0, 1.42), (0, 0.01, 2.0), 0.16), ((-0.2, 0, 2.04), (0.2, 0, 2.04), 0.08)],
+        flannel,
+        name="body",
+    )
+    belt = torus(0.165, 0.025, (0, 0, 1.47), hay, segments=20)
+    crossbar = cyl(0.03, 0.03, 1.0, (0, -0.06, 2.1), stake, (0, math.pi / 2, 0), 8)
+    neck = cyl(0.032, 0.032, 0.3, (0, 0.02, 2.2), stake, segments=8)
+    rags = []
+    strips = 14
+    gap = 0.54
+    width = (2 * math.pi - 2 * gap) / strips * 1.15
+    for j in range(strips):
+        centre = gap + (j + 0.5) * (2 * math.pi - 2 * gap) / strips
+        hem = 1.05 + rng.random() * 0.17
+        out = 0.008 * (j % 2)  # Alternate strips sit proud, so overlaps don't flicker.
+        lefts, rights = [], []
+        for k in range(6):
+            t = k / 5
+            z = 2.1 + (hem - 2.1) * t
+            rx = 0.27 + 0.09 * t + out
+            ry = 0.19 + 0.09 * t + out
+            for row, a in ((lefts, centre - width / 2), (rights, centre + width / 2)):
+                sag = -rng.random() * 0.06 if k == 5 else 0.0
+                row.append((rx * math.sin(a), ry * math.cos(a), z + sag))
+        rags += _rag("coat", lefts, rights, coat)
+    _under(torso, body, belt, crossbar, neck, *rags)
+    parent(torso, root)
+
+    head = pivot("head", (0, 0.03, 2.3))
+    lump = blob(
+        [((0, 0.03, 2.48), 0.16), ((0.01, 0.05, 2.56), 0.15), ((0.09, 0.0, 2.6), 0.08)],
+        sack,
+        resolution=0.02,
+        name="sack",
+    )
+    frill = cyl(0.1, 0.055, 0.07, (0, 0.03, 2.33), sack, segments=12)
+    string = torus(0.068, 0.016, (0, 0.03, 2.35), hay, segments=16)
+    rope = tube([(0.06, 0.08, 2.35), (0.075, 0.1, 2.28), (0.08, 0.11, 2.2)], 0.01, hay, 6)
+    face = []
+    for x, z, r in ((-0.065, 2.54, 0.036), (0.06, 2.51, 0.026)):  # Mismatched eyes.
+        at, normal = _surface(lump, (x, 1.0, z), (0, -1, 0))
+        face.append(sphere(r, (at - normal * 0.006).to_tuple(), socket, (1.0, 0.55, 1.0), segments=12))
+        face.append(sphere(r * 0.38, (at + normal * 0.012).to_tuple(), ember, segments=8))
+    grin = []
+    for k in range(13):
+        x = -0.11 + 0.22 * k / 12
+        at, normal = _surface(lump, (x, 1.0, 2.4 + 5.0 * x * x), (0, -1, 0))
+        grin.append((at + normal * 0.004).to_tuple())
+    face.append(tube(grin, 0.006, stitch, 6, name="grin"))
+    for k in range(1, 12, 2):  # X stitches across the grin.
+        for lean in (-0.7, 0.7):
+            face.append(box((0.045, 0.006, 0.006), grin[k], stitch, rot=(0, lean, 0)))
+    crown = lathe(
+        [(0.0, 0.17), (0.09, 0.16), (0.125, 0.12), (0.13, 0.0), (0.0, 0.0)],
+        (0.01, 0.02, 2.62),
+        hat,
+        rot=(0.12, -0.1, 0.3),
+        closed=True,
+        segments=20,
+        name="crown",
+    )
+    brim = lathe(
+        [(0.12, 0.01), (0.22, -0.01), (0.3, -0.06), (0.31, -0.075), (0.21, -0.025), (0.12, 0.0)],
+        (0.01, 0.02, 2.63),
+        hat,
+        rot=(0.2, -0.08, 0.0),
+        closed=True,
+        segments=24,
+        name="brim",
+    )
+    straw = []
+    for k in range(16):
+        a = 2 * math.pi * k / 16 + rng.random() * 0.3
+        if abs(math.sin(a / 2)) < 0.25:  # Leave the face clear.
+            continue
+        base = (math.sin(a) * 0.13, 0.03 + math.cos(a) * 0.12, 2.6)
+        down = (math.sin(a), math.cos(a), -0.9 - rng.random() * 0.6)
+        straw.append(_spike(base, down, 0.12 + rng.random() * 0.1, 0.015, hay))
+    parts = [lump, frill, string, rope, *face, crown, brim, *straw]
+    _turn(parts, (0, 0.03, 2.33), 0.28, "Y")  # The head lolls to its left shoulder.
+    _under(head, *parts)
+    parent(head, torso)
+
+    for i, side in enumerate((-1, 1)):
+        x = side * 0.28
+        arm = pivot(f"arm_{i}", (x, 0.02, 2.08))
+        cuff = Vector((x * 1.15, 0.06, 1.38))
+        sleeve = blob(
+            _taper([(x, 0.02, 2.08), (x * 1.12, 0.04, 1.7), cuff.to_tuple()], [0.075, 0.068, 0.085]),
+            coat,
+            name=f"sleeve_{i}",
+        )
+        tufts = []
+        for k in range(7):
+            a = 2 * math.pi * k / 7
+            out = (math.cos(a) * 0.5, math.sin(a) * 0.5, -1.0)
+            base = cuff + Vector((math.cos(a) * 0.05, math.sin(a) * 0.05, -0.02))
+            tufts.append(_spike(base.to_tuple(), out, 0.1 + rng.random() * 0.06, 0.016, hay))
+        fingers = []
+        for f in range(5):
+            spread = (f - 2) * 0.025
+            start = cuff + Vector((spread * side, 0.01, -0.03))
+            pts = [start]
+            for _ in range(4):  # Gnarled: each joint kinks a little.
+                kink = Vector((rng.uniform(-0.03, 0.03) + spread * 0.4 * side, rng.uniform(0.0, 0.04), -0.1))
+                pts.append(pts[-1] + kink)
+            radii = [0.013, 0.011, 0.008, 0.006, 0.003]
+            fingers.append(tube([p.to_tuple() for p in pts], radii, twig, 6, name="twig"))
+        _under(arm, sleeve, *tufts, *fingers)
+        parent(arm, torso)
+    return [root]
+
+
+def boar() -> list[bpy.types.Object]:
+    """A boar brute 2.3 m at the hump: a hulking hog on two hoofed legs, bristled along its
+    spine, an iron collar with a broken chain, a ringed snout, curved tusks, little red eyes,
+    and arms like hams ending in cloven hoof-claws."""
+    hide = mat("hide+boar", (0.78, 0.6, 0.58), 0.5)
+    bone = mat("bone", (1.0, 1.0, 1.0), 0.55)
+    bristle = mat("plain+bristle", (0.18, 0.12, 0.09), 0.9)
+    iron = mat("iron", (1.0, 1.0, 1.0), 0.6, 0.7)
+    hoof = mat("plain+hoof", (0.1, 0.08, 0.07), 0.5)
+    snout = mat("plain+snout", (0.7, 0.45, 0.45), 0.5)
+    mouth = mat("plain+mouth", (0.14, 0.03, 0.035), 0.3)
+    socket = mat("plain+socket", (0.01, 0.008, 0.008), 0.9)
+    eye = mat("glow+boar", (0.95, 0.15, 0.08), 0.3, emission=0.6)
+    rng = random.Random(23)
+    root = pivot("boar")
+
+    for i, side in enumerate((-1, 1)):
+        x = side * 0.22
+        hip = pivot(f"leg_{i}", (x, 0, 1.15))
+        path = [(x, 0, 1.15), (x * 1.05, 0.12, 0.8), (x * 1.05, -0.1, 0.4), (x * 1.05, 0.0, 0.12)]
+        leg = blob(_taper(path, [0.16, 0.12, 0.065, 0.06]), hide, resolution=0.045, name=f"leg_mesh_{i}")
+        hooves = [
+            box((0.065, 0.15, 0.1), (x * 1.05 + s * 0.037, 0.05, 0.05), hoof, 0.025, (0, 0, -s * 0.12))
+            for s in (-1, 1)
+        ]
+        _under(hip, leg, *hooves)
+        parent(hip, root)
+
+    torso = pivot("torso", (0, 0, 1.15))
+    body = blob(
+        [
+            ((0, -0.02, 1.22), 0.25),
+            ((0, 0.12, 1.38), 0.29),
+            ((-0.17, 0.1, 1.75), (0.17, 0.1, 1.75), 0.27),
+            ((-0.4, 0.08, 1.9), (0.4, 0.08, 1.9), 0.16),
+            ((0, -0.08, 1.96), 0.24),
+            ((0, 0.25, 1.92), 0.19),
+        ],
+        hide,
+        resolution=0.045,
+        name="body",
+    )
+    bristles = []
+    for k in range(26):  # A ridge of bristles down the spine, laid back.
+        y = -0.24 + 0.52 * k / 25
+        x = rng.uniform(-0.04, 0.04)
+        at, normal = _surface(body, (x, y, 3.0), (0, 0, -1))
+        direction = normal + Vector((rng.uniform(-0.2, 0.2), -0.6, 0.2))
+        bristles.append(_spike((at - normal * 0.01).to_tuple(), direction, 0.08 + rng.random() * 0.08, 0.014, bristle))
+    collar = torus(0.215, 0.03, (0, 0.3, 1.9), iron, (math.pi / 2, 0, 0), 24)
+    links = [
+        torus(0.033, 0.009, (0, 0.47, 1.66 - k * 0.055), iron, (math.pi / 2, 0, (k % 2) * math.pi / 2), 12)
+        for k in range(5)
+    ]
+    _under(torso, body, *bristles, collar, *links)
+    parent(torso, root)
+
+    head = pivot("head", (0, 0.35, 1.95))
+    skull = blob(
+        [
+            ((0, 0.42, 2.0), 0.17),
+            ((0, 0.45, 1.95), (0, 0.78, 1.88), 0.11),
+            ((-0.1, 0.52, 1.9), 0.09),
+            ((0.1, 0.52, 1.9), 0.09),
+            ((-0.09, 0.57, 2.03), (0.09, 0.57, 2.03), 0.05),
+        ],
+        hide,
+        resolution=0.028,
+        name="skull",
+    )
+    jaw = blob([((0, 0.45, 1.8), (0, 0.72, 1.78), 0.07)], hide, resolution=0.02, name="jaw")
+    gullet = box((0.11, 0.2, 0.04), (0, 0.66, 1.825), mouth, bevel=0.015)
+    disc = cyl(0.085, 0.08, 0.05, (0, 0.88, 1.88), snout, (-math.pi / 2, 0, 0), 20)
+    nostrils = [sphere(0.02, (s * 0.032, 0.905, 1.885), socket, (1.0, 0.5, 1.3), segments=10) for s in (-1, 1)]
+    ring = torus(0.032, 0.006, (0, 0.91, 1.845), iron, (0, math.pi / 2, 0), 16)
+    tusks = [
+        tube(
+            [(s * 0.07, 0.74, 1.84), (s * 0.13, 0.8, 1.86), (s * 0.165, 0.82, 1.94), (s * 0.15, 0.79, 2.01)],
+            [0.026, 0.02, 0.012, 0.004],
+            bone,
+            8,
+            name="tusk",
+        )
+        for s in (-1, 1)
+    ]
+    teeth = [
+        cyl(0.012, 0.0, 0.035, (s * (0.03 + k * 0.02), 0.6 + k * 0.04, 1.84), bone, segments=6)
+        for s in (-1, 1)
+        for k in range(3)
+    ]
+    ears = [
+        sphere(0.08, (-0.13, 0.36, 2.13), hide, (0.55, 0.22, 1.0), (0.3, 0, 0.5), 12),
+        sphere(0.06, (0.13, 0.37, 2.1), hide, (0.55, 0.22, 1.0), (0.9, 0, -0.6), 12),  # Torn.
+    ]
+    eyes = []
+    for s in (-1, 1):
+        at, normal = _surface(skull, (s * 0.075, 1.5, 1.98), (0, -1, 0))
+        eyes.append(sphere(0.026, (at - normal * 0.008).to_tuple(), socket, (1.0, 0.6, 0.8), segments=10))
+        eyes.append(sphere(0.011, (at + normal * 0.006).to_tuple(), eye, segments=8))
+    _under(head, skull, jaw, gullet, disc, *nostrils, ring, *tusks, *teeth, *ears, *eyes)
+    parent(head, torso)
+
+    for i, side in enumerate((-1, 1)):
+        x = side * 0.42
+        arm = pivot(f"arm_{i}", (x, 0.12, 1.88))
+        path = [(x, 0.12, 1.88), (x * 1.1, 0.15, 1.55), (x * 1.12, 0.12, 1.3), (x * 1.1, 0.2, 1.05), (x * 1.08, 0.22, 0.95)]
+        limb = blob(_taper(path, [0.15, 0.125, 0.095, 0.105, 0.08]), hide, resolution=0.045, name=f"arm_mesh_{i}")
+        fist = blob([((x * 1.08, 0.24, 0.9), 0.085)], hide, resolution=0.025, name=f"fist_{i}")
+        claws = [
+            _claw((x * 1.08 + s * 0.04, 0.28, 0.88), (s * 0.15, 0.6, -1.0), 0.22, 0.035, hoof)
+            for s in (-1, 1)
+        ]
+        parts = [limb, fist, *claws]
+        if i == 0:  # A shackle on one wrist, its chain snapped.
+            parts.append(torus(0.1, 0.022, (x * 1.09, 0.2, 1.02), iron, segments=20))
+            parts += [
+                torus(0.03, 0.008, (x * 1.09 - side * 0.1, 0.2, 0.98 - k * 0.05), iron, (math.pi / 2, 0, (k % 2) * math.pi / 2), 12)
+                for k in range(3)
+            ]
+        _under(arm, *parts)
+        parent(arm, torso)
+    return [root]
+
+
+def husk() -> list[bpy.types.Object]:
+    """A husk thing 3 m tall, made of the corn: legs and arms of twisted stalks, brace roots
+    for feet, a cage of husk leaves round a hollow chest with something glowing in it, and
+    for a head a long ear of corn split down the front into a mouth lined with kernel teeth,
+    no eyes, silk hanging from its tip."""
+    husk_leaf = mat("leaf+husk", (0.85, 0.75, 0.5), 0.85)
+    rot = mat("leaf+rot", (0.4, 0.33, 0.2), 0.9)
+    dark = mat("plain+hollow", (0.04, 0.03, 0.02), 0.9)
+    kernel = mat("bone+kernel", (0.95, 0.8, 0.35), 0.5)
+    core = mat("glow+husk", (0.75, 0.85, 0.3), 0.3, emission=0.6)
+    silk = mat("plain+silk", (0.75, 0.6, 0.35), 0.8)
+    rng = random.Random(31)
+    root = pivot("husk")
+
+    for i, side in enumerate((-1, 1)):
+        x = side * 0.14
+        hip = pivot(f"leg_{i}", (x, 0, 1.6))
+        ankle = Vector((x * 1.25, -0.02, 0.22))
+        path = [(x, 0, 1.62), (x * 1.1, 0.1, 1.0), (x * 1.2, 0.04, 0.55), ankle.to_tuple()]
+        stalks = _bundle(path, 4, [0.03, 0.035, 0.03, 0.03], 0.022, husk_leaf, 2.0)
+        roots = []
+        for k in range(5):
+            a = math.pi / 2 + (k - 2) * 0.75 + rng.uniform(-0.15, 0.15)  # Mostly forward.
+            out = Vector((math.cos(a), math.sin(a), 0))
+            pts = [ankle + Vector((0, 0, 0.04)), ankle + out * 0.1 + Vector((0, 0, -0.06)), ankle + out * 0.2 + Vector((0, 0, -0.21))]
+            roots.append(_uv_tube("root", [p.to_tuple() for p in pts], [0.018, 0.014, 0.008], rot, 5))
+        _under(hip, *stalks, *roots)
+        parent(hip, root)
+
+    torso = pivot("torso", (0, 0, 1.6))
+    spine = _bundle([(0, 0, 1.6), (0, -0.04, 1.95), (0, 0.0, 2.3), (0, 0.12, 2.65)], 5, 0.04, 0.024, husk_leaf, 2.5)
+    yoke = []
+    for s in (-1, 1):
+        yoke += _bundle([(0, 0.08, 2.5), (s * 0.15, 0.08, 2.53), (s * 0.3, 0.1, 2.5)], 3, 0.025, 0.02, husk_leaf, 1.5)
+        yoke += _bundle([(0, 0, 1.62), (s * 0.15, 0, 1.64)], 3, 0.025, 0.02, husk_leaf, 1.0)
+    cage = []
+    for k in range(6):  # Bands of husk round the chest, open at the front.
+        z = 1.85 + k * 0.1
+        bulge = math.sin(math.pi * (k + 0.5) / 6)
+        rx, ry = 0.13 + 0.1 * bulge, 0.1 + 0.08 * bulge
+        y0 = 0.04
+        bottom, top = [], []
+        for j in range(15):
+            a = 0.5 + (2 * math.pi - 1.0) * j / 14
+            droop = rng.uniform(-0.015, 0.015)
+            bottom.append((rx * math.sin(a), y0 + ry * math.cos(a), z + droop))
+            top.append((rx * 1.03 * math.sin(a), y0 + ry * 1.03 * math.cos(a), z + 0.075 + droop))
+        cage.append(_quad_strip("band", bottom, top, husk_leaf if k % 2 else rot, 3.0))
+    hollow = sphere(0.14, (0, 0.0, 2.1), dark, (1.0, 0.75, 1.5), segments=14)
+    heart = sphere(0.045, (0, 0.06, 2.12), core, segments=12)
+    trails = []
+    for s in (-1, 1):  # Long leaves trailing off the shoulders.
+        for k in range(2):
+            start = Vector((s * (0.18 + k * 0.08), -0.05 - k * 0.04, 2.52))
+            lefts, rights = [], []
+            for n in range(6):
+                t = n / 5
+                at = start + Vector((s * 0.06 * t, -0.08 * t, -0.9 * t - 0.15 * k * t))
+                w = 0.06 * math.sin(math.pi * (0.15 + 0.85 * t)) + 0.005
+                lefts.append((at.x - w, at.y, at.z))
+                rights.append((at.x + w, at.y, at.z))
+            trails.append(_quad_strip("trail", lefts, rights, husk_leaf, 1.0))
+    _under(torso, *spine, *yoke, *cage, hollow, heart, *trails)
+    parent(torso, root)
+
+    head = pivot("head", (0, 0.15, 2.7))
+    base, tip = Vector((0, 0.12, 2.66)), Vector((0, 0.44, 3.06))
+    axis = (tip - base).normalized()
+    length = (tip - base).length
+    across = Vector((1, 0, 0))
+    front = lib._cross(axis, across)  # Forward and down, square to the ear.
+
+    def on_ear(t: float, angle: float, scale: float = 1.0) -> Vector:
+        r = 0.16 * math.sin(math.pi * (0.12 + 0.8 * t)) * scale
+        return base + axis * length * t + (across * math.sin(angle) + front * math.cos(angle)) * r
+
+    def gape(t: float) -> float:
+        return 0.25 + 0.35 * math.sin(math.pi * t)
+
+    rows = 9
+    shell = []
+    for s in (-1, 1):  # Husk leaves round each side of the ear, parted at the front.
+        columns = 4
+        for c in range(columns):
+            puff = 1.0 + 0.05 * (c % 2)
+            lefts, rights = [], []
+            for n in range(rows + 1):
+                t = n / rows
+                g = gape(t)
+                a0 = g + (math.pi - g) * c / columns
+                a1 = g + (math.pi - g) * (c + 1.1) / columns
+                lefts.append(on_ear(t, s * a0, puff).to_tuple())
+                rights.append(on_ear(t, s * a1, puff).to_tuple())
+            flap = Vector(lefts[-1]).lerp(Vector(rights[-1]), 0.5) + axis * rng.uniform(0.06, 0.14)
+            lefts.append(flap.to_tuple())
+            rights.append((flap + across * 0.004).to_tuple())
+            shell.append(_quad_strip("shell", lefts, rights, husk_leaf, 2.0))
+    cob = blob(
+        [((base + axis * length * 0.1).to_tuple(), (base + axis * length * 0.85).to_tuple(), 0.1)],
+        dark,
+        resolution=0.025,
+        name="cob",
+    )
+    teeth = []
+    for n in range(1, rows):
+        t = n / rows
+        for s in (-1, 1):
+            lip = on_ear(t, s * gape(t), 0.97)
+            inward = (base + axis * length * t - lip).normalized()
+            centre = lip + inward * 0.02
+            rot_euler = Vector((0, 0, 1)).rotation_difference(inward).to_euler()
+            teeth.append(box((0.022, 0.026, 0.045), centre.to_tuple(), kernel, 0.006, tuple(rot_euler)))
+    glow = sphere(0.03, (base + axis * length * 0.45 + front * 0.03).to_tuple(), core, segments=10)
+    strands = []
+    for k in range(9):  # Silk hanging from the tip and down the back.
+        start = tip + Vector((rng.uniform(-0.03, 0.03), rng.uniform(-0.04, 0.0), -0.02))
+        drop = 0.25 + rng.random() * 0.25
+        sway = Vector((rng.uniform(-0.06, 0.06), rng.uniform(-0.04, 0.06), 0))
+        pts = [start, start + sway * 0.5 + Vector((0, 0.02, -drop * 0.4)), start + sway + Vector((0, 0, -drop))]
+        strands.append(tube([p.to_tuple() for p in pts], 0.004, silk, 3, name="silk"))
+    _under(head, *shell, cob, *teeth, glow, *strands)
+    parent(head, torso)
+
+    for i, side in enumerate((-1, 1)):
+        x = side * 0.3
+        arm = pivot(f"arm_{i}", (x, 0.1, 2.5))
+        wrist = Vector((x * 1.25, 0.22, 1.2))
+        path = [(x, 0.1, 2.5), (x * 1.18, 0.14, 1.85), wrist.to_tuple()]
+        stalks = _bundle(path, 3, [0.025, 0.03, 0.02], 0.02, husk_leaf, 1.8)
+        blades = []
+        for f in range(4):  # Leaf-blade fingers, long and pointed.
+            spread = (f - 1.5) * 0.035
+            lefts, rights = [], []
+            for n in range(7):
+                t = n / 6
+                at = wrist + Vector((spread * side * (1 + t), 0.02 + 0.12 * t * t, -0.5 * t - 0.03 * f * t))
+                w = 0.022 * (1 - t) + 0.001
+                lefts.append((at.x - w, at.y, at.z))
+                rights.append((at.x + w, at.y, at.z))
+            blades.append(_quad_strip("blade", lefts, rights, husk_leaf if f % 2 else rot, 2.0))
+        elbow = Vector((x * 1.18, 0.14, 1.85))
+        lefts, rights = [], []
+        for n in range(5):
+            t = n / 4
+            at = elbow + Vector((side * 0.05 * t, -0.1 * t, -0.55 * t))
+            w = 0.045 * math.sin(math.pi * (0.2 + 0.8 * t)) + 0.004
+            lefts.append((at.x, at.y - w, at.z))
+            rights.append((at.x, at.y + w, at.z))
+        blades.append(_quad_strip("trail", lefts, rights, husk_leaf, 1.0))
+        _under(arm, *stalks, *blades)
+        parent(arm, torso)
+    return [root]
 
 
 # --- Buildings -----------------------------------------------------------------------
@@ -1080,6 +1578,9 @@ def pine() -> list[bpy.types.Object]:
 MODELS = {
     "farmer": farmer,
     "creature": creature,
+    "scarecrow": scarecrow,
+    "boar": boar,
+    "husk": husk,
     "barn": barn,
     "shed": shed,
     "generator": generator,

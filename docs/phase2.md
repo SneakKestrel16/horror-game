@@ -20,6 +20,7 @@ As in Phase 1 (see [Running it](phase1.md#running-it)), with two more options:
 
 - `-- --name=Ana` sets your name; the main menu has a box for it too. Teammates record it.
 - `-- --start` skips the lobby and starts the day at once (testing).
+- `-- --monster=scarecrow` picks the creature's look (`creature`, `scarecrow`, `boar`, `husk`); otherwise the host picks one at random and logs it.
 
 Up to four players can join. Hold **V** to talk to whoever is near you. On Windows, apps must be
 allowed to use the microphone (Settings > Privacy > Microphone) or recordings come out silent.
