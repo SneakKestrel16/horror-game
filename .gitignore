@@ -13,3 +13,8 @@ __pycache__/
 
 # Serena's per-project cache
 .serena/
+
+# Recorded sound effects copied in by tools/get_sfx.sh. Their licence allows
+# use in the game but doesn't say the raw files may be shared in a public repo.
+game/assets/sfx/*
+!game/assets/sfx/.gdignore

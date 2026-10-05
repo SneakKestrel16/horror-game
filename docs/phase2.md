@@ -169,7 +169,8 @@ From the player's report; no log was kept of it.
   lines. Each take is now raised to a 0.9 peak when saved, at most 16 times louder so a
   near-silent one doesn't become hiss (`VoiceBank.normalized`). The next session should check the
   level; if takes then sound hissy, the cause is the chat codec they go through (16 kHz, 8-bit
-  mu-law, `addons/voice_chat/voice_codec.gd`).
+  mu-law, `addons/voice_chat/voice_codec.gd`). The codec is now 24 kHz 16-bit PCM, filtered
+  before resampling, and each voice is buffered 60 ms against late packets (after Phase 3).
 
 ### 2026-10-04, solo session with the new corn (one window, `--dev`)
 
@@ -262,15 +263,31 @@ Built ahead of Review 2; see [Phase 3](phase3.md) and its checklist.
 
 ### Sounds
 
-Every sound is synthesised in `scripts/sfx.gd`, and the generic calls are Windows text-to-speech
-(`assets/voices/`, David and Zira).
+`scripts/sfx.gd` plays recorded sounds from the
+[FilmCow Recorded SFX](https://filmcow.itch.io/filmcow-sfx) library where it has one, and
+synthesises the rest. The recordings are not in git: their licence allows any game use without
+credit but doesn't say the raw files may be shared in a public repo, so `tools/get_sfx.sh <zip>`
+copies them into `game/assets/sfx/` (ignored), and without them every sound falls back to its
+synthesised stand-in. The generic calls are Windows text-to-speech (`assets/voices/`, David and
+Zira).
 
+Recorded now, chosen by file name and not yet heard in the game (`Sfx.RECORDED`): footsteps on
+dirt and in the corn, the corn rustle, water, metal clanks, the bear trap, falls and the
+generator's hum. Each plays one of several takes at a slightly random pitch and level.
+
+- [ ] Listen to the recorded sounds in a playtest; swap any that don't fit and set their levels
+- [ ] Exported builds: the recorded sounds sit in a folder Godot ignores, so an export needs
+  them packed some other way
 - [ ] Recorded generic voice lines from real people, to replace the text-to-speech ones
 - [ ] The creature: footsteps, breathing, the chase screech, digging, setting a trap
-- [ ] Footsteps on dirt, grass and in the corn; corn rustle
-- [ ] Traps: bear trap snap, prying open, falling into a pit
-- [ ] Tools and chores: watering, pump, harvest, selling, the pegboard
-- [ ] Generator: running, sputtering when low, dying, refuelling
+- [x] Footsteps on dirt and in the corn; corn rustle
+- [ ] Footsteps on grass
+- [x] Traps: bear trap snap, falling into a pit
+- [ ] Traps: prying open
+- [x] Tools and chores: watering, pump, the pegboard (water and metal sounds)
+- [ ] Tools and chores: harvest, selling (still synthesised)
+- [x] Generator running
+- [ ] Generator: sputtering when low, dying, refuelling
 - [ ] Barn and shed doors
 - [ ] Ambience: day birds and insects, animals going quiet at dusk, night crickets and wind
 - [ ] Crows for fake-outs, stingers for jumpscares, heartbeat when hunted

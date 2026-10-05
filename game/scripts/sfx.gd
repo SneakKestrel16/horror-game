@@ -1,21 +1,64 @@
 class_name Sfx
 extends RefCounted
-## Placeholder sound effects, synthesised in code so the prototype needs no
-## audio files besides the voice lines. Each sound is built once and cached.
-## Replace with recorded sounds once the game is worth dressing.
+## The game's sound effects. Recorded ones from the FilmCow Recorded SFX library
+## when tools/get_sfx.sh has copied them into SFX_DIR (git ignores them: the
+## licence allows using them in the game but says nothing of sharing the raw
+## files in a public repo); otherwise stand-ins synthesised in code. Each sound
+## is built once and cached.
 
 const RATE := 22050
+const SFX_DIR := "res://assets/sfx"
+## Recorded sounds by name: the FilmCow file prefix ("<prefix> <n>.wav" or
+## "<prefix>.wav") and a gain in dB from full scale, to sit them near the
+## stand-ins' levels. Chosen by file name, not by ear; settle by listening.
+const RECORDED := {
+	"step": ["footstep dirt", -5.0],
+	"corn_step": ["footstep grass and leaves", -5.0],
+	"rustle": ["bushes", -6.0],
+	"splash": ["water splashing small", -8.0],
+	"clank": ["metal hits metal", -6.0],
+	"snap": ["metal latches", -1.0],
+	"thud": ["body fall", -2.0],
+	"hum": ["ventilation hum", -14.0],
+}
+const LOOPS: Array[String] = ["hum", "crickets", "wind", "heartbeat"]
+## Synthesised sounds heard over and over come in this many takes, played at
+## random, so a run of footsteps doesn't repeat one sample like a machine.
+const VARIANTS := {"step": 4, "corn_step": 3, "rustle": 3, "snap": 2, "thud": 2}
+## play_at varies each play's pitch and volume by up to this much.
+const PITCH_SPREAD := 0.07
+const VOLUME_SPREAD := 1.5  ## dB.
 
 static var _cache := {}
+static var _files := {}  ## Sound -> its recorded files, found once.
 
 
-## The named sound: "step", "rustle", "snap", "thud", "splash", "clank",
-## "coin", "screech", "caw", "hum" (loops), "crickets" (loops), "wind" (loops),
-## "heartbeat" (loops).
-static func get_sound(sound: String) -> AudioStreamWAV:
-	if not _cache.has(sound):
-		_cache[sound] = _build(sound)
-	return _cache[sound]
+## The named sound: "step", "corn_step", "rustle", "snap", "thud", "splash",
+## "clank", "coin", "screech", "caw", "hum" (loops), "crickets" (loops), "wind"
+## (loops), "heartbeat" (loops). variant picks one of its takes(sound).
+static func get_sound(sound: String, variant := 0) -> AudioStreamWAV:
+	var key := "%s#%d" % [sound, variant]
+	if not _cache.has(key):
+		var files := _recorded(sound)
+		var wav: AudioStreamWAV = null
+		if not files.is_empty():
+			wav = _load(files[variant % files.size()], RECORDED[sound][1], sound in LOOPS)
+		_cache[key] = wav if wav != null else _build(sound, variant)
+	return _cache[key]
+
+
+## Builds every take of every sound now (about 0.6 s with the recorded ones),
+## so none is built mid-game with a hitch the first time it plays.
+static func warm() -> void:
+	for sound: String in VARIANTS.keys() + RECORDED.keys():
+		for take in takes(sound):
+			get_sound(sound, take)
+
+
+## How many different takes of a sound there are.
+static func takes(sound: String) -> int:
+	var files := _recorded(sound)
+	return files.size() if not files.is_empty() else VARIANTS.get(sound, 1)
 
 
 ## A one-shot sound from raw samples (-1 to 1) at a sample rate.
@@ -28,13 +71,15 @@ static func from_samples(samples: PackedFloat32Array, rate: int) -> AudioStreamW
 ## Drops the built sounds (they are rebuilt when next asked for).
 static func clear_cache() -> void:
 	_cache.clear()
+	_files.clear()
 
 
 ## Plays sound once at a point under parent, then frees the player.
 static func play_at(parent: Node, sound: String, at: Vector3, volume_db := 0.0) -> void:
 	var player := AudioStreamPlayer3D.new()
-	player.stream = get_sound(sound)
-	player.volume_db = volume_db
+	player.stream = get_sound(sound, randi() % takes(sound))
+	player.volume_db = volume_db + randf_range(-VOLUME_SPREAD, VOLUME_SPREAD)
+	player.pitch_scale = 1.0 + randf_range(-PITCH_SPREAD, PITCH_SPREAD)
 	player.unit_size = 6.0
 	player.max_distance = 60.0
 	parent.add_child(player)
@@ -43,20 +88,65 @@ static func play_at(parent: Node, sound: String, at: Vector3, volume_db := 0.0) 
 	player.play()
 
 
-static func _build(sound: String) -> AudioStreamWAV:
+## The recorded files for a sound in SFX_DIR, sorted; none if not copied in.
+static func _recorded(sound: String) -> Array[String]:
+	if not _files.has(sound):
+		var found: Array[String] = []
+		if RECORDED.has(sound) and DirAccess.dir_exists_absolute(SFX_DIR):
+			var prefix: String = RECORDED[sound][0]
+			for file in DirAccess.get_files_at(SFX_DIR):
+				var stem := file.trim_suffix(".wav")
+				var number := stem.trim_prefix(prefix + " ")
+				if file.ends_with(".wav") and (stem == prefix or number.is_valid_int()):
+					found.append(SFX_DIR.path_join(file))
+		found.sort()
+		_files[sound] = found
+	return _files[sound]
+
+
+## A recorded file, trimmed of silence, peak at gain_db, as 16-bit PCM (made
+## seamless if it loops); null if it won't load.
+static func _load(path: String, gain_db: float, loop: bool) -> AudioStreamWAV:
+	var bytes := FileAccess.get_file_as_bytes(path)
+	if bytes.size() < 44:
+		return null
+	# Some FilmCow files' RIFF size is a few bytes short of the file, which
+	# Godot warns about (and check.sh fails on); it is set to the true size.
+	bytes.encode_u32(4, bytes.size() - 8)
+	var options := {"compress/mode": 0, "edit/trim": true, "edit/normalize": true}
+	options["force/mono"] = true
+	var wav := AudioStreamWAV.load_from_buffer(bytes, options)
+	if wav == null or wav.format != AudioStreamWAV.FORMAT_16_BITS:
+		return null
+	var gain := db_to_linear(gain_db)
+	var pcm := wav.data  # Read once: each read of .data copies the whole buffer.
+	var samples := PackedFloat32Array()
+	samples.resize(floori(pcm.size() / 2.0))
+	for i in samples.size():
+		samples[i] = pcm.decode_s16(i * 2) / 32768.0 * gain
+	if loop:
+		samples = _seamless(samples, 0.5, wav.mix_rate)
+	var out := _wav(samples, loop)
+	out.mix_rate = wav.mix_rate
+	return out
+
+
+static func _build(sound: String, variant: int) -> AudioStreamWAV:
 	var rng := RandomNumberGenerator.new()
-	rng.seed = sound.hash()  # The same sound on every run.
+	rng.seed = ("%s#%d" % [sound, variant]).hash()  # The same sound on every run.
 	var samples := PackedFloat32Array()
 	var loop := false
 	match sound:
 		"step":
-			samples = _noise(rng, 0.09, 0.35, 0.6)
-			_envelope(samples, 0.004, 0.08)
-		"rustle":
-			samples = _noise(rng, 0.7, 0.55, 0.2)
-			for i in samples.size():  # Crackle: leaves knocking.
-				samples[i] *= 0.5 + 0.5 * absf(sin(i * 0.004 + sin(i * 0.0011) * 4.0))
-			_envelope(samples, 0.15, 0.35)
+			samples = _footstep(rng)
+		"corn_step":  # A step through dry stalks: a short burst of crackle.
+			samples = _noise(rng, rng.randf_range(0.25, 0.35), 0.6, 0.25)
+			_grains(rng, samples, 90.0, 0.012)
+			_envelope(samples, 0.02, 0.15)
+		"rustle":  # Dry leaves: a swell of short crackles, not a hiss.
+			samples = _noise(rng, rng.randf_range(0.55, 0.8), 0.6, 0.25)
+			_grains(rng, samples, 70.0, 0.018)
+			_envelope(samples, 0.12, 0.3)
 		"snap":
 			samples = _noise(rng, 0.9, 1.0, 0.8)
 			_envelope(samples, 0.001, 0.03)
@@ -97,16 +187,31 @@ static func _build(sound: String) -> AudioStreamWAV:
 			_add_tones(samples, [60.0, 120.0, 180.0, 240.0], 0.18, 0.0)
 		"crickets":
 			loop = true
-			samples.resize(RATE * 2)
-			for i in samples.size():
-				var t := float(i) / RATE
-				var chirp := maxf(0.0, sin(TAU * 18.0 * t)) * float(fmod(t, 0.5) < 0.18)
-				samples[i] = 0.12 * chirp * sin(TAU * 4500.0 * t)
+			samples.resize(RATE * 4)
+			# Three crickets out of step, near and far. Each chirp is a few
+			# quick pulses; every period and pitch fits the 4 s loop whole.
+			for cricket: Array in [
+				[4300.0, 0.5, 0.0, 0.11], [4750.0, 0.8, 0.31, 0.06], [5150.0, 0.4, 0.17, 0.04]
+			]:
+				for i in samples.size():
+					var t := float(i) / RATE
+					var into := fmod(t + cricket[2], cricket[1])
+					if into < 0.12:
+						var pulse := pow(sin(PI * fmod(into, 0.03) / 0.03), 2.0)
+						samples[i] += cricket[3] * pulse * sin(TAU * cricket[0] * t)
 		"wind":
 			loop = true
-			samples = _noise(rng, 4.0, 0.25, 0.985)
+			# Gusts: the noise's pitch and loudness drift together.
+			var seconds := 8.0
+			samples.resize(roundi(RATE * (seconds + 0.5)))
+			var last := 0.0
 			for i in samples.size():
-				samples[i] *= 0.6 + 0.4 * sin(TAU * i / samples.size())
+				var t := float(i) / RATE
+				var gust := 0.5 + 0.3 * sin(TAU * t / seconds) + 0.2 * sin(TAU * 3.0 * t / seconds)
+				var smooth := lerpf(0.993, 0.975, gust)
+				last = lerpf(rng.randf_range(-1.0, 1.0), last, smooth)
+				samples[i] = last * lerpf(3.0, 2.0, gust) * lerpf(0.5, 1.0, gust)
+			samples = _seamless(samples, 0.5)
 		"heartbeat":
 			loop = true
 			samples.resize(roundi(RATE * 0.8))
@@ -132,6 +237,54 @@ static func _noise(
 		last = lerpf(rng.randf_range(-1.0, 1.0), last, smooth)
 		samples[i] = clampf(last * amplitude * gain, -1.0, 1.0)
 	return samples
+
+
+## A step on packed dirt: a dull heel thump, then a gritty toe a beat later.
+static func _footstep(rng: RandomNumberGenerator) -> PackedFloat32Array:
+	var samples := PackedFloat32Array()
+	samples.resize(roundi(RATE * 0.22))
+	var heel := _noise(rng, 0.08, 0.5, 0.88)
+	_envelope(heel, 0.003, 0.07)
+	var thump := rng.randf_range(70.0, 100.0)
+	for i in heel.size():
+		var t := float(i) / RATE
+		heel[i] += 0.3 * sin(TAU * thump * t) * exp(-t * 45.0)
+	var toe := _noise(rng, 0.11, 0.3, 0.5)
+	_grains(rng, toe, 260.0, 0.004)
+	_envelope(toe, 0.004, 0.08)
+	var toe_at := roundi(RATE * rng.randf_range(0.04, 0.07))
+	for i in heel.size():
+		samples[i] += heel[i]
+	for i in mini(toe.size(), samples.size() - toe_at):
+		samples[toe_at + i] += toe[i]
+	return samples
+
+
+## Breaks steady noise into crackles: rate short grains a second at random,
+## each dying away over decay seconds.
+static func _grains(
+	rng: RandomNumberGenerator, samples: PackedFloat32Array, rate: float, decay: float
+) -> void:
+	var level := 0.0
+	var fall := exp(-1.0 / (decay * RATE))
+	for i in samples.size():
+		if rng.randf() < rate / RATE:
+			level = rng.randf_range(0.4, 1.0)
+		level *= fall
+		samples[i] *= 0.15 + level
+
+
+## A loop with no click where it wraps: the last overlap seconds are faded
+## into the start and cut off.
+static func _seamless(
+	samples: PackedFloat32Array, overlap: float, rate := RATE
+) -> PackedFloat32Array:
+	var count := roundi(rate * overlap)
+	var keep := samples.size() - count
+	for i in count:
+		var mix := float(i) / count
+		samples[i] = samples[i] * mix + samples[keep + i] * (1.0 - mix)
+	return samples.slice(0, keep)
 
 
 ## Decaying sine tones mixed in (decay per second; 0 = steady).
@@ -184,6 +337,7 @@ class Ambience:
 	var _hum := AudioStreamPlayer3D.new()
 
 	func _init(parent: Node3D) -> void:
+		Sfx.warm()
 		if AudioServer.get_bus_index(&"Lure") == -1:
 			# The creature's voice has a faint echo: the tell (design doc, How Players Fight Back).
 			AudioServer.add_bus()

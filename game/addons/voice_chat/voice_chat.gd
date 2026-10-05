@@ -14,7 +14,8 @@ signal peer_dead_changed(peer_id: int, is_dead: bool)
 enum Mode { PUSH_TO_TALK, VOICE_ACTIVATION }
 
 const PTT_ACTION := &"voice_push_to_talk"
-const PACKET_SAMPLES := 320  # 20 ms at 16 kHz
+const PACKET_SAMPLES := 480  # 20 ms at 24 kHz
+const TALK_FADE := 0.008  # seconds faded in and out as talking starts and stops: no click
 const SPEAKING_TIMEOUT := 0.3
 const CLIP_GAP := 0.4  # silence that ends a clip
 const CLIP_MIN := 0.5  # seconds
@@ -133,7 +134,7 @@ func start_take() -> void:
 	_taking = true
 
 
-## Stop recording and return the take (16 kHz mono samples).
+## Stop recording and return the take (VoiceCodec.RATE mono samples).
 func end_take() -> PackedFloat32Array:
 	_taking = false
 	return _take
@@ -143,7 +144,7 @@ func is_taking() -> bool:
 	return _taking
 
 
-## Server only: saved voice clips for a player (16 kHz mono samples).
+## Server only: saved voice clips for a player (VoiceCodec.RATE mono samples).
 func get_clips(peer_id: int) -> Array:
 	return _clips.get(peer_id, [])
 
@@ -207,9 +208,16 @@ func _read_microphone(delta: float) -> void:
 	if _taking:
 		_take.append_array(samples)
 	var wants := _wants_to_talk(samples, delta)
+	var fade := roundi(TALK_FADE * VoiceCodec.RATE)
 	if wants != _transmitting:
 		_transmitting = wants
 		local_speaking_changed.emit(wants)
+		if wants:
+			VoiceCodec.fade(samples, fade, 0)
+		elif _is_online() and not _outgoing.is_empty():
+			# The last part-packet goes too, faded out, rather than cut off.
+			VoiceCodec.fade(_outgoing, 0, fade)
+			_send_voice(_outgoing)
 	if not _transmitting or not _is_online():
 		_outgoing.clear()
 		return
@@ -217,9 +225,13 @@ func _read_microphone(delta: float) -> void:
 	while _outgoing.size() >= PACKET_SAMPLES:
 		var chunk := _outgoing.slice(0, PACKET_SAMPLES)
 		_outgoing = _outgoing.slice(PACKET_SAMPLES)
-		_receive_voice.rpc(VoiceCodec.encode(chunk))
-		if multiplayer.is_server():
-			_store_clip_samples(multiplayer.get_unique_id(), chunk)
+		_send_voice(chunk)
+
+
+func _send_voice(chunk: PackedFloat32Array) -> void:
+	_receive_voice.rpc(VoiceCodec.encode(chunk))
+	if multiplayer.is_server():
+		_store_clip_samples(multiplayer.get_unique_id(), chunk)
 
 
 func _wants_to_talk(samples: PackedFloat32Array, delta: float) -> bool:
@@ -238,7 +250,7 @@ func _wants_to_talk(samples: PackedFloat32Array, delta: float) -> bool:
 
 @rpc("any_peer", "call_remote", "unreliable_ordered", 2)
 func _receive_voice(packet: PackedByteArray) -> void:
-	if packet.is_empty() or packet.size() > PACKET_SAMPLES * 4:
+	if packet.is_empty() or packet.size() > PACKET_SAMPLES * VoiceCodec.BYTES_PER_SAMPLE * 2:
 		return
 	var peer_id := multiplayer.get_remote_sender_id()
 	var samples := VoiceCodec.decode(packet)

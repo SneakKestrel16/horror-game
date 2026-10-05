@@ -201,7 +201,7 @@ func _footsteps() -> void:
 	var gait := "crouch" if crouching else ("sprint" if sprinting else "walk")
 	var in_corn := Farm.in_corn(global_position)
 	var volume := {"crouch": -14.0, "walk": -6.0, "sprint": 0.0}[gait] as float
-	Sfx.play_at(get_parent(), "rustle" if in_corn else "step", global_position, volume)
+	Sfx.play_at(get_parent(), "corn_step" if in_corn else "step", global_position, volume)
 	if is_multiplayer_authority():
 		var radius: float = STEP_NOISE[gait] * (CORN_NOISE if in_corn else 1.0)
 		radius *= WOUND_NOISE if wounded else 1.0

@@ -41,6 +41,7 @@ func _ready() -> void:
 	_game.add_child(_dev)
 	await _check_lobby()
 	_check_routes()
+	_check_audio()
 	Engine.time_scale = SPEEDUP
 	await _check_lure()
 	await _check_chores()
@@ -524,6 +525,71 @@ func _frames(count: int) -> void:
 ## Waits this much game time (Engine.time_scale stretches each physics step).
 func _game_seconds(seconds: float) -> void:
 	await _frames(ceili(seconds * Engine.physics_ticks_per_second / Engine.time_scale))
+
+
+## Voice audio comes through the codec intact; the resampler keeps speech and
+## filters out what would fold into hiss; every sound effect builds, and loops
+## wrap without a click.
+func _check_audio() -> void:
+	var tone := PackedFloat32Array()
+	tone.resize(VoiceCodec.RATE)
+	for i in tone.size():
+		tone[i] = 0.5 * sin(TAU * 1000.0 * i / VoiceCodec.RATE)
+	var data := VoiceCodec.encode(tone)
+	var back := VoiceCodec.decode(data)
+	var error := 0.0
+	for i in tone.size():
+		error = maxf(error, absf(back[i] - tone[i]))
+	_check(error < 0.0001, "the voice codec round trip is near exact (error %.6f)" % error)
+	_check(is_equal_approx(VoiceCodec.seconds(data), 1.0), "encoded voice knows its length")
+	for source_rate: float in [48000.0, 44100.0]:
+		var kept := _resampled_rms(source_rate, 1000.0)
+		var folded := _resampled_rms(source_rate, 20000.0)
+		_check(
+			absf(kept - 0.5 / sqrt(2.0)) < 0.02 and folded < 0.01,
+			(
+				"resampling from %d Hz keeps 1 kHz (rms %.3f) and cuts 20 kHz (rms %.4f)"
+				% [source_rate, kept, folded]
+			)
+		)
+	var faded := PackedFloat32Array([1.0, 1.0, 1.0, 1.0])
+	VoiceCodec.fade(faded, 2, 2)
+	_check(faded[0] == 0.0 and faded[3] == 0.0 and faded[1] > 0.0, "voice fades in and out")
+	Sfx.clear_cache()
+	var sounds: Array[String] = [
+		"step", "corn_step", "rustle", "snap", "thud", "splash", "clank", "coin", "screech", "caw"
+	]
+	var built := true
+	for sound in sounds + Sfx.LOOPS:
+		for take in Sfx.takes(sound):
+			built = built and Sfx.get_sound(sound, take).data.size() > 0
+	_check(built, "every sound effect builds (%d recorded steps)" % Sfx._recorded("step").size())
+	_check(
+		Sfx.get_sound("step", 0).data != Sfx.get_sound("step", 1).data,
+		"footsteps come in different takes"
+	)
+	for sound in Sfx.LOOPS:
+		var loop := Sfx.get_sound(sound)
+		var first := loop.data.decode_s16(0) / 32768.0
+		var last := loop.data.decode_s16(loop.data.size() - 2) / 32768.0
+		_check(absf(first - last) < 0.05, "%s loops without a click (%.3f)" % [sound, last - first])
+
+
+## The RMS of a sine at hz after the voice resampler, from source_rate, fed in
+## 20 ms pieces as the microphone would; the first 0.1 s (filters settling) is
+## left out.
+func _resampled_rms(source_rate: float, hz: float) -> float:
+	var codec := VoiceCodec.new(source_rate)
+	var out := PackedFloat32Array()
+	var piece := roundi(source_rate * 0.02)
+	for start in range(0, roundi(source_rate), piece):
+		var frames := PackedVector2Array()
+		frames.resize(piece)
+		for i in piece:
+			var value := 0.5 * sin(TAU * hz * (start + i) / source_rate)
+			frames[i] = Vector2(value, value)
+		out.append_array(codec.resample(frames))
+	return VoiceCodec.rms(out.slice(roundi(0.1 * VoiceCodec.RATE)))
 
 
 func _check(ok: bool, what: String) -> bool:

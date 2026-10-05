@@ -633,7 +633,7 @@ func _say(index: int, echo: bool, pitch: float) -> void:
 
 @rpc("authority", "call_remote", "reliable")
 func _say_clip(data: PackedByteArray, echo: bool, pitch: float, hiss: bool) -> void:
-	if data.size() <= VoiceBank.TAKE_MAX * VoiceCodec.RATE * 1.2:
+	if VoiceCodec.seconds(data) <= VoiceBank.TAKE_MAX * 1.2:
 		var samples := VoiceCodec.decode(data)
 		if hiss:
 			samples = VoiceCodec.add_static(samples, VoiceChat.dead_static)

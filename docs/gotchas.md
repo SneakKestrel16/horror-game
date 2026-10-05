@@ -81,6 +81,22 @@ Traps hit while building the game, with what fixed them.
   the corn ring cuts across the farm. `Farm.route(..., corn_only = true)` uses a second grid with
   only corn cells open.
 
+## Audio
+
+- **Each read of `AudioStreamWAV.data` copies the whole buffer.** Calling
+  `wav.data.decode_s16(i)` in a loop took 100 s for one 14 s file; read it into a local once.
+  A loop that never finishes shows up as the smoke test hitting its 240 s timeout.
+- **Some FilmCow WAVs declare a RIFF size a few bytes short of the file,** and Godot's loader
+  warns (which `check.sh` fails on). `Sfx._load` sets the size field to the true size first.
+- **Recorded sound effects stay out of git** (`game/assets/sfx/`, filled by `tools/get_sfx.sh`).
+  The folder has a `.gdignore`, so the editor doesn't import them (no `.import` files) and
+  `Sfx` loads them at run time with `AudioStreamWAV.load_from_buffer`. The smoke test passes
+  with them or without them; run it both ways after touching `Sfx`.
+- **Voice is 48 KB/s per talker** since the codec went to 24 kHz 16-bit (it was 16 KB/s). The
+  host relays every voice to everyone else, so with four people talking at once the host sends
+  about 0.45 MB/s (its own voice to three, each other voice to two). Fine on a LAN; inference:
+  may be tight on a slow home upload. Lower `VoiceCodec.RATE` before going back to mu-law.
+
 ## Lighting
 
 - **Fog greys out the day sky.** With `fog_sky_affect` at its default of 1, even light day fog

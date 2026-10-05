@@ -258,7 +258,7 @@ func _receive_take(key: String, data: PackedByteArray) -> void:
 	var peer := multiplayer.get_remote_sender_id()
 	if not multiplayer.is_server() or key not in keys_for(peer):
 		return
-	if data.size() > TAKE_MAX * VoiceCodec.RATE * 1.2:
+	if VoiceCodec.seconds(data) > TAKE_MAX * 1.2:
 		return
 	var lines: Dictionary = _takes.get_or_add(peer, {})
 	var takes: Array = lines.get_or_add(key, [])

@@ -86,7 +86,7 @@ func _show_clips(clips: Array) -> void:
 		var row := HBoxContainer.new()
 		_rows.add_child(row)
 		var label := Label.new()
-		label.text = "Phrase %d  (%.1f s)" % [i + 1, data.size() / float(VoiceCodec.RATE)]
+		label.text = "Phrase %d  (%.1f s)" % [i + 1, VoiceCodec.seconds(data)]
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(label)
 		_button(row, "Play", _play.bind(data))
