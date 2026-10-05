@@ -189,7 +189,7 @@ func _process(delta: float) -> void:
 	var day := clampf(into / (DAY * factor), 0.0, 1.0)
 	var dusk := clampf((into - DAY * factor) / (DUSK * factor), 0.0, 1.0)
 	_daylight.apply(day, dusk, phase() == "night" or phase() == "dawn")
-	_update_sounds()
+	_update_sounds(delta)
 	hud.update(self)
 
 
@@ -740,7 +740,7 @@ func _on_peer_disconnected(id: int) -> void:
 
 
 ## Feeds the ambience what the local player is close to.
-func _update_sounds() -> void:
+func _update_sounds(delta: float) -> void:
 	var player := local_player()
 	var distance := INF
 	var chased := false
@@ -748,4 +748,4 @@ func _update_sounds() -> void:
 	if seen and player and not player.dead:
 		distance = seen.global_position.distance_to(player.global_position)
 		chased = seen.state == Creature.State.CHASE
-	_ambience.update(phase() != "day", ended, distance, chased, lights_on())
+	_ambience.update(delta, phase() != "day", ended, distance, chased, lights_on())

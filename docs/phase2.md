@@ -281,7 +281,7 @@ generator's hum. Each plays one of several takes at a slightly random pitch and 
   them packed some other way
 - [ ] Recorded generic voice lines from real people, to replace the text-to-speech ones
 - [ ] The creature: footsteps, breathing, the chase screech, digging, setting a trap
-- [x] Footsteps on dirt and in the corn; corn rustle
+- [x] Footsteps on dirt and in the corn; corn rustle. The first recorded steps ("footstep dirt") sounded wet and far too loud (2026-10-04 playtest); now the short, dry "grass and leaves hard" set, 13 dB quieter, cut to 0.16 s
 - [ ] Footsteps on grass
 - [x] Traps: bear trap snap, falling into a pit
 - [ ] Traps: prying open
@@ -291,7 +291,8 @@ generator's hum. Each plays one of several takes at a slightly random pitch and 
 - [ ] Generator: sputtering when low, dying, refuelling
 - [ ] Barn and shed doors
 - [ ] Ambience: day birds and insects, animals going quiet at dusk, night crickets and wind
-- [ ] Crows for fake-outs, stingers for jumpscares, heartbeat when hunted
+- [x] Heartbeat when hunted: faster (72 to 168 bpm) and louder the closer a chasing creature is, still pounding about 12 s after; a low dissonant drone swells in under a chase (2026-10-04, synthesised)
+- [ ] Crows for fake-outs (synthesised caw only), stingers for jumpscares
 
 ### Textures
 

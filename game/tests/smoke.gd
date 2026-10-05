@@ -42,6 +42,7 @@ func _ready() -> void:
 	await _check_lobby()
 	_check_routes()
 	_check_audio()
+	_check_chase_sounds()
 	Engine.time_scale = SPEEDUP
 	await _check_lure()
 	await _check_chores()
@@ -650,7 +651,17 @@ func _check_audio() -> void:
 	_check(faded[0] == 0.0 and faded[3] == 0.0 and faded[1] > 0.0, "voice fades in and out")
 	Sfx.clear_cache()
 	var sounds: Array[String] = [
-		"step", "corn_step", "rustle", "snap", "thud", "splash", "clank", "coin", "screech", "caw"
+		"step",
+		"corn_step",
+		"rustle",
+		"snap",
+		"thud",
+		"splash",
+		"clank",
+		"coin",
+		"screech",
+		"caw",
+		"heartbeat",
 	]
 	var built := true
 	for sound in sounds + Sfx.LOOPS:
@@ -666,6 +677,35 @@ func _check_audio() -> void:
 		var first := loop.data.decode_s16(0) / 32768.0
 		var last := loop.data.decode_s16(loop.data.size() - 2) / 32768.0
 		_check(absf(first - last) < 0.05, "%s loops without a click (%.3f)" % [sound, last - first])
+
+
+## In a chase the heart races faster the closer the creature, the drone swells
+## in, and the heart is still pounding a little after the chase ends.
+func _check_chase_sounds() -> void:
+	var holder := Node3D.new()
+	add_child(holder)
+	var ambience := Sfx.Ambience.new(holder)
+	ambience.update(2.0, true, false, 20.0, true, false)
+	var far := ambience.heart_rate()
+	for i in 4:
+		ambience.update(1.0, true, false, 3.0, true, false)
+	var near := ambience.heart_rate()
+	var drone: AudioStreamPlayer = ambience.get("_chase")
+	_check(
+		near > far and near > 140.0 and drone.volume_db > -10.0,
+		"a chase races the heart (%.0f bpm at 20 m, %.0f at 3 m) and swells the drone" % [far, near]
+	)
+	ambience.update(3.0, true, false, INF, false, false)
+	var after := ambience.heart_rate()
+	for i in 20:
+		ambience.update(1.0, true, false, INF, false, false)
+	_check(
+		after > 0.0 and ambience.heart_rate() == 0.0 and not drone.playing,
+		"the heart calms after the chase (%.0f bpm 3 s on, then still)" % after
+	)
+	for player in holder.find_children("*", "AudioStreamPlayer*", true, false):
+		player.call("stop")
+	holder.queue_free()
 
 
 ## The RMS of a sine at hz after the voice resampler, from source_rate, fed in

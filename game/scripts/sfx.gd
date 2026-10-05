@@ -9,11 +9,17 @@ extends RefCounted
 const RATE := 22050
 const SFX_DIR := "res://assets/sfx"
 ## Recorded sounds by name: the FilmCow file prefix ("<prefix> <n>.wav" or
-## "<prefix>.wav") and a gain in dB from full scale, to sit them near the
-## stand-ins' levels. Chosen by file name, not by ear; settle by listening.
+## "<prefix>.wav"), a gain in dB from full scale, to sit them near the
+## stand-ins' levels, and for some a length in seconds they are cut to (faded).
+## Chosen by file name and measurement, not by ear; settle by listening.
+##
+## Footsteps were "footstep dirt" until a playtest found them wet and far too
+## loud (2026-10-04). Measured, that set was the longest (0.46 s on average)
+## and boomiest (47% of its energy under 250 Hz); "grass and leaves hard" is
+## 0.08 s and drier. That the long low tail was the wet sound is inference.
 const RECORDED := {
-	"step": ["footstep dirt", -5.0],
-	"corn_step": ["footstep grass and leaves", -5.0],
+	"step": ["footstep grass and leaves hard", -18.0, 0.16],
+	"corn_step": ["footstep grass and leaves", -15.0, 0.22],
 	"rustle": ["bushes", -6.0],
 	"splash": ["water splashing small", -8.0],
 	"clank": ["metal hits metal", -6.0],
@@ -21,7 +27,8 @@ const RECORDED := {
 	"thud": ["body fall", -2.0],
 	"hum": ["ventilation hum", -14.0],
 }
-const LOOPS: Array[String] = ["hum", "crickets", "wind", "heartbeat"]
+const LOOPS: Array[String] = ["hum", "crickets", "wind", "chase"]
+const CUT_FADE := 0.04  ## Seconds faded out where a recording is cut short.
 ## Synthesised sounds heard over and over come in this many takes, played at
 ## random, so a run of footsteps doesn't repeat one sample like a machine.
 const VARIANTS := {"step": 4, "corn_step": 3, "rustle": 3, "snap": 2, "thud": 2}
@@ -42,7 +49,9 @@ static func get_sound(sound: String, variant := 0) -> AudioStreamWAV:
 		var files := _recorded(sound)
 		var wav: AudioStreamWAV = null
 		if not files.is_empty():
-			wav = _load(files[variant % files.size()], RECORDED[sound][1], sound in LOOPS)
+			var entry: Array = RECORDED[sound]
+			var cut: float = entry[2] if entry.size() > 2 else 0.0
+			wav = _load(files[variant % files.size()], entry[1], sound in LOOPS, cut)
 		_cache[key] = wav if wav != null else _build(sound, variant)
 	return _cache[key]
 
@@ -104,9 +113,10 @@ static func _recorded(sound: String) -> Array[String]:
 	return _files[sound]
 
 
-## A recorded file, trimmed of silence, peak at gain_db, as 16-bit PCM (made
-## seamless if it loops); null if it won't load.
-static func _load(path: String, gain_db: float, loop: bool) -> AudioStreamWAV:
+## A recorded file, trimmed of silence, peak at gain_db, cut to max_seconds if
+## that is above 0, as 16-bit PCM (made seamless if it loops); null if it won't
+## load.
+static func _load(path: String, gain_db: float, loop: bool, max_seconds := 0.0) -> AudioStreamWAV:
 	var bytes := FileAccess.get_file_as_bytes(path)
 	if bytes.size() < 44:
 		return null
@@ -124,6 +134,11 @@ static func _load(path: String, gain_db: float, loop: bool) -> AudioStreamWAV:
 	samples.resize(floori(pcm.size() / 2.0))
 	for i in samples.size():
 		samples[i] = pcm.decode_s16(i * 2) / 32768.0 * gain
+	if max_seconds > 0.0 and samples.size() > roundi(max_seconds * wav.mix_rate):
+		samples.resize(roundi(max_seconds * wav.mix_rate))
+		var fade := roundi(CUT_FADE * wav.mix_rate)
+		for i in fade:
+			samples[samples.size() - 1 - i] *= float(i) / fade
 	if loop:
 		samples = _seamless(samples, 0.5, wav.mix_rate)
 	var out := _wav(samples, loop)
@@ -212,15 +227,46 @@ static func _build(sound: String, variant: int) -> AudioStreamWAV:
 				last = lerpf(rng.randf_range(-1.0, 1.0), last, smooth)
 				samples[i] = last * lerpf(3.0, 2.0, gust) * lerpf(0.5, 1.0, gust)
 			samples = _seamless(samples, 0.5)
-		"heartbeat":
-			loop = true
-			samples.resize(roundi(RATE * 0.8))
+		"heartbeat":  # One lub-dub; Ambience plays it faster as the creature closes in.
+			samples.resize(roundi(RATE * 0.34))
 			for i in samples.size():
 				var t := float(i) / RATE
-				var beat := (
-					exp(-t * 30.0) + 0.7 * exp(-maxf(0.0, t - 0.22) * 30.0) * float(t > 0.22)
+				var dub := t - 0.15
+				var lub := exp(-t * 26.0) * sin(TAU * (50.0 - 14.0 * t) * t)
+				var second := 0.0
+				if dub > 0.0:
+					second = 0.75 * exp(-dub * 32.0) * sin(TAU * 58.0 * dub)
+				var body := lub + second
+				# An octave up, so it carries on small speakers too.
+				samples[i] = 0.8 * body + 0.25 * body * sin(TAU * 100.0 * t)
+			_envelope(samples, 0.004, 0.03)
+		"chase":  # Dread under a chase: a low dissonant cluster that swells, a thin whine.
+			loop = true
+			var seconds := 8.0
+			samples.resize(roundi(RATE * (seconds + 0.5)))
+			var rumble := 0.0
+			for i in samples.size():
+				var t := float(i) / RATE
+				var swell := 0.75 + 0.25 * sin(TAU * t / 4.0)
+				var low := (
+					sin(TAU * 41.2 * t)
+					+ 0.8 * sin(TAU * 43.65 * t)
+					+ 0.6 * sin(TAU * 61.74 * t)
+					+ 0.3 * sin(TAU * 82.4 * t)
 				)
-				samples[i] = 0.9 * beat * sin(TAU * 52.0 * t)
+				var wobble := 1.0 + sin(TAU * 5.5 * t) * 0.004
+				var high := (
+					sin(TAU * 466.2 * t * wobble)
+					+ sin(TAU * 493.9 * t / wobble)
+					+ 0.6 * sin(TAU * 698.5 * t)
+				)
+				rumble = lerpf(rng.randf_range(-1.0, 1.0), rumble, 0.97)
+				samples[i] = (
+					tanh(low * 0.9) * 0.3 * swell
+					+ high * 0.025 * (0.6 + 0.4 * sin(TAU * t * 3.0 / seconds))
+					+ rumble * 0.6
+				)
+			samples = _seamless(samples, 0.5)
 	return _wav(samples, loop)
 
 
@@ -325,16 +371,26 @@ static func _wav(samples: PackedFloat32Array, loop: bool) -> AudioStreamWAV:
 
 ## The farm's background sound: wind by day; crickets by night that go quiet
 ## when the creature is near the listener (the warning the design doc gives
-## animals); a heartbeat while it chases nearby; the generator's hum while it
-## runs. Also makes the "Lure" bus the creature's voice plays on.
+## animals); the generator's hum while it runs. In a chase, a low dissonant
+## drone swells in, and the listener's heart beats faster and louder the
+## closer the creature gets, and keeps pounding a while after it gives up.
+## Also makes the "Lure" bus the creature's voice plays on.
 class Ambience:
 	const QUIET_NEAR := 18.0  ## Crickets stop with the creature this close (m).
-	const HEARTBEAT_NEAR := 22.0
+	const HEARTBEAT_NEAR := 25.0  ## The heart races with a chasing creature this close.
+	const CHASE_NEAR := 45.0  ## The chase drone plays with a chasing creature this close.
+	const BPM := Vector2(72.0, 168.0)  ## Heart rate barely scared, and at its worst.
+	const CALM_DOWN := 0.08  ## Fear lost a second once it's over: about 12 s to calm.
+	const DREAD_DB := -6.0  ## The chase drone at full.
 
 	var _wind: AudioStreamPlayer
 	var _crickets: AudioStreamPlayer
-	var _heartbeat: AudioStreamPlayer
+	var _chase: AudioStreamPlayer
+	var _heart := AudioStreamPlayer.new()
 	var _hum := AudioStreamPlayer3D.new()
+	var _fear := 0.0  ## 0 calm to 1 terrified: the heart's rate and loudness.
+	var _beat_left := 0.0
+	var _dread := -60.0  ## The chase drone's volume, faded in and out.
 
 	func _init(parent: Node3D) -> void:
 		Sfx.warm()
@@ -350,7 +406,9 @@ class Ambience:
 			AudioServer.add_bus_effect(bus, echo)
 		_wind = _loop(parent, "wind", -16.0)
 		_crickets = _loop(parent, "crickets", -20.0)
-		_heartbeat = _loop(parent, "heartbeat", -4.0)
+		_chase = _loop(parent, "chase", _dread)
+		_heart.stream = Sfx.get_sound("heartbeat")
+		parent.add_child(_heart)
 		_hum.stream = Sfx.get_sound("hum")
 		_hum.unit_size = 3.0
 		_hum.max_distance = 30.0
@@ -358,11 +416,32 @@ class Ambience:
 		parent.add_child(_hum)
 
 	## creature_distance is INF with no creature or no listener.
-	func update(dark: bool, over: bool, creature_distance: float, chased: bool, lit: bool) -> void:
+	func update(
+		delta: float, dark: bool, over: bool, creature_distance: float, chased: bool, lit: bool
+	) -> void:
 		_set_playing(_wind, not dark and not over)
 		_set_playing(_crickets, dark and not over and creature_distance > QUIET_NEAR)
-		_set_playing(_heartbeat, chased and creature_distance < HEARTBEAT_NEAR)
 		_set_playing(_hum, lit)
+		var hunted := chased and not over
+		var fear := 0.0
+		if hunted and creature_distance < HEARTBEAT_NEAR:
+			fear = 0.3 + 0.7 * (1.0 - creature_distance / HEARTBEAT_NEAR)
+		_fear = move_toward(_fear, fear, delta * (0.6 if fear > _fear else CALM_DOWN))
+		if over:
+			_fear = 0.0
+		_beat_left -= delta
+		if _fear > 0.05 and _beat_left <= 0.0:
+			_beat_left = 60.0 / lerpf(BPM.x, BPM.y, _fear)
+			_heart.volume_db = lerpf(-18.0, 0.0, _fear)
+			_heart.play()
+		var dread := DREAD_DB if hunted and creature_distance < CHASE_NEAR else -60.0
+		_dread = move_toward(_dread, dread, delta * (30.0 if dread > _dread else 12.0))
+		_chase.volume_db = _dread
+		_set_playing(_chase, _dread > -59.0)
+
+	## The heart rate now, in beats a minute (0 when calm).
+	func heart_rate() -> float:
+		return lerpf(BPM.x, BPM.y, _fear) if _fear > 0.05 else 0.0
 
 	static func _loop(parent: Node, sound: String, volume_db: float) -> AudioStreamPlayer:
 		var player := AudioStreamPlayer.new()
