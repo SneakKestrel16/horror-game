@@ -154,3 +154,13 @@ Traps hit while building the game, with what fixed them.
   `AT_CUBEMAP_PASS` is false, or they leak into the farm's ambient light.
 - **The last dawn has no clock.** The host stops the clock when the game ends, so `Daylight`
   counts the final dawn itself from `delta`.
+
+## Cloud sessions
+
+- **No Blender install in the cloud:** blender.org is blocked, but `pip install bpy==5.2.2` gives
+  Blender as a Python module that runs `tools/blender/build.py` as is (`python build.py -- name`).
+- **`barn.glb` doesn't rebuild byte for byte:** two builds in a row differ near the end of the file,
+  so a rebuild of everything shows the barn as changed even when nothing in it was touched. Only
+  commit it when the barn was meant to change.
+- **Snapshots in a container:** Godot needs a display; run it under `xvfb-run -a` with
+  `--rendering-driver opengl3`, since there's no Vulkan device.

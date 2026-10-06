@@ -51,3 +51,22 @@ stay in `docs/` (a `phase4.md` when Phase 4 starts); traps go in
 13. **The fourth role** (Hunter or Tracker) stays open; build role code so either can be added.
 14. **When a task ends:** write `handoffs/<task-id>.md`, add any trap to `docs/gotchas.md`, update
     the phase doc's checklist if an item is finished, and set the task to `Review`.
+
+## Cloud sessions (D-010, D-012)
+
+In the cloud container the checkout is `/home/user/horror-game` and these replace the Windows
+commands in CLAUDE.md (the tools live in the session's scratch space and are reinstalled by the
+Director if a session restarts):
+
+| Job | Command |
+|---|---|
+| Checks | `GODOT=/tmp/claude-0/godot/Godot_v4.7-stable_linux.x86_64 SMOKE_PORT=<yours> bash tools/check.sh` |
+| Format and lint | `/tmp/claude-0/venv/bin/gdformat --check game/scripts game/tests game/tools` and `/tmp/claude-0/venv/bin/gdlint game/scripts game/tests game/tools` (prek's hooks point at `.venv/Scripts/`, Windows only) |
+| Snapshot | `xvfb-run -a -s "-screen 0 1280x720x24" $GODOT --path game --rendering-driver opengl3 res://tools/snapshot.tscn -- <args>` (OpenGL, not the game's Vulkan: lighting can differ slightly) |
+| Showcase | the same, with `res://tools/showcase.tscn -- --set=...` |
+| Blender | `/tmp/claude-0/venv/bin/python tools/blender/build.py -- [name ...]` (Blender 5.2.2 as the `bpy` module from PyPI) |
+| Two instances | the CLAUDE.md launch lines under `xvfb-run -a`, each with `--rendering-driver opengl3`, or `--headless` when nothing needs seeing |
+
+Not reachable from the cloud: blender.org and itch.io (FilmCow). Recorded sounds can't be fetched,
+picked or heard there, so sound work is synthesis only until the user's machine (D-013). There
+is no microphone and no speaker: voice and listening checks are for the user.

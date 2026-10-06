@@ -87,20 +87,22 @@ launch, named in the handoff), a handoff is written, and nothing in the privacy 
   footsteps, breathing, chase screech, digging and trap-setting; footsteps on grass; prying a trap;
   harvest and selling; generator sputter, dying and refuel; barn and shed doors (shed door after
   S1-06); ambience by time of day; crows and jumpscare stingers.
-- Each from FilmCow through `tools/get_sfx.sh` or synthesised in `sfx.gd`. Anything else is listed
-  with its licence in QUESTIONS.md and waits for the user. The handoff lists each sound and its
-  source. No sound files committed.
+- Each synthesised in `sfx.gd` (D-013: FilmCow can't be reached from the cloud; recorded takes
+  are S1-18). Anything from another source is listed with its licence in QUESTIONS.md and waits
+  for the user. The handoff lists each sound and how it is made. No sound files committed.
 - Ticks the phase3.md scare-sounds item and the phase2.md items it covers. Levels set by ear are a
   guess until the playtest (left unchecked: "listen in a playtest").
 
 ### Build and hosting
 
-**S1-12 An exported Windows build with sounds** · Network & Voice (with Audio) · Waiting · depends on: S1-11
+**S1-12 An exported Windows build with sounds** · Network & Voice (with Audio) · Ready · depends on: none (D-013)
 - An `export_presets.cfg` that packs `textures.json` and the recorded sounds (they live in a folder
   Godot ignores today), without committing the sound files. Whatever packing step is needed is
   scripted so it's repeatable.
 - The exported build, run from a folder outside the repo, hosts and joins another instance, and
-  plays recorded sounds. Ticks the phase2.md export item.
+  plays recorded sounds. In the cloud: a Linux export of the same preset proves the packing with
+  stand-in sound files (never committed); the Windows build is checked by the user with the real
+  library. Ticks the phase2.md export item once the user has.
 
 **S1-13 Hosting and joining over the internet** · Network & Voice · Done · depends on: none
 - `docs/hosting.md`, linked from docs/README.md: the port, how the host opens it (router port
@@ -131,6 +133,11 @@ launch, named in the handoff), a handoff is written, and nothing in the privacy 
   never tested with a real microphone and has no lobby recording (both done in Phase 2); the
   Economy Check's corn row, "Corn can't help" and assumption 5's "per corn plot" wait for S1-15
   and are rewritten from its results.
+
+**S1-18 Recorded takes for the new sounds** · Audio · Waiting · depends on: S1-11, a session on the user's machine
+- From the FilmCow library through `tools/get_sfx.sh`: pick recorded takes for the sounds S1-11
+  synthesised where the library has a fitting one, set levels by ear, keep synthesis as the
+  fallback.
 
 ### Optional, if there's time before the STOP
 

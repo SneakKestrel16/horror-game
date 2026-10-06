@@ -82,3 +82,19 @@ S1-06 assumed it would open and close "like the barn doors", but neither buildin
 an open doorway. The task now builds the first door (and is written so the barn can reuse it in
 Stage 4) and must sit with the `shed_lock` upgrade. Its RPC and state are a contract change the
 Gameplay Programmer proposes in CONTRACTS.md before building.
+
+## D-012 · 2026-10-06 · Director · Blender runs in the cloud through bpy
+
+blender.org is blocked in the cloud, but Blender 5.2.2 installs from PyPI as the `bpy` module and
+runs `tools/blender/build.py` unchanged. Checked: the shed and generator rebuild byte-identical to
+the committed files, and the iron texture rebakes to a mean pixel difference of 0.02 (JPEG noise).
+The barn differs between two runs of its own (randomness in its script, not the cloud). This
+replaces D-010's note that Blender tasks wait for the user's machine. Commands in README.md.
+
+## D-013 · 2026-10-06 · User, Director · Stage 1 goes ahead in the cloud; sounds split
+
+The user approved D-011 and the start of Stage 1, and asked that GitHub be kept up to date: every
+task that passes QA is merged into the session branch and pushed at once. FilmCow can't be
+reached from the cloud, so S1-11 covers the missing sounds by synthesis, and choosing recorded
+FilmCow takes for them is a new task, S1-18, for a session on the user's machine. S1-12 builds the
+packing step now and is tested with stand-in files; the user checks it with the real library.
