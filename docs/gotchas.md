@@ -36,6 +36,11 @@ Traps hit while building the game, with what fixed them.
   the light: turning the lantern off, or flickering by visibility instead of energy, still
   crashed. Freeing every player 10 frames before the game stopped it (8 clean runs of 8).
   Inference: whether a real game can crash the same way on quit is untested.
+- **A headless `--import` of a fresh clone can segfault** (exit 139) with nothing in the log
+  after the editor layout loads. Seen once in 10 fresh imports on 4.7.2 (2026-10-06); running
+  the import again then passed. `check.sh` reports it as a failure; rerun before digging. An
+  exported build never imports at run time, so friends playing one can't hit it. Cause unknown;
+  a backtrace from a debug-symbols build would settle it.
 - **Bisect a flaky crash with 8 runs a variant, not 3.** At a 40% crash rate, 0 of 3 happens one
   time in five, and two 3-run "clean" variants here were wrong. And cut a test short with
   `if _game != null: return`: a bare `return` makes the rest unreachable, a compile error that

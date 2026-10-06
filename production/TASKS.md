@@ -96,6 +96,10 @@ launch, named in the handoff), a handoff is written, and nothing in the privacy 
   scripted so it's repeatable.
 - The exported build, run from a folder outside the repo, hosts and joins another instance, and
   plays recorded sounds. Ticks the phase2.md export item.
+- Started 2026-10-06: Godot 4.7.2's export templates are installed (official release, SHA-512
+  checked) and `game/export_presets.cfg` exports to `build/` with `textures.json` packed. That
+  build hosted and started day 1 from a folder outside the repo with no errors before quit. Left:
+  packing the recorded sounds, and the host-and-join run.
 
 **S1-13 Hosting and joining over the internet** · Network & Voice · Done · depends on: none
 - `docs/hosting.md`, linked from docs/README.md: the port, how the host opens it (router port

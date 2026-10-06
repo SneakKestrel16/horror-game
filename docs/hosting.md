@@ -100,8 +100,9 @@ The joiner sees "Could not reach ADDRESS:PORT." on the menu.
 
 ## Open items
 
-- No exported build yet: friends currently need Godot 4.7 and a copy of the project. A Windows
-  export preset is planned.
+- No exported build for friends yet: they need Godot 4.7 and a copy of the project. A Windows
+  preset exists (`godot --path game --headless --export-release "Windows Desktop"` writes
+  `build/`), but it doesn't pack the recorded sounds yet, so they fall back to stand-ins.
 - The port cannot be set from the main menu, only with `--port=N`.
 - Nothing checks that the host and joiners run the same version; a version handshake on connect
   would turn a mismatch into a clear message.
