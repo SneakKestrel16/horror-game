@@ -1,0 +1,118 @@
+# Tasks
+
+The task board. Only the Director creates or reassigns tasks; the owner moves a task to
+`In progress` and then `Review`; only QA sets `Done`. Rules: [README.md](README.md).
+
+Statuses: `Waiting` (blocked on a dependency or a question), `Ready`, `In progress`, `Review`,
+`Done`.
+
+## Stage 1: ready for the group playtest
+
+From the open items in [phase2.md](../docs/phase2.md#checklist) and
+[phase3.md](../docs/phase3.md#checklist) that don't need other people. Ends with a STOP: the user
+runs the group playtest of Phases 2 and 3.
+
+Every task's acceptance criteria also include: `bash tools/check.sh` passes, `prek run
+--all-files` passes from Git Bash, the change was seen running (snapshot, showcase or a two-instance
+launch, named in the handoff), a handoff is written, and nothing in the privacy rules is committed.
+
+### Animations
+
+**S1-01 Dig and set-trap poses for the creature** · Creature & Director · Ready · depends on: none
+- The creature kneels and paws at the ground while digging a pit, and crouches over a bear trap
+  while setting one, in `Creature._animate` (procedural, D-006).
+- Driven by replicated state only (`state` is ERRAND; add a replicated errand kind if the pose
+  needs it, through a CONTRACTS.md change approved first), so every peer sees the same pose.
+- An errand no longer looks like staring (phase2.md checklist). A snapshot of each pose in the
+  handoff.
+
+**S1-02 Lunge and stare poses** · Creature & Director · Ready · depends on: S1-01
+- The lunge: a fast forward reach with arms out when a chase closes the gap; the stare: still,
+  head tilted, arms hanging, while `state` is STARE. Both procedural, both seen on a joining peer.
+- The phase3.md checklist item's animation half can be ticked.
+
+**S1-03 A knockdown the others can see** · Gameplay · Ready · depends on: none
+- When a player stumbles (`stumble_left`), other peers see them fall and get up, not just the
+  player's own camera dip. Replicate what's needed (a CONTRACTS.md change approved first: likely
+  `stumble_left` or a `knocked` flag added to the player's Sync props).
+- Two-instance launch: player A is knocked down, player B sees it. Smoke check added by QA.
+
+**S1-04 Players' dig and set-trap poses** · Gameplay · Ready · depends on: none
+- A player digging a crop plot, setting or prying a trap, or hanging one on the pegboard kneels and
+  works with their arms, from replicated state (`kneeling` is already synced; add an action kind if
+  needed, through CONTRACTS.md). Seen from a second instance.
+
+### The shed
+
+**S1-05 A shed door** · 3D Artist · Ready · depends on: none
+- A door model in `tools/blender/` matching the shed (models.md naming, 1 unit = 1 m, pivot on
+  the hinge edge), rebuilt with the Blender command and checked in the showcase.
+
+**S1-06 Hang the shed door and make it work** · Level → Gameplay · Waiting · depends on: S1-05
+- Level places the door in `farm.gd` (the shed is modelled open and flat today). Gameplay makes it
+  open and close like the barn doors, host-owned and replicated, blocking the creature and players
+  when shut. Technical Artist dresses it in `looks.gd`.
+- Players can shut themselves in the shed; a joining peer sees its state.
+
+**S1-07 The shed scare** · Creature & Director · Waiting · depends on: S1-06
+- The scare the phase3.md checklist names once the shed has a door, built as the design doc
+  describes it, paced by the director like the other scares, and logged.
+- Ticks the phase3.md item.
+
+### Models and textures
+
+**S1-08 Bear trap, pit and pegboard tool models** · 3D Artist · Ready · depends on: none
+- Metal bear trap (open and sprung), a pit cover if the doc's pit needs one, and the pegboard tools
+  (shovel, hoe, watering can or whatever `chores.gd` hangs) modelled and textured to models.md's
+  style, replacing the primitives. Showcase screenshots in the handoff.
+
+**S1-09 Swap the trap and tool models into the game** · Technical Artist · Waiting · depends on: S1-08
+- `looks.gd` uses the new models; traps show open and sprung states; nothing else changes size or
+  collision. Snapshot of the shed pegboard and a set trap in the handoff.
+
+**S1-10 Crops at each growth stage** · 3D Artist → Technical Artist · Ready · depends on: none
+- A model per growth stage for each crop the game has (turnip, pumpkin, moonflower), sharing the
+  plot's footprint; the Technical Artist swaps them into `looks.gd` by growth fraction.
+- Ticks the phase2.md textures item. Showcase `--set=plants` screenshots.
+
+### Sounds
+
+**S1-11 Missing sounds** · Audio · Ready · depends on: none
+- For every unchecked item in phase2.md's Sounds list that doesn't need real people: creature
+  footsteps, breathing, chase screech, digging and trap-setting; footsteps on grass; prying a trap;
+  harvest and selling; generator sputter, dying and refuel; barn and shed doors (shed door after
+  S1-06); ambience by time of day; crows and jumpscare stingers.
+- Each from FilmCow through `tools/get_sfx.sh` or synthesised in `sfx.gd`. Anything else is listed
+  with its licence in QUESTIONS.md and waits for the user. The handoff lists each sound and its
+  source. No sound files committed.
+- Ticks the phase3.md scare-sounds item and the phase2.md items it covers. Levels set by ear are a
+  guess until the playtest (left unchecked: "listen in a playtest").
+
+### Build and hosting
+
+**S1-12 An exported Windows build with sounds** · Network & Voice (with Audio) · Waiting · depends on: S1-11
+- An `export_presets.cfg` that packs `textures.json` and the recorded sounds (they live in a folder
+  Godot ignores today), without committing the sound files. Whatever packing step is needed is
+  scripted so it's repeatable.
+- The exported build, run from a folder outside the repo, hosts and joins another instance, and
+  plays recorded sounds. Ticks the phase2.md export item.
+
+**S1-13 Hosting and joining over the internet** · Network & Voice · Ready · depends on: none
+- `docs/hosting.md`, linked from docs/README.md: the port, how the host opens it (router port
+  forward) or a virtual LAN (for example Tailscale or ZeroTier) as the simpler path, how a friend
+  joins, and what to check when it fails. Short enough to send to a friend.
+- Checked against what `net.gd` actually listens on.
+
+### Review
+
+**S1-14 QA pass and smoke additions** · QA · Waiting · depends on: S1-01 to S1-13
+- Smoke checks for the replicated knockdown, the shed door state and the creature's poses.
+- A two-instance run of the whole farm night with the exported build. A list of what only the
+  group playtest can verify, for the STOP summary.
+
+### Optional, if there's time before the STOP
+
+**S1-15 Bring the simulator up to date** · Game Designer · Ready · depends on: none
+- Remove corn as a crop; make the quota 8 plots of pumpkins (the design doc's stand-in). No other
+  number changes. Records the 4-player best case against the 400 payment again. Needed for Stage 2
+  anyway.
