@@ -20,6 +20,11 @@ Traps hit while building the game, with what fixed them.
   with the same name (`_corn`) did it; `--check-only -s` on the broken script names the cause.
 - **The corn map is static,** shared by everything that asks `Farm.in_corn`. Each new `Farm`
   regrows it, so a test that changes the cells changes the map for the rest of the run.
+- **A smoke check that places players at fixed spots breaks when the corn moves.** The night
+  kill stood the player at (0, 20), open ground until the 2026-10-05 corn rows filled it; the
+  rows then hid the lantern and the check failed only on some seeds. Place such checks on a
+  field, which `Farm.FIELD_MARGIN` keeps clear, and count over repeated random calls rather than
+  checking the last one.
 - **Quitting while sounds play leaks their playbacks**, and `check.sh` fails on the `WARNING`.
   The smoke test stops every sound player, frees the game and waits 10 frames before quitting;
   waiting 3 frames without stopping them still leaked now and then.

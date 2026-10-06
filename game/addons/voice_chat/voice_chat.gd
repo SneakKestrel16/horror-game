@@ -22,6 +22,14 @@ const CLIP_MIN := 0.5  # seconds
 const CLIP_MAX := 3.0  # seconds; design doc, Build Notes: live clips
 const CLIPS_PER_PEER := 8
 const CLIP_SILENT := 0.005  # RMS below this is a muted or switched-off mic: not kept
+## Outgoing voice is raised so its peaks reach about AGC_TARGET: mics send
+## quietly, and chat was "a little quiet" in game (2026-10-05). The gain is
+## capped at AGC_GAIN_MAX (+16 dB) so the hiss between words stays low; it drops
+## at once on a loud peak (no clipping) and climbs back over AGC_RELEASE
+## seconds. All three are guesses.
+const AGC_TARGET := 0.6
+const AGC_GAIN_MAX := 6.0
+const AGC_RELEASE := 0.8
 
 ## Push-to-talk (hold V) or talk automatically when loud enough.
 @export var mode: Mode = Mode.PUSH_TO_TALK
@@ -49,6 +57,7 @@ var _my_consent := false
 var _time := 0.0
 var _take := PackedFloat32Array()
 var _taking := false
+var _agc_peak := 0.0  ## The recent peak level, falling over AGC_RELEASE.
 
 var _speakers := {}       # peer_id -> VoiceSpeaker
 var _consent := {}        # peer_id -> bool
@@ -210,7 +219,8 @@ func _read_microphone(delta: float) -> void:
 	var samples := _encoder.resample(_capture.get_buffer(available))
 	if _taking:
 		_take.append_array(samples)
-	var wants := _wants_to_talk(samples, delta)
+	var wants := _wants_to_talk(samples, delta)  # On the raw level: gain must not trip it.
+	level(samples)
 	var fade := roundi(TALK_FADE * VoiceCodec.RATE)
 	if wants != _transmitting:
 		_transmitting = wants
@@ -229,6 +239,15 @@ func _read_microphone(delta: float) -> void:
 		var chunk := _outgoing.slice(0, PACKET_SAMPLES)
 		_outgoing = _outgoing.slice(PACKET_SAMPLES)
 		_send_voice(chunk)
+
+
+## Raises samples in place toward AGC_TARGET (automatic gain control).
+func level(samples: PackedFloat32Array) -> void:
+	var fall := exp(-1.0 / (AGC_RELEASE * VoiceCodec.RATE))
+	var floor_peak := AGC_TARGET / AGC_GAIN_MAX
+	for i in samples.size():
+		_agc_peak = maxf(absf(samples[i]), maxf(_agc_peak * fall, floor_peak))
+		samples[i] = clampf(samples[i] * AGC_TARGET / _agc_peak, -1.0, 1.0)
 
 
 func _send_voice(chunk: PackedFloat32Array) -> void:

@@ -87,6 +87,12 @@ check that recording and proximity chat work before anything else.
   sprinting), and the crow is a synthesised three-call caw instead of a screech. The host's log
   names the creature's look as "creature look: scarecrow" (it read "the creature is the
   creature").
+- **Louder voice chat** (2026-10-05, `addons/voice_chat/voice_chat.gd`): chat worked between
+  players but was a little quiet, so `VoiceChat.level` raises outgoing speech toward a peak of
+  0.6 before it is sent, by up to 6× (+16 dB). The gain drops at once on a loud peak and climbs
+  back over 0.8 s, so shouting is not clipped. Voice activation still listens to the raw level,
+  and lobby takes are left raw (`VoiceBank` raises those itself). Kept chat clips are recorded
+  after the gain, so they come out louder too.
 
 ## Numbers
 
@@ -106,6 +112,7 @@ Phase 1's numbers still hold ([Numbers](phase1.md#numbers)); new ones:
 | Off-board trap vanishes | no living player within 15 m | Guess |
 | Trap on a path instead of its usual place | bear trap 15%, pit 40% | Guess; bear traps were 40% until the solo playtest |
 | Corn strips | 8 strips, 4-15 m wide; edges moved up to 2.5 m by noise | Guess |
+| Chat gain | peaks raised toward 0.6, at most 6×, recovering over 0.8 s | Guess |
 | Clear ground round each field | 2 m (`Farm.FIELD_MARGIN`) | Guess |
 | Footstep stride | 1.1 m crouching, 1.6 walking, 2.4 sprinting | Guess, slowed after the 2026-10-05 playtest |
 
@@ -252,7 +259,7 @@ the art and sound the prototype fakes.
 - [x] Creature reacts to the barn going dark
 - [ ] A playtest with 2-4 real people, each on their own machine
 - [x] Recording with a real microphone
-- [ ] Proximity chat between two machines with real microphones
+- [ ] Proximity chat between two machines with real microphones (works in game but was quiet; check the new gain)
 - [x] Recorded takes raised to full level
 - [ ] Check the new take level in a playtest
 - [x] Neutral-tone takes: the creature now mostly uses live chat clips

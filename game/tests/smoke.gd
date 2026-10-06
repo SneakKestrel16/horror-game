@@ -125,6 +125,20 @@ func _check_lobby() -> void:
 		named += 1 if pick["key"] == "name_1" else 0
 	_check(friend > 30, "a friend's voice is picked far more than your own (%d of 40)" % friend)
 	_check(named > 5, "it sometimes calls you by name in a friend's voice (%d of 40)" % named)
+	# Quiet speech is raised before it is sent, and loud speech is not clipped.
+	var quiet := tone.duplicate()
+	for i in quiet.size():
+		quiet[i] *= 0.2
+	VoiceChat.level(quiet)
+	var raised := _peak(quiet.slice(quiet.size() >> 1))
+	var in_range := raised > 0.3 and raised <= VoiceChat.AGC_TARGET + 0.01
+	_check(in_range, "quiet chat raised to %.2f" % raised)
+	var shout := tone.duplicate()
+	for i in shout.size():
+		shout[i] *= 3.0
+	VoiceChat.level(shout)
+	var top := _peak(shout)
+	_check(top <= VoiceChat.AGC_TARGET + 0.01, "loud chat held at %.2f" % top)
 	# What a consenting player says over voice chat is kept, and the creature uses it.
 	VoiceChat.call("_store_clip_samples", 1, tone)
 	await _frames(40)
@@ -534,12 +548,13 @@ func _check_night() -> void:
 	_game.creature.place(Vector3(0, 0, 40))
 	other.queue_free()
 	await _frames(2)
-	# In the open with a lantern: it should come.
+	# In the open with a lantern: it should come. Across the west field, since corn
+	# rows now fill the middle of the farm and would hide the lantern.
 	_armed_before_wipe = traps.armed_positions().size()
 	_game.coins = 10  # Less than the bill, so the morning tests the floor.
-	_put(_player, Vector3(0, 0, 20))
+	_put(_player, Vector3(-14, 0, 20.5))
 	_player.lantern = true
-	_game.creature.global_position = Vector3(0, 0, 27)
+	_game.creature.global_position = Vector3(-21, 0, 20.5)
 	_game.creature.call("_lurk")
 	for i in 60 * 15:
 		await get_tree().physics_frame
@@ -796,19 +811,17 @@ func _check_phase3() -> void:
 	director.crow(_player)
 	_check(director.tension == 0.0, "the crow fake-out left the tension down")
 	# The dead-voice twist: a dead friend's voice is played through static.
-	var tells := {}
+	var hissed := [0]  # Calls the host heard through static; any of ten will do.
 	var on_spoke := func(_at: Vector3, _heard: Dictionary, told: Dictionary) -> void:
-		tells.merge(told, true)
+		if str(told.get(1, "")).ends_with("through static"):
+			hissed[0] += 1
 	creature.spoke.connect(on_spoke)
 	VoiceChat.get("_dead")[FRIEND] = true
 	for i in 10:
 		creature.speak_now()
 	VoiceChat.get("_dead")[FRIEND] = false
 	creature.spoke.disconnect(on_spoke)
-	_check(
-		str(tells.get(1, "")).ends_with("through static"),
-		"a dead friend's voice comes through static"
-	)
+	_check(hissed[0] > 0, "a dead friend's voice comes through static (%d of 10)" % hissed[0])
 	# The lantern flicker: a ghost flickers a living teammate's lantern.
 	var players: MultiplayerSpawner = _game.get("_players")
 	var other := players.spawn(_game.call("_player_data", FRIEND, "Bea")) as Player
