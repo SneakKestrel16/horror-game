@@ -110,6 +110,14 @@ launch, named in the handoff), a handoff is written, and nothing in the privacy 
 - A two-instance run of the whole farm night with the exported build. A list of what only the
   group playtest can verify, for the STOP summary.
 
+### Naming
+
+**S1-16 Rename the scarecrow look to strawman** · 3D Artist · Ready · depends on: none
+- Per D-008: the Blender function and model file (`strawman.glb`, old one and its `.import`
+  removed), `Creature.LOOKS`, the showcase sets, models.md, phase2.md and the design doc's line on
+  the four looks. `--monster=strawman` works and the log says "creature look: strawman".
+- No `scarecrow` identifier left except the farm object's mentions.
+
 ### Optional, if there's time before the STOP
 
 **S1-15 Bring the simulator up to date** · Game Designer · Ready · depends on: none

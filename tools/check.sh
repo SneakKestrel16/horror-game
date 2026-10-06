@@ -15,10 +15,11 @@ log=$(mktemp)
 trap 'rm -f "$log"' EXIT
 "$godot" --headless --import >"$log" 2>&1
 status=$?
-# Its own port, so a running game does not block it. --quit-after caps the run
+# Its own port, so a running game does not block it (SMOKE_PORT gives parallel
+# checks, such as agents in separate worktrees, a port each). --quit-after caps the run
 # (in frames) so a broken test fails instead of hanging.
 # timeout too: a script that fails to compile leaves the test waiting forever.
-timeout 240 "$godot" --headless --quit-after 400000 res://tests/smoke.tscn -- --port=7791 >>"$log" 2>&1 || status=$?
+timeout 240 "$godot" --headless --quit-after 400000 res://tests/smoke.tscn -- --port="${SMOKE_PORT:-7791}" >>"$log" 2>&1 || status=$?
 cat "$log"
 if grep -Eq '(^|[^A-Z_])(ERROR|WARNING):' "$log"; then
 	echo "check.sh: Godot reported errors or warnings (treated as failures)." >&2

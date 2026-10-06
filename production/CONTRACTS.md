@@ -155,7 +155,7 @@ The phase docs' Numbers tables list them with sources. Main ones: `Game` clock a
   (`docs/models.md`). `textures.json` describes each texture and is read at run time by `Dress`.
 - **Joints:** characters and creature looks have empties `leg_0`, `leg_1`, `arm_0`, `arm_1`,
   `head`; code finds them by name. `Creature.LOOKS` lists the creature bodies (`creature`,
-  `scarecrow`, `boar`, `husk`).
+  `strawman` (renamed from `scarecrow` by D-008, S1-16), `boar`, `husk`).
 - **Items and crops** are strings shared by chores, store, looks and HUD: crops `turnip`,
   `pumpkin`, `moonflower`; upgrades are `Store.UPGRADES` keys; sounds are `Sfx` names.
 

@@ -42,5 +42,25 @@ The prompt gives animations to the 3D Artist, but the characters are animated in
 (`Player._animate`, `Creature._animate` rotating named joints; no AnimationPlayer, no rigs). Proposal:
 keep it procedural. The script's owner writes the poses (Creature & Director for the creature,
 Gameplay for players), driven by replicated properties so every peer sees them; the 3D Artist
-keeps the joint names and pivots that the code relies on. **Proposed**; Stage 1 tasks S1-01 to
-S1-04 assume it.
+keeps the joint names and pivots that the code relies on. **Approved by the user** (Q-001).
+
+## D-007 · 2026-10-05 · User · The season numbers wait for Stage 3
+
+The game keeps its 2 days, every seed from day 1, 60-second growth and 0 starting coins until
+Stage 3 builds the 7-day season; nobody changes them in Stage 1 (Q-002).
+
+## D-008 · 2026-10-05 · User, Director · The scarecrow look becomes the strawman
+
+"Scarecrow" stays the name of the Phase 4 farm object; the creature look is renamed `strawman`
+everywhere it is an identifier (the model, `Creature.LOOKS`, `--monster=`, the showcase, the log
+line, models.md, phase2.md) and in the design doc's description of the looks (Q-003). Task S1-16.
+The 3D Artist does the whole rename, including the one-word edits in `creature.gd`,
+`game/tools/showcase.gd` and the docs, which is approved here as a one-off exception to ownership.
+
+## D-009 · 2026-10-05 · Director · Agents work in separate worktrees
+
+Agents run in parallel, each in its own git worktree, and commit their task on the worktree's
+branch (never `main`, never pushed). The Director merges a branch into `main` and pushes after QA
+passes it. `tools/check.sh` takes `SMOKE_PORT` so parallel checks don't fight over port 7791.
+Worktrees have no `.venv` and no recorded sounds: agents call the main checkout's
+`.venv/Scripts/gdformat` and `gdlint`, and the Director runs prek when merging.
