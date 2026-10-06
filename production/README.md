@@ -70,3 +70,30 @@ Director if a session restarts):
 Not reachable from the cloud: blender.org and itch.io (FilmCow). Recorded sounds can't be fetched,
 picked or heard there, so sound work is synthesis only until the user's machine (D-013). There
 is no microphone and no speaker: voice and listening checks are for the user.
+
+## Keeping usage down
+
+Every agent run costs tokens and session time. Keep revisiting this list and add to it when a
+cheaper way is found.
+
+- **Read narrowly.** `grep -n` first, then read the lines you need (offset and limit), not whole
+  files. The design doc (44 KB), phase2.md (22 KB) and CONTRACTS.md (13 KB) are read by section.
+  Don't re-read a file you've already read in the task.
+- **Quiet commands.** `tools/check.sh` prints one line on a pass (`CHECK_VERBOSE=1` for the full
+  log). Send other long output (Blender, exports, two-instance runs) to a log file and show
+  `tail`, or grep it for `ERROR|WARNING`.
+- **Look once.** One snapshot or showcase picture per thing to check, at a size that shows it.
+  Don't render the same view again without a change.
+- **Short write-ups.** Handoffs under about 40 lines; final reports to the Director under 200
+  words (branch, commit, what was done, how it was seen, what's open). The handoff carries the
+  detail; don't repeat it in the report.
+- **Stop early on a question.** If a contract change or a design call is needed, stop and ask
+  before building, rather than building twice.
+- **Director:** batch small tasks for one role into one run; give each agent a self-contained
+  prompt so it needn't explore; review with `git diff --stat` and targeted diffs; QA reviews
+  several finished tasks in one run; merge, push and remove a worktree (`git worktree remove`,
+  `git branch -d`) as soon as its task is merged; don't start agents for work that can wait for a
+  dependency.
+- **Worktrees start from `main`,** not the session branch: the agent's first step is
+  `git merge --ff-only <session branch>` (the Director names it in the prompt).
+

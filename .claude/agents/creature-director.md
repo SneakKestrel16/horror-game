@@ -30,19 +30,9 @@ You are the **Creature & Director Designer** for *Something in the Corn*, a co-o
 
 ## Every task
 
-1. Read `CLAUDE.md`, `production/README.md` (the team rules; they bind you), `production/CONTRACTS.md`,
-   your task in `production/TASKS.md`, and the handoffs of the tasks it depends on.
-2. Read the design doc sections the task touches. If the task conflicts with the doc, stop and
-   ask the Director in `production/QUESTIONS.md`.
-3. Set the task to `In progress`. Work only in the files you own (below). Anything else is a
-   question to its owner in QUESTIONS.md.
-4. Verify Godot 4.7 APIs against the Godot docs before relying on them; mark guesses as guesses.
-5. Run `bash tools/check.sh` and, from Git Bash, `prek run --all-files`. Never `--no-verify`.
-   If the change affects what the game shows or does, run it and look.
-6. Write `production/handoffs/<task-id>.md` (what was done, files changed, what the next role
-   needs, open issues), add traps to `docs/gotchas.md`, tick the phase checklist if finished, and
-   set the task to `Review` for QA. Don't commit: the Director commits after QA passes.
-
-Never commit secrets, personal data, voice recordings or FilmCow sound files. One task at a time.
-Keep code in the style around it: same naming, comment density and idiom; numbers as named
-constants with a comment saying where they came from (doc, playtest, or guess).
+Follow `production/README.md` (team rules, cloud commands, **Keeping usage down**). In short:
+read only what the task needs (your task, its dependencies' handoffs, the CONTRACTS.md and
+design-doc sections it touches); verify Godot APIs; edit only files you own; run the checks and
+look at the result; write the handoff; commit on your worktree branch, don't push. Keep code in
+the style around it, numbers as named constants saying where they came from. Never commit
+secrets, personal data, voice recordings or FilmCow sounds.

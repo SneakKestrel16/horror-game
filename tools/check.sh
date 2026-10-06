@@ -11,8 +11,10 @@ if [ -z "$godot" ]; then
 fi
 [ -x "$godot" ] || { echo "Godot console executable not found; set GODOT." >&2; exit 1; }
 
-log=$(mktemp)
-trap 'rm -f "$log"' EXIT
+# The full log is long (about 600 lines); it is printed only with CHECK_VERBOSE=1.
+# Otherwise a pass prints one line and a failure prints the problem lines and the
+# log's tail, and the log is kept at CHECK_LOG for a closer look.
+log="${CHECK_LOG:-$(mktemp)}"
 "$godot" --headless --import >"$log" 2>&1
 status=$?
 # Its own port, so a running game does not block it (SMOKE_PORT gives parallel
@@ -20,10 +22,21 @@ status=$?
 # (in frames) so a broken test fails instead of hanging.
 # timeout too: a script that fails to compile leaves the test waiting forever.
 timeout 240 "$godot" --headless --quit-after 400000 res://tests/smoke.tscn -- --port="${SMOKE_PORT:-7791}" >>"$log" 2>&1 || status=$?
-cat "$log"
-if grep -Eq '(^|[^A-Z_])(ERROR|WARNING):' "$log"; then
-	echo "check.sh: Godot reported errors or warnings (treated as failures)." >&2
+[ -n "${CHECK_VERBOSE:-}" ] && cat "$log"
+fail() {
+	[ -z "${CHECK_VERBOSE:-}" ] && {
+		grep -E -A2 '(^|[^A-Z_])(ERROR|WARNING):|SCRIPT ERROR|^FAIL' "$log" | head -60
+		echo "--- last lines ---"
+		tail -15 "$log"
+	}
+	echo "check.sh: $1 Full log: $log" >&2
 	exit 1
+}
+if grep -Eq '(^|[^A-Z_])(ERROR|WARNING):' "$log"; then
+	fail "Godot reported errors or warnings (treated as failures)."
 fi
-grep -q 'SMOKE PASS' "$log" || { echo "check.sh: smoke test did not pass." >&2; exit 1; }
-exit "$status"
+grep -q 'SMOKE PASS' "$log" || fail "smoke test did not pass."
+[ "$status" -eq 0 ] || fail "Godot exited with $status."
+echo "check.sh: SMOKE PASS, no errors or warnings ($(grep -c '^ok ' "$log") checks)."
+[ -z "${CHECK_LOG:-}" ] && rm -f "$log"
+exit 0
