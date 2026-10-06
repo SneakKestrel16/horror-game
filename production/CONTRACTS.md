@@ -126,7 +126,7 @@ and the simulator's Inputs cell it must match. QA checks the two agree.
 | Corn | not a crop (2026-10-05) | row 7 still a crop | Sheet out of date |
 | Seeds per pack | `Store.SEEDS_PER_PACK` 4 / 4 / 2 | per plot | Code sells packs; sheet prices plots |
 | Field plots | 16 in `Farm.PLOTS`, 12 open, `LOCKED_PLOTS` 4 bought with the `plots` upgrade | B12 16, up to 24 | Differs |
-| Moonflower bed | 4 | B13 4 | Yes |
+| Moonflower bed | none: moonflowers grow in any field plot (night only) | B13 4 | Differs; Stage 3 (Q-006) |
 | Starting coins | `Game.coins := 0` | B18 60 | Differs |
 | Debt, first payment, due night | not built | B19 1200, B20 400, B21 3 | Phase 4 |
 | Festival quota | not built | B24 8 (corn) | Now 8 pumpkin plots (stand-in) |

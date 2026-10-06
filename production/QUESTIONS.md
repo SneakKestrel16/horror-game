@@ -32,3 +32,27 @@ coins. Leave the game as it is until Stage 3 builds the season, as planned?
 look?
 
 **Answer:** Rename the look. User, 2026-10-05. See D-008.
+
+## Q-004 · 2026-10-06 · Game Designer → Director · Answered
+
+phase2.md lines 27-28 and 125 still say the voice addon was never tested with a real mic, against
+its checklist. Those lines aren't mine.
+
+**Answer:** Wording fix approved for the Game Designer as part of S1-17. Director, 2026-10-06.
+
+## Q-005 · 2026-10-06 · Game Designer → Director · Answered
+
+The code differs from the Crops section: pumpkins and moonflowers open on day 1, 12 plots open plus
+4 to buy, 0 starting coins. Should the doc call these stand-ins?
+
+**Answer:** No doc change. They are prototype stand-ins the user chose to keep until Stage 3
+(D-007); Phase 4 brings the code in line with the doc. Director, 2026-10-06.
+
+## Q-006 · 2026-10-06 · Game Designer → Director · Open (Stage 3)
+
+The game has no moonflower bed (moonflowers grow in any field plot, at night), and the doc never
+says where the bed is, though line 306 implies a walk to "the far field".
+
+**Answer (partial):** Recorded in CONTRACTS.md. Where the bed goes is a Level Designer task when
+Stage 3 builds the season; Review 3's issue 4 (scaling the bed) may change its size first.
+
