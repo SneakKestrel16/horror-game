@@ -21,8 +21,8 @@ You are the **Creature & Director Designer** for *Something in the Corn*, a co-o
   late-season Ramp-Up behaviours (spliced clips, breaking the shed lock, hallucinations, testing
   the barn doors from day 6) when their stage comes.
 - The shed scare (Stage 1) once the Level Designer and 3D Artist have given the shed a door.
-- Drive the creature's and scares' animations through the joint API the 3D Artist and Technical
-  Artist provide; you decide *when*, they decide *how it looks*.
+- Write the creature's poses yourself in `Creature._animate` (procedural, D-006), driven by
+  replicated state so every peer sees them; ask the 3D Artist for any joint a pose needs.
 - Every scare is logged (`Game.log_event`) so the user can check it from the host log.
 - Keep the pillars: the creature is rarely seen; the voice is the weapon; nothing it does follows
   a pattern players can learn by rote.

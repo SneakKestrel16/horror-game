@@ -36,7 +36,7 @@ the Director so two roles never have it in progress at once.
 | `game/scripts/looks.gd`, `dress.gd`, `game/assets/shaders/`, `game/tools/` (showcase, snapshot) | Technical Artist |
 | `game/scripts/sfx.gd`, `tools/get_sfx.sh`, `game/assets/voices/`, the Sounds lists in the phase docs | Audio Designer |
 | `game/tests/`, `tools/check.sh`, the Playtesting sections of the phase docs | QA / Reviewer |
-| `CLAUDE.md`, `.pre-commit-config.yaml`, `tools/requirements.txt`, `docs/README.md`, `docs/gotchas.md` | Director (anyone may add a gotcha) |
+| `CLAUDE.md`, `prek.toml`, `tools/requirements.txt`, `docs/README.md`, `docs/gotchas.md` | Director (anyone may add a gotcha) |
 
 Not ours: `voice_chat_prototype/` (a separate test project, left alone).
 
@@ -46,6 +46,8 @@ Not ours: `voice_chat_prototype/` (a separate test project, left alone).
   cell per metre over `Rect2i(-54, -54, 108, 108)`.
 - Rects in `farm.gd` are `Rect2(x, z, width, depth)` on the ground plane.
 - The barn's door faces +z; the player spawns inside it (`Farm.SPAWN`).
+- No door opens or closes yet: `BARN_DOOR` and `SHED_DOOR` are the widths of open doorways in
+  the walls `farm.gd` builds. The `shed_lock` upgrade is a timer at `SHED_DOOR_OUT`, not a door.
 - Blender models face +Y in Blender, which becomes -Z in Godot (`docs/models.md`).
 - Positions other roles read, and so contracts: `Farm.SPAWN`, `BARN`, `SHED`, `SHED_DOOR`,
   `SHED_DOOR_OUT`, `PEGBOARD`, `GENERATOR`, `FUEL_DRUM`, `PUMP`, `CRATE`, `PLOTS`,
@@ -162,8 +164,8 @@ The phase docs' Numbers tables list them with sources. Main ones: `Game` clock a
 ## Animation
 
 What exists: every animation is procedural, in code, rotating the named joints each frame
-(`Player._animate`, `Creature._animate`); there are no AnimationPlayers or baked clips.
-Proposed (D-006): keep it that way for Stage 1. The owner of the script that moves a body writes
+(`Player._walk_cycle`, `Creature._animate`); there are no AnimationPlayers or baked clips.
+Approved (D-006): it stays that way. The owner of the script that moves a body writes
 its poses (player poses in `player.gd`, the creature's in `creature.gd`), the 3D Artist adds any
 joints a pose needs, and every pose another peer must see is driven by a replicated property.
 

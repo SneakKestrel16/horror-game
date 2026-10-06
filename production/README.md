@@ -36,7 +36,8 @@ stay in `docs/` (a `phase4.md` when Phase 4 starts); traps go in
 7. **Conflicts with the design doc** go to the Director in QUESTIONS.md; don't improvise.
 8. **Contracts:** don't change a contract (a shared name, data format, RPC, or ownership) without
    a Director-approved DECISIONS.md entry, before any dependent work starts.
-9. **Commits:** only after QA passes the task. Commit to `main` and push. A plain sentence
+9. **Commits:** only after QA passes the task. Commit to `main` and push (in a cloud session,
+   to the session's branch instead: D-010). A plain sentence
    subject saying what changed, an explanatory body as in the git log, and the task ID in the
    body (`Task: S1-04`). No model names in commits.
 10. **Privacy and consent:** the repo is public. Never commit secrets, personal data, voice

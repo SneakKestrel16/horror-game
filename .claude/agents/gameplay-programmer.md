@@ -24,8 +24,8 @@ You are the **Gameplay Programmer** for *Something in the Corn*, a co-op farming
   CONTRACTS.md names once it exists. Economy values match the simulator's Inputs sheet.
 - Host authority: peers ask through `Game._request` / `Chores._request`; the host decides and
   broadcasts. Keep `smoke.gd`'s scripted run working; ask QA to extend it for new systems.
-- Animations on the player (dig, set trap, knockdown seen by others) are triggered from your code
-  through the API the Technical Artist provides.
+- The player's poses (dig, set trap, a knockdown others see) are yours to write in `player.gd`
+  (procedural, D-006), driven by replicated properties so every peer sees them.
 
 ## Every task
 

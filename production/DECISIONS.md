@@ -64,3 +64,21 @@ branch (never `main`, never pushed). The Director merges a branch into `main` an
 passes it. `tools/check.sh` takes `SMOKE_PORT` so parallel checks don't fight over port 7791.
 Worktrees have no `.venv` and no recorded sounds: agents call the main checkout's
 `.venv/Scripts/gdformat` and `gdlint`, and the Director runs prek when merging.
+
+## D-010 · 2026-10-06 · Director · Cloud sessions work on a branch
+
+Some sessions run in a cloud container rather than on the user's Windows machine. There the
+checkout is `/home/user/horror-game`, work is committed to the session's assigned branch (not
+`main`) and pushed for the user to merge, Godot 4.7 is a downloaded Linux binary passed to
+`tools/check.sh` through `GODOT`, and gdformat and gdlint come from a venv's `bin/` (prek.toml's
+`.venv/Scripts/` paths are Windows-only, so prek's gdformat and gdlint hooks are run by hand
+there). Blender is not available in the cloud: 3D Artist tasks that rebuild models wait for a
+session on the user's machine, or the user runs the build command. Nothing else in the rules
+changes.
+
+## D-011 · 2026-10-06 · Director · The shed door is the game's first door
+
+S1-06 assumed it would open and close "like the barn doors", but neither building has a door, only
+an open doorway. The task now builds the first door (and is written so the barn can reuse it in
+Stage 4) and must sit with the `shed_lock` upgrade. Its RPC and state are a contract change the
+Gameplay Programmer proposes in CONTRACTS.md before building.

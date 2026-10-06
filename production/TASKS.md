@@ -49,10 +49,15 @@ launch, named in the handoff), a handoff is written, and nothing in the privacy 
   the hinge edge), rebuilt with the Blender command and checked in the showcase.
 
 **S1-06 Hang the shed door and make it work** · Level → Gameplay · Waiting · depends on: S1-05
-- Level places the door in `farm.gd` (the shed is modelled open and flat today). Gameplay makes it
-  open and close like the barn doors, host-owned and replicated, blocking the creature and players
-  when shut. Technical Artist dresses it in `looks.gd`.
-- Players can shut themselves in the shed; a joining peer sees its state.
+- Neither building has a working door today, only open doorways (CONTRACTS.md, Scale and space),
+  so this is the game's first door. Level places it in the shed's doorway in `farm.gd` with a
+  collider that blocks players and the creature when shut. Gameplay makes it open and close on
+  E: host-owned, replicated, in the late-join snapshot, logged, and coherent with the `shed_lock`
+  upgrade (a locked door stays shut to the creature until it breaks the lock). The new RPC and
+  state go into CONTRACTS.md first (Director approval). Technical Artist dresses it in `looks.gd`.
+- Built so the barn can reuse it later (the creature tests the barn doors from day 6, Stage 4).
+- Players can shut themselves in the shed; a joining peer sees its state; the walking grid and the
+  creature's errand to the pegboard still work with it open or shut.
 
 **S1-07 The shed scare** · Creature & Director · Waiting · depends on: S1-06
 - The scare the phase3.md checklist names once the shed has a door, built as the design doc
@@ -117,6 +122,15 @@ launch, named in the handoff), a handoff is written, and nothing in the privacy 
   removed), `Creature.LOOKS`, the showcase sets, models.md, phase2.md and the design doc's line on
   the four looks. `--monster=strawman` works and the log says "creature look: strawman".
 - No `scarecrow` identifier left except the farm object's mentions.
+
+### Docs
+
+**S1-17 Stale lines in the design doc and phase2.md** · Game Designer · Ready · depends on: none
+- Corrections only, no design change: phase2.md's Phase 4 checklist says "the corn quota" (now
+  the festival quota of pumpkins); the design doc's Dependencies section says the voice chat was
+  never tested with a real microphone and has no lobby recording (both done in Phase 2); the
+  Economy Check's corn row, "Corn can't help" and assumption 5's "per corn plot" wait for S1-15
+  and are rewritten from its results.
 
 ### Optional, if there's time before the STOP
 
