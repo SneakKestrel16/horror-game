@@ -7,4 +7,5 @@
 - [Phase 3](phase3.md): the Director, jumpscares and wounds, the dead-voice twist, ghosts' lantern flicker; the Review 2 defaults it was built on.
 - [The farm store](store.md): seed packs (turnips, pumpkins, moonflowers) and team upgrades bought at the shipping crate, ahead of Phase 4; prices and effects.
 - [Models and textures](models.md): the Blender scripts that bake the textures and build the farmer, the creature, the buildings, props and plants, and how Godot dresses them.
+- [Hosting and joining over the internet](hosting.md): the port (UDP 7777), a virtual LAN or a router port forward, and what to check when friends cannot connect.
 - [Gotchas](gotchas.md): traps hit while building, with their fixes.

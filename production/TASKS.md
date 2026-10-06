@@ -97,7 +97,7 @@ launch, named in the handoff), a handoff is written, and nothing in the privacy 
 - The exported build, run from a folder outside the repo, hosts and joins another instance, and
   plays recorded sounds. Ticks the phase2.md export item.
 
-**S1-13 Hosting and joining over the internet** · Network & Voice · Ready · depends on: none
+**S1-13 Hosting and joining over the internet** · Network & Voice · Done · depends on: none
 - `docs/hosting.md`, linked from docs/README.md: the port, how the host opens it (router port
   forward) or a virtual LAN (for example Tailscale or ZeroTier) as the simpler path, how a friend
   joins, and what to check when it fails. Short enough to send to a friend.
