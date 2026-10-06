@@ -18,3 +18,6 @@ __pycache__/
 # use in the game but doesn't say the raw files may be shared in a public repo.
 game/assets/sfx/*
 !game/assets/sfx/.gdignore
+
+# Agent worktrees (production/README.md)
+.claude/worktrees/
